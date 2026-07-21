@@ -116,11 +116,13 @@ router.get('/forms/:formId', async (req, res, next) => {
 
     const { data: form, error } = await supabaseAdmin
       .from('forms')
-      .select('*, questions(* ORDER BY position ASC), workspaces(id, name, plan, remove_branding)')
+      .select('*, questions(*), workspaces(id, name, plan, remove_branding)')
       .eq('id', formId)
+      .order('position', { referencedTable: 'questions' })
       .single();
 
-    if (error || !form) throw createError(404, 'Form not found');
+    if (error) throw error;
+    if (!form) throw createError(404, 'Form not found');
 
     // Check user is a workspace member
     const { data: member } = await supabaseAdmin

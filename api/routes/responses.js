@@ -19,9 +19,10 @@ router.get('/public/forms/:slug', async (req, res, next) => {
 
     let q = supabaseAdmin
       .from('forms')
-      .select('id, title, description, layout, theme, settings, workspace_id, closes_at, opens_at, response_limit, responses_count, questions(id, type, title, description, required, config, logic ORDER BY position ASC), workspaces(name, logo_url, plan, remove_branding, custom_domain)')
+      .select('id, title, description, layout, theme, settings, workspace_id, closes_at, opens_at, response_limit, responses_count, questions(id, type, title, description, required, config, logic), workspaces(name, logo_url, plan, remove_branding, custom_domain)')
       .eq('slug', slug)
       .eq('status', 'published')
+      .order('position', { referencedTable: 'questions' })
       .single();
 
     const { data: form, error } = await q;
@@ -267,8 +268,8 @@ router.get('/forms/:formId/responses/export/csv', requireAuth, async (req, res, 
     const { formId } = req.params;
 
     const { data: form } = await supabaseAdmin.from('forms')
-      .select('workspace_id, title, questions(id, title, type ORDER BY position ASC)')
-      .eq('id', formId).single();
+      .select('workspace_id, title, questions(id, title, type)')
+      .eq('id', formId).order('position', { referencedTable: 'questions' }).single();
     if (!form) throw createError(404, 'Form not found');
 
     const { data: member } = await supabaseAdmin.from('workspace_members')
@@ -315,8 +316,8 @@ router.get('/forms/:formId/analytics', requireAuth, async (req, res, next) => {
     const { formId } = req.params;
 
     const { data: form } = await supabaseAdmin.from('forms')
-      .select('workspace_id, views_count, starts_count, responses_count, questions(id, title, type ORDER BY position ASC)')
-      .eq('id', formId).single();
+      .select('workspace_id, views_count, starts_count, responses_count, questions(id, title, type)')
+      .eq('id', formId).order('position', { referencedTable: 'questions' }).single();
     if (!form) throw createError(404, 'Form not found');
 
     const { data: member } = await supabaseAdmin.from('workspace_members')
