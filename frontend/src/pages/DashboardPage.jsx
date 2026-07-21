@@ -25,7 +25,7 @@ export default function DashboardPage() {
 
   // Always fetch workspaces on dashboard load
   useEffect(() => {
-    if (user) fetchWorkspaces();
+    if (user) fetchWorkspaces().catch(err => console.error('Failed to fetch workspaces:', err));
   }, [user]);
 
   const { data, isLoading } = useQuery({

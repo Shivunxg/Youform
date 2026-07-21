@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
@@ -19,7 +19,7 @@ export default function OrganizationSettings() {
   const workspace = data?.workspace;
 
   // Sync state when data loads
-  useState(() => {
+  useEffect(() => {
     if (workspace) {
       setName(workspace.name ?? '');
     }
@@ -28,7 +28,7 @@ export default function OrganizationSettings() {
   const updateMutation = useMutation({
     mutationFn: () => api.workspaces.update(activeWorkspaceId, { name }),
     onSuccess: () => { qc.invalidateQueries(['workspace', activeWorkspaceId]); toast.success('Settings updated'); },
-    onError: () => toast.error('Update failed'),
+    onError: (err) => toast.error(err.message || 'Update failed'),
   });
 
   return (

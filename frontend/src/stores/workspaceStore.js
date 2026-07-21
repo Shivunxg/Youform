@@ -13,17 +13,12 @@ export const useWorkspaceStore = create(
       },
 
       fetchWorkspaces: async () => {
-        try {
-          const { workspaces } = await api.workspaces.list();
-          set({ workspaces });
-          if (!get().activeWorkspaceId && workspaces.length > 0) {
-            set({ activeWorkspaceId: workspaces[0].id });
-          }
-          return workspaces;
-        } catch (err) {
-          console.error('Failed to fetch workspaces:', err);
-          return [];
+        const { workspaces } = await api.workspaces.list();
+        set({ workspaces });
+        if (!get().activeWorkspaceId && workspaces.length > 0) {
+          set({ activeWorkspaceId: workspaces[0].id });
         }
+        return workspaces;
       },
 
       setActiveWorkspace: (id) => set({ activeWorkspaceId: id }),

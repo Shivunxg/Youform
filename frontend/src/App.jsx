@@ -43,7 +43,7 @@ export default function App() {
   useEffect(() => { init(); }, [init]);
 
   useEffect(() => {
-    if (user) fetchWorkspaces();
+    if (user) fetchWorkspaces().catch(err => console.error('Failed to fetch workspaces:', err));
   }, [user]);
 
   return (

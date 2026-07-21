@@ -73,6 +73,9 @@ router.patch(
   [body('name').optional().trim().isLength({ min: 1, max: 100 })],
   async (req, res, next) => {
     try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) throw Object.assign(new Error(), { type: 'validation', errors: errors.array() });
+
       const { workspaceId } = req.params;
 
       const { data: member } = await supabaseAdmin.from('workspace_members')
