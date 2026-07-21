@@ -3,11 +3,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 
-// Auth pages
 import LoginPage    from '@/pages/LoginPage';
 import SignupPage   from '@/pages/SignupPage';
-
-// Main pages
 import DashboardPage   from '@/pages/DashboardPage';
 import BuilderPage     from '@/pages/BuilderPage';
 import ResponsesPage   from '@/pages/ResponsesPage';
@@ -16,7 +13,6 @@ import TemplatesPage   from '@/pages/TemplatesPage';
 import PublicFormPage  from '@/pages/PublicFormPage';
 import AccountSettings from '@/pages/AccountSettings';
 
-// Settings pages
 import SettingsLayout       from '@/pages/settings/SettingsLayout';
 import OrganizationSettings from '@/pages/settings/OrganizationSettings';
 import MembersSettings      from '@/pages/settings/MembersSettings';
@@ -41,27 +37,22 @@ function RequireAuth({ children }) {
 }
 
 export default function App() {
-  const { init } = useAuthStore();
+  const { init, user } = useAuthStore();
   const { fetchWorkspaces } = useWorkspaceStore();
-  const { user } = useAuthStore();
 
   useEffect(() => { init(); }, [init]);
 
-  // Fetch workspaces when user logs in
   useEffect(() => {
-    if (user) fetchWorkspaces().catch(() => {});
+    if (user) fetchWorkspaces();
   }, [user]);
 
   return (
     <Routes>
-      {/* Public */}
       <Route path="/login"   element={<LoginPage />} />
       <Route path="/signup"  element={<SignupPage />} />
       <Route path="/f/:slug" element={<PublicFormPage />} />
 
-      {/* Auth required */}
       <Route path="/" element={<RequireAuth><Navigate to="/dashboard" replace /></RequireAuth>} />
-
       <Route path="/dashboard" element={<RequireAuth><DashboardPage /></RequireAuth>} />
       <Route path="/templates" element={<RequireAuth><TemplatesPage /></RequireAuth>} />
       <Route path="/settings/account" element={<RequireAuth><AccountSettings /></RequireAuth>} />
@@ -70,7 +61,6 @@ export default function App() {
       <Route path="/forms/:formId/responses" element={<RequireAuth><ResponsesPage /></RequireAuth>} />
       <Route path="/forms/:formId/analytics" element={<RequireAuth><AnalyticsPage /></RequireAuth>} />
 
-      {/* Settings (nested) */}
       <Route path="/settings" element={<RequireAuth><SettingsLayout /></RequireAuth>}>
         <Route index element={<Navigate to="/settings/organization" replace />} />
         <Route path="organization" element={<OrganizationSettings />} />
