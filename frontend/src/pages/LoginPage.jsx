@@ -15,14 +15,14 @@ export default function LoginPage() {
     finally { setLoading(false); }
   };
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-50 to-white flex items-center justify-center p-4">
+    <div className="min-h-screen bg-paper flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <a href="/" className="inline-flex items-center gap-2 mb-4 group">
-            <div className="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center group-hover:bg-brand-600 transition-colors"><span className="text-white font-bold text-sm">F</span></div>
-            <span className="text-xl font-semibold text-gray-900 group-hover:text-brand-600 transition-colors">FormFlow</span>
+          <a href="/" className="inline-flex items-center gap-2 mb-5 group">
+            <div className="w-9 h-9 rounded-lg border-2 border-[#111] flex items-center justify-center" style={{background:'#111',boxShadow:'2px 2px 0 #f97316'}}><span className="text-white font-bold text-sm" style={{fontFamily:'Space Grotesk,sans-serif'}}>F</span></div>
+            <span className="text-xl font-display font-bold text-ink">FormFlow</span>
           </a>
-          <h1 className="text-2xl font-semibold text-gray-900">Welcome back</h1>
+          <h1 className="text-2xl font-display font-bold text-ink">Welcome back</h1>
           <p className="text-gray-500 mt-1 text-sm">Sign in to your account</p>
         </div>
         <div className="card p-6">

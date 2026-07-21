@@ -11,10 +11,10 @@ import toast from 'react-hot-toast';
 import { clsx } from 'clsx';
 
 const STATUS_COLORS = {
-  published: 'bg-green-100 text-green-700',
-  draft:     'bg-gray-100 text-gray-600',
-  closed:    'bg-orange-100 text-orange-700',
-  archived:  'bg-red-100 text-red-600',
+  published: 'bg-green-300 text-[#111]',
+  draft:     'bg-gray-200 text-[#111]',
+  closed:    'bg-yellow-300 text-[#111]',
+  archived:  'bg-red-200 text-[#111]',
 };
 
 export default function DashboardPage() {
@@ -58,22 +58,17 @@ export default function DashboardPage() {
         {/* Workspace header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-1.5">
-              <div className="w-4 h-4 rounded bg-gray-200" />
-              {activeWs?.name ?? 'My Workspace'}
-              <span className="text-gray-400">▾</span>
-            </div>
             <button
               onClick={() => navigate('/settings/members')}
-              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+              className="btn btn-secondary btn-sm text-xs py-1.5 px-3"
             >
-              <Users className="w-4 h-4" />
+              <Users className="w-3.5 h-3.5" />
               + Invite Team
             </button>
           </div>
           <button
             onClick={() => setShowTemplatePicker(true)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold rounded-lg transition-colors"
+            className="btn btn-primary"
           >
             + New Form
           </button>
@@ -123,33 +118,40 @@ export default function DashboardPage() {
 
 function FormCard({ form, menuOpen, onMenuToggle, onEdit, onResponses, onAnalytics, onDuplicate, onDelete }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 hover:shadow-md transition-all duration-150 group cursor-pointer overflow-hidden" onClick={onEdit}>
-      <div className="h-1.5" style={{ backgroundColor: form.theme?.primaryColor ?? '#6366f1' }} />
+    <div
+      className="bg-white rounded-xl border-2 border-[#111] group cursor-pointer overflow-hidden transition-all duration-100 hover:-translate-y-0.5"
+      style={{boxShadow:'4px 4px 0 #111'}}
+      onClick={onEdit}
+    >
+      <div className="h-2 border-b-2 border-[#111]" style={{ backgroundColor: form.theme?.primaryColor ?? '#f97316' }} />
       <div className="p-5">
         <div className="flex items-start justify-between gap-2 mb-3">
-          <h3 className="font-semibold text-gray-900 text-sm leading-tight line-clamp-2">{form.title || 'Untitled'}</h3>
+          <h3 className="font-bold font-bold text-[#111] text-sm leading-tight line-clamp-2">{form.title || 'Untitled'}</h3>
           <div className="relative shrink-0" onClick={e => e.stopPropagation()}>
-            <button onClick={() => onMenuToggle(form.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-all">
+            <button
+              onClick={() => onMenuToggle(form.id)}
+              className="p-1.5 rounded-lg border-2 border-transparent text-[#111] opacity-0 group-hover:opacity-100 hover:border-[#111] hover:bg-[#FFFBF2] transition-all"
+            >
               <MoreHorizontal className="w-4 h-4" />
             </button>
             {menuOpen && (
-              <div className="absolute right-0 top-8 w-44 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20">
+              <div className="absolute right-0 top-9 w-44 bg-white rounded-xl border-2 border-[#111] py-1 z-20" style={{boxShadow:'4px 4px 0 #111'}}>
                 <MenuItem icon={Edit2}     label="Edit"      onClick={onEdit} />
                 <MenuItem icon={BarChart2} label="Analytics" onClick={onAnalytics} />
                 <MenuItem icon={Copy}      label="Duplicate" onClick={onDuplicate} />
                 {form.status === 'published' && (
-                  <a href={`/f/${form.slug}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                  <a href={`/f/${form.slug}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-[#111] hover:bg-[#FFFBF2]">
                     <ExternalLink className="w-3.5 h-3.5" /> View live
                   </a>
                 )}
-                <div className="border-t border-gray-100 my-1" />
+                <div className="border-t-2 border-[#111] my-1" />
                 <MenuItem icon={Trash2} label="Archive" onClick={onDelete} danger />
               </div>
             )}
           </div>
         </div>
         <span className={clsx('badge text-xs capitalize mb-4 inline-block', STATUS_COLORS[form.status] ?? STATUS_COLORS.draft)}>{form.status}</span>
-        <div className="flex items-center gap-4 pt-3 border-t border-gray-100">
+        <div className="flex items-center gap-4 pt-3 border-t-2 border-[#111]">
           <Stat label="Responses" value={form.responses_count ?? 0} />
           <Stat label="Views"     value={form.views_count ?? 0} />
           <Stat label="Rate"      value={form.starts_count > 0 ? `${Math.round((form.responses_count / form.starts_count) * 100)}%` : '—'} />
@@ -170,7 +172,7 @@ function Stat({ label, value }) {
 
 function MenuItem({ icon: Icon, label, onClick, danger }) {
   return (
-    <button onClick={onClick} className={clsx('w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors', danger ? 'text-red-500 hover:bg-red-50' : 'text-gray-700 hover:bg-gray-50')}>
+    <button onClick={onClick} className={clsx('w-full flex items-center gap-2 px-3 py-2 text-sm font-bold transition-colors', danger ? 'text-red-500 hover:bg-red-50' : 'text-[#111] hover:bg-[#FFFBF2]')}>
       <Icon className="w-3.5 h-3.5" /> {label}
     </button>
   );
@@ -179,16 +181,12 @@ function MenuItem({ icon: Icon, label, onClick, danger }) {
 function EmptyState({ onCreate, onInvite }) {
   return (
     <div className="text-center py-24">
-      <div className="w-14 h-14 rounded-full border-2 border-gray-200 flex items-center justify-center mx-auto mb-4 text-2xl text-gray-400">!</div>
-      <p className="text-gray-500 mb-1">No forms created in this workspace yet.</p>
-      <p className="text-gray-400 text-sm mb-6">What would you like to do?</p>
+      <div className="w-16 h-16 rounded-xl border-2 border-[#111] flex items-center justify-center mx-auto mb-5 text-3xl bg-yellow-300" style={{boxShadow:'4px 4px 0 #111'}}>📋</div>
+      <h3 className="font-bold font-bold text-[#111] text-lg mb-1">No forms yet</h3>
+      <p className="text-gray-500 text-sm mb-6">Create your first form or start from a template.</p>
       <div className="flex items-center justify-center gap-3">
-        <button onClick={onCreate} className="flex items-center gap-2 px-5 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50">
-          + Create Form
-        </button>
-        <button onClick={onInvite} className="flex items-center gap-2 px-5 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50">
-          <Users className="w-4 h-4" /> Invite Team
-        </button>
+        <button onClick={onCreate} className="btn btn-primary">+ Create Form</button>
+        <button onClick={onInvite} className="btn btn-secondary"><Users className="w-4 h-4" /> Invite Team</button>
       </div>
     </div>
   );
@@ -196,11 +194,11 @@ function EmptyState({ onCreate, onInvite }) {
 
 function FormCardSkeleton() {
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-5 animate-pulse">
-      <div className="h-1.5 bg-gray-200 rounded -mx-5 -mt-5 mb-5" />
+    <div className="bg-white rounded-xl border-2 border-[#111] p-5 animate-pulse" style={{boxShadow:'4px 4px 0 #111'}}>
+      <div className="h-2 bg-gray-200 rounded -mx-5 -mt-5 mb-5 border-b-2 border-[#111]" />
       <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
       <div className="h-3 bg-gray-100 rounded w-1/4 mb-4" />
-      <div className="flex gap-4 pt-3 border-t border-gray-100">
+      <div className="flex gap-4 pt-3 border-t-2 border-[#111]">
         {[1,2,3].map(i => <div key={i} className="flex-1 h-8 bg-gray-100 rounded" />)}
       </div>
     </div>
