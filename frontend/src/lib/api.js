@@ -35,6 +35,10 @@ export const api = {
     create: (body)         => post('/workspaces', body),
     update: (id, body)     => patch(`/workspaces/${id}`, body),
     usage: (id)            => get(`/workspaces/${id}/usage`),
+    activity: (id, params = {}) => {
+      const q = new URLSearchParams(params).toString();
+      return get(`/workspaces/${id}/activity${q ? `?${q}` : ''}`);
+    },
     members: (id)          => get(`/workspaces/${id}/members`),
     invite: (id, body)     => post(`/workspaces/${id}/invites`, body),
     removeMember: (id, uid) => del(`/workspaces/${id}/members/${uid}`),

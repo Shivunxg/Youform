@@ -6,6 +6,7 @@ import { supabaseAdmin } from '../lib/supabase.js';
 import { requireAuth, requireWorkspaceMember, requireEditor, requireAdmin } from '../middleware/auth.js';
 import { createError } from '../middleware/errorHandler.js';
 import { hasFeature } from '../lib/plans.js';
+import { logActivity } from '../lib/activity.js';
 
 const router = Router();
 
@@ -101,6 +102,8 @@ router.post(
         await supabaseAdmin.from('questions').insert(questions);
       }
 
+      logActivity(supabaseAdmin, { workspace_id: workspaceId, user_id: req.user.id, action: 'form_created', resource_type: 'form', resource_id: form.id, description: `Created form "${form.title}"` });
+
       res.status(201).json({ form });
     } catch (err) { next(err); }
   }
@@ -178,7 +181,8 @@ router.patch(
       const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
 
       // Set published_at when publishing
-      if (updates.status === 'published') {
+      const isPublishing = updates.status === 'published';
+      if (isPublishing) {
         updates.published_at = new Date().toISOString();
 
         // Check custom domain feature gate
@@ -195,6 +199,9 @@ router.patch(
         .single();
 
       if (error) throw error;
+      if (isPublishing) {
+        logActivity(supabaseAdmin, { workspace_id: existing.workspace_id, user_id: req.user.id, action: 'form_published', resource_type: 'form', resource_id: formId, description: `Published form "${form.title}"` });
+      }
       res.json({ form });
     } catch (err) { next(err); }
   }

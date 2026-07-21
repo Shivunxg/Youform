@@ -3,8 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useAuthStore } from '@/stores/authStore';
+import { getSeatLimit } from '@/lib/plans';
 import toast from 'react-hot-toast';
 import { clsx } from 'clsx';
+import { Lock } from 'lucide-react';
 
 const ROLE_COLORS = {
   owner:  'bg-purple-100 text-purple-700',
@@ -27,6 +29,12 @@ export default function MembersSettings() {
     enabled: !!activeWorkspaceId,
   });
 
+  const { data: usageData } = useQuery({
+    queryKey: ['usage', activeWorkspaceId],
+    queryFn: () => api.workspaces.usage(activeWorkspaceId),
+    enabled: !!activeWorkspaceId,
+  });
+
   const inviteMutation = useMutation({
     mutationFn: () => api.workspaces.invite(activeWorkspaceId, { email: inviteEmail, role: inviteRole }),
     onSuccess: () => {
@@ -44,26 +52,51 @@ export default function MembersSettings() {
   });
 
   const members = data?.members ?? [];
+  const plan = usageData?.plan ?? 'free';
+  const seatLimit = getSeatLimit(plan);
+  const atLimit = seatLimit !== null && members.length >= seatLimit;
 
   return (
     <div className="max-w-2xl">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Members</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{members.length} of {members.length} seat{members.length !== 1 ? 's' : ''} used</p>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {members.length} of {seatLimit !== null ? seatLimit : '∞'} seat{seatLimit !== 1 ? 's' : ''} used
+            {seatLimit !== null && (
+              <span className="ml-1 capitalize text-gray-400">· {plan} plan</span>
+            )}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <select className="input text-sm py-1.5 w-36">
             <option>All workspaces</option>
           </select>
-          <button onClick={() => setShowInvite(true)} className="btn-primary">
-            + Invite
-          </button>
+          {atLimit ? (
+            <a href="/settings/billing" className="btn-secondary flex items-center gap-1.5 text-amber-600">
+              <Lock className="w-3.5 h-3.5" /> Upgrade to invite
+            </a>
+          ) : (
+            <button onClick={() => setShowInvite(true)} className="btn-primary">
+              + Invite
+            </button>
+          )}
         </div>
       </div>
 
+      {/* Seat limit warning */}
+      {atLimit && (
+        <div className="mb-5 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800 flex items-center gap-2">
+          <Lock className="w-4 h-4 shrink-0" />
+          <span>
+            You've reached the {seatLimit}-member limit for the <strong>{plan}</strong> plan.{' '}
+            <a href="/settings/billing" className="underline font-medium">Upgrade</a> to add more members.
+          </span>
+        </div>
+      )}
+
       {/* Invite form */}
-      {showInvite && (
+      {showInvite && !atLimit && (
         <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
           <h3 className="text-sm font-semibold text-gray-800 mb-3">Invite team member</h3>
           <div className="flex gap-2">
@@ -80,6 +113,25 @@ export default function MembersSettings() {
               {inviteMutation.isPending ? 'Sending…' : 'Send'}
             </button>
             <button onClick={() => setShowInvite(false)} className="btn-secondary">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Seat progress bar */}
+      {seatLimit !== null && (
+        <div className="mb-5">
+          <div className="flex justify-between text-xs text-gray-500 mb-1">
+            <span>Seats</span>
+            <span>{members.length} / {seatLimit}</span>
+          </div>
+          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all"
+              style={{
+                width: `${Math.min(100, (members.length / seatLimit) * 100)}%`,
+                backgroundColor: atLimit ? '#f59e0b' : '#6366f1',
+              }}
+            />
           </div>
         </div>
       )}
@@ -106,7 +158,6 @@ export default function MembersSettings() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-xs text-gray-400">1 workspace</span>
                 <span className={clsx('badge capitalize', ROLE_COLORS[m.role] ?? 'bg-gray-100 text-gray-600')}>
                   {m.role}
                 </span>

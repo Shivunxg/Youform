@@ -43,6 +43,7 @@ export const useBuilderStore = create((set, get) => ({
   isSaving: false,
   previewMode: false,     // false = editor, true = preview
   previewDevice: 'desktop', // 'desktop' | 'mobile'
+  showFormSettings: false,
 
   // ── Load ───────────────────────────────────────────────────
   loadForm: async (formId) => {
@@ -56,8 +57,9 @@ export const useBuilderStore = create((set, get) => ({
   },
 
   // ── Question selection ─────────────────────────────────────
-  selectQuestion: (id) => set({ selectedQuestionId: id }),
+  selectQuestion: (id) => set({ selectedQuestionId: id, showFormSettings: false }),
   deselect: () => set({ selectedQuestionId: null }),
+  toggleFormSettings: () => set(s => ({ showFormSettings: !s.showFormSettings, selectedQuestionId: null })),
 
   // ── Add question ───────────────────────────────────────────
   addQuestion: (type, afterId) => {
@@ -152,6 +154,9 @@ export const useBuilderStore = create((set, get) => ({
         layout: form.layout,
         theme: form.theme,
         settings: form.settings,
+        opens_at: form.opens_at ?? null,
+        closes_at: form.closes_at ?? null,
+        response_limit: form.response_limit ?? null,
       });
 
       // Save questions (full replace)

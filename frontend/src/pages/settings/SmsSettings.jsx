@@ -1,14 +1,26 @@
 import { useState } from 'react';
 import { Smartphone, Lock } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { hasFeature } from '@/lib/plans';
 import toast from 'react-hot-toast';
 
 export default function SmsSettings() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ accountSid: '', authToken: '', fromNumber: '' });
-  const [isPro] = useState(false); // Check plan
+  const { activeWorkspaceId } = useWorkspaceStore();
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
 
-  if (!isPro) {
+  const { data: usageData } = useQuery({
+    queryKey: ['usage', activeWorkspaceId],
+    queryFn: () => api.workspaces.usage(activeWorkspaceId),
+    enabled: !!activeWorkspaceId,
+  });
+
+  const hasSms = hasFeature(usageData?.plan, 'phone_otp');
+
+  if (!hasSms) {
     return (
       <div className="max-w-xl">
         <h1 className="text-xl font-bold text-gray-900 mb-1">SMS Provider</h1>

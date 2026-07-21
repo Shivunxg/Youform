@@ -6,6 +6,8 @@ import { supabaseAdmin } from '../lib/supabase.js';
 import { requireAuth } from '../lib/auth.js';
 import { createError } from '../lib/errorHandler.js';
 import { emailService } from '../lib/email.js';
+import { getPlan, hasFeature } from '../lib/plans.js';
+import { logActivity } from '../lib/activity.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -133,8 +135,18 @@ router.post(
       const { email, role } = req.body;
 
       const { data: member } = await supabaseAdmin.from('workspace_members')
-        .select('role, workspaces(name)').eq('workspace_id', workspaceId).eq('user_id', req.user.id).single();
+        .select('role, workspaces(name, plan)').eq('workspace_id', workspaceId).eq('user_id', req.user.id).single();
       if (!member || !['owner', 'admin'].includes(member.role)) throw createError(403, 'Admin access required');
+
+      // Enforce seat limit
+      const seatLimit = getPlan(member.workspaces.plan).seat_limit;
+      if (seatLimit !== null) {
+        const { count } = await supabaseAdmin.from('workspace_members')
+          .select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId);
+        if (count >= seatLimit) {
+          throw createError(403, `Seat limit reached. Your ${member.workspaces.plan ?? 'free'} plan allows ${seatLimit} member${seatLimit !== 1 ? 's' : ''}. Upgrade to add more.`);
+        }
+      }
 
       // Check not already a member
       const { data: existingProfile } = await supabaseAdmin.from('profiles').select('id').eq('email', email).single();
@@ -151,6 +163,8 @@ router.post(
 
       const inviteUrl = `${process.env.APP_URL}/invite/${invite.token}`;
       await emailService.sendWorkspaceInvite({ email, inviterName: req.user.email, workspaceName: member.workspaces.name, inviteUrl, role });
+
+      logActivity(supabaseAdmin, { workspace_id: workspaceId, user_id: req.user.id, action: 'member_invited', resource_type: 'invite', description: `Invited ${email} as ${role}`, metadata: { email, role } });
 
       res.status(201).json({ invite: { id: invite.id, email, role, expires_at: invite.expires_at } });
     } catch (err) { next(err); }
@@ -233,6 +247,10 @@ router.delete('/:workspaceId/members/:userId', async (req, res, next) => {
     }
 
     await supabaseAdmin.from('workspace_members').delete().eq('workspace_id', workspaceId).eq('user_id', userId);
+    if (!isSelf) {
+      const { data: removedProfile } = await supabaseAdmin.from('profiles').select('email').eq('id', userId).single();
+      logActivity(supabaseAdmin, { workspace_id: workspaceId, user_id: req.user.id, action: 'member_removed', resource_type: 'member', description: `Removed ${removedProfile?.email ?? userId} from workspace`, metadata: { removed_user_id: userId } });
+    }
     res.json({ success: true });
   } catch (err) { next(err); }
 });
@@ -258,13 +276,47 @@ router.get('/:workspaceId/usage', async (req, res, next) => {
     const { data: workspace } = await supabaseAdmin.from('workspaces')
       .select('plan, responses_limit, storage_limit_mb').eq('id', workspaceId).single();
 
+    const planConfig = getPlan(workspace?.plan);
+    const { count: seats_used } = await supabaseAdmin.from('workspace_members')
+      .select('*', { count: 'exact', head: true }).eq('workspace_id', workspaceId);
+
     res.json({
-      plan: workspace?.plan,
+      plan: workspace?.plan ?? 'free',
       responses_used: usage?.responses_used ?? 0,
-      responses_limit: workspace?.responses_limit,
+      responses_limit: workspace?.responses_limit ?? planConfig.responses_limit,
       storage_used_mb: usage?.storage_used_mb ?? 0,
-      storage_limit_mb: workspace?.storage_limit_mb,
+      storage_limit_mb: workspace?.storage_limit_mb ?? planConfig.storage_limit_mb,
+      seats_used: seats_used ?? 0,
+      seat_limit: planConfig.seat_limit,
     });
+  } catch (err) { next(err); }
+});
+
+// ============================================================
+// GET /workspaces/:workspaceId/activity
+// Audit log for Business plan
+// ============================================================
+router.get('/:workspaceId/activity', async (req, res, next) => {
+  try {
+    const { workspaceId } = req.params;
+    const { limit = 50, offset = 0 } = req.query;
+
+    const { data: self } = await supabaseAdmin.from('workspace_members')
+      .select('role').eq('workspace_id', workspaceId).eq('user_id', req.user.id).single();
+    if (!self) throw createError(403, 'Access denied');
+
+    const { data: workspace } = await supabaseAdmin.from('workspaces').select('plan').eq('id', workspaceId).single();
+    if (!hasFeature(workspace?.plan, 'activity_log')) throw createError(403, 'Activity log requires Business plan');
+
+    const { data: activities, error } = await supabaseAdmin
+      .from('workspace_activity')
+      .select('*, profiles(email, full_name, avatar_url)')
+      .eq('workspace_id', workspaceId)
+      .order('created_at', { ascending: false })
+      .range(+offset, +offset + +limit - 1);
+
+    if (error) throw error;
+    res.json({ activities: activities ?? [] });
   } catch (err) { next(err); }
 });
 

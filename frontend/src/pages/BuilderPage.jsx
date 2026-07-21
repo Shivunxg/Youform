@@ -3,16 +3,17 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useBuilderStore } from '@/stores/builderStore';
-import BuilderHeader    from '@/components/builder/BuilderHeader';
-import QuestionList     from '@/components/builder/QuestionList';
-import QuestionPanel    from '@/components/builder/QuestionPanel';
-import AddQuestionPanel from '@/components/builder/AddQuestionPanel';
-import FormPreview      from '@/components/builder/FormPreview';
+import BuilderHeader      from '@/components/builder/BuilderHeader';
+import QuestionList       from '@/components/builder/QuestionList';
+import QuestionPanel      from '@/components/builder/QuestionPanel';
+import AddQuestionPanel   from '@/components/builder/AddQuestionPanel';
+import FormPreview        from '@/components/builder/FormPreview';
+import FormSettingsPanel  from '@/components/builder/FormSettingsPanel';
 import toast from 'react-hot-toast';
 
 export default function BuilderPage() {
   const { formId } = useParams();
-  const { form, questions, isDirty, isSaving, previewMode, loadForm, save, reorderQuestions } = useBuilderStore();
+  const { form, questions, isDirty, isSaving, previewMode, showFormSettings, toggleFormSettings, loadForm, save, reorderQuestions } = useBuilderStore();
 
   // Load form on mount
   useEffect(() => {
@@ -77,8 +78,11 @@ export default function BuilderPage() {
             </DndContext>
           </div>
 
-          {/* Right: question settings panel */}
-          <QuestionPanel />
+          {/* Right: form settings or question settings panel */}
+          {showFormSettings
+            ? <FormSettingsPanel onClose={toggleFormSettings} />
+            : <QuestionPanel />
+          }
         </div>
       )}
     </div>
