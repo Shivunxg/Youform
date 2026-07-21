@@ -15,6 +15,7 @@
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/index.js" },
     { "src": "/assets/(.*)", "dest": "/frontend/assets/$1" },
+    { "src": "/", "dest": "/frontend/marketing.html" },
     { "src": "/marketing", "dest": "/frontend/marketing.html" },
     { "src": "/marketing.html", "dest": "/frontend/marketing.html" },
     { "src": "/(.*)", "dest": "/frontend/index.html" }

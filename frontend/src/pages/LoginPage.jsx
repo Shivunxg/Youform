@@ -18,7 +18,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gradient-to-br from-brand-50 to-white flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <a href="/marketing" className="inline-flex items-center gap-2 mb-4 group">
+          <a href="/" className="inline-flex items-center gap-2 mb-4 group">
             <div className="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center group-hover:bg-brand-600 transition-colors"><span className="text-white font-bold text-sm">F</span></div>
             <span className="text-xl font-semibold text-gray-900 group-hover:text-brand-600 transition-colors">FormFlow</span>
           </a>
@@ -35,7 +35,7 @@ export default function LoginPage() {
           </form>
         </div>
         <p className="text-center text-sm text-gray-500 mt-4">No account? <Link to="/signup" className="text-brand-500 font-medium">Sign up free</Link></p>
-        <p className="text-center mt-3"><a href="/marketing" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">← Back to homepage</a></p>
+        <p className="text-center mt-3"><a href="/" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">← Back to homepage</a></p>
       </div>
     </div>
   );
