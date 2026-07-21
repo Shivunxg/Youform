@@ -6,9 +6,12 @@ import { useWorkspaceStore } from '@/stores/workspaceStore';
 import LoginPage    from '@/pages/LoginPage';
 import SignupPage   from '@/pages/SignupPage';
 import DashboardPage   from '@/pages/DashboardPage';
-import BuilderPage     from '@/pages/BuilderPage';
-import ResponsesPage   from '@/pages/ResponsesPage';
-import AnalyticsPage   from '@/pages/AnalyticsPage';
+import BuilderPage      from '@/pages/BuilderPage';
+import ResponsesPage    from '@/pages/ResponsesPage';
+import AnalyticsPage    from '@/pages/AnalyticsPage';
+import IntegratePage    from '@/pages/IntegratePage';
+import SharePage        from '@/pages/SharePage';
+import FormSettingsPage from '@/pages/FormSettingsPage';
 import TemplatesPage   from '@/pages/TemplatesPage';
 import PublicFormPage  from '@/pages/PublicFormPage';
 import AccountSettings from '@/pages/AccountSettings';
@@ -60,6 +63,9 @@ export default function App() {
       <Route path="/forms/:formId/builder"   element={<RequireAuth><BuilderPage /></RequireAuth>} />
       <Route path="/forms/:formId/responses" element={<RequireAuth><ResponsesPage /></RequireAuth>} />
       <Route path="/forms/:formId/analytics" element={<RequireAuth><AnalyticsPage /></RequireAuth>} />
+      <Route path="/forms/:formId/integrate" element={<RequireAuth><IntegratePage /></RequireAuth>} />
+      <Route path="/forms/:formId/share"     element={<RequireAuth><SharePage /></RequireAuth>} />
+      <Route path="/forms/:formId/settings"  element={<RequireAuth><FormSettingsPage /></RequireAuth>} />
 
       <Route path="/settings" element={<RequireAuth><SettingsLayout /></RequireAuth>}>
         <Route index element={<Navigate to="/settings/organization" replace />} />

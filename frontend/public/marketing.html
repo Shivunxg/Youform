@@ -1,0 +1,1233 @@
+
+<title>FormFlow — forms people actually finish</title>
+<style>
+/* ── Tokens ── */
+:root{
+  --ink:#21253B; --paper:#F7F3EA; --card:#FFFDF8;
+  --mustard:#E2A33B; --moss:#4F6B52; --rust:#C0441C;
+  --line:#21253B22; --muted:#55597a; --faint:#21253B0d;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:'Work Sans','Segoe UI',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased; line-height:1.5;}
+h1,h2,h3,.serif{
+  font-family:Georgia,'Palatino Linotype',Palatino,serif;
+  font-weight:600; letter-spacing:-.01em; margin:0;
+}
+a{color:inherit; text-decoration:none;}
+img{max-width:100%;}
+.wrap{max-width:1180px;margin:0 auto;padding:0 32px;}
+
+/* ── Nav ── */
+nav.top{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:24px 32px; max-width:1180px; margin:0 auto;
+}
+.logo{display:flex;align-items:center;gap:10px;
+  font-family:Georgia,serif;font-weight:700;font-size:20px;}
+.logo .mark{
+  width:26px;height:26px;border-radius:3px;background:var(--ink);
+  position:relative;transform:rotate(-6deg);flex-shrink:0;
+}
+.logo .mark::after{content:"";position:absolute;inset:5px;border:1.5px solid var(--paper);}
+.navlinks{display:flex;gap:32px;font-size:14.5px;color:var(--muted);}
+.navlinks a{transition:color .15s;}
+.navlinks a:hover{color:var(--ink);}
+.navcta{display:flex;align-items:center;gap:16px;}
+.login-link{font-size:14.5px;font-weight:600;}
+.btn{
+  font-family:'Work Sans','Segoe UI',system-ui,sans-serif;
+  font-weight:600;font-size:14.5px;padding:11px 20px;
+  border-radius:7px;border:1.5px solid var(--ink);background:none;
+  cursor:pointer;display:inline-flex;align-items:center;gap:7px;
+  transition:transform .15s,box-shadow .15s;
+}
+.btn:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink);}
+.btn-fill{background:var(--ink);color:var(--paper);}
+.btn-fill:hover{box-shadow:3px 3px 0 var(--mustard);}
+.btn-moss{background:var(--moss);color:#fff;border-color:var(--moss);}
+.btn-moss:hover{box-shadow:3px 3px 0 var(--ink);}
+.btn-inv{border-color:var(--paper);color:var(--paper);background:none;}
+.btn-inv:hover{box-shadow:3px 3px 0 var(--mustard);}
+.btn-lg{padding:15px 28px;font-size:15.5px;}
+
+/* ── Eyebrow ── */
+.eyebrow{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--card);border:1px solid var(--line);
+  padding:7px 14px 7px 10px;border-radius:99px;
+  font-size:13px;font-weight:600;color:var(--moss);margin-bottom:20px;
+}
+.eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--moss);flex-shrink:0;}
+
+/* ── Hero ── */
+.hero{
+  padding:56px 32px 36px;max-width:1180px;margin:0 auto;
+  display:grid;grid-template-columns:1.05fr .95fr;gap:40px;align-items:center;
+}
+h1.headline{
+  font-size:clamp(40px,5.2vw,62px);line-height:1.04;margin-bottom:20px;
+}
+h1.headline em{font-style:italic;color:var(--moss);}
+.sub{font-size:17px;line-height:1.65;color:var(--muted);max-width:480px;margin-bottom:28px;}
+.hero-ctas{display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:22px;}
+.microline{display:flex;gap:22px;font-size:13px;color:var(--muted);flex-wrap:wrap;}
+.microline span{display:flex;align-items:center;gap:6px;}
+.check{color:var(--moss);font-weight:700;}
+
+/* hero card stack */
+.hero-visual{position:relative;height:460px;}
+.card-stack{position:absolute;inset:0;}
+.idx-card{
+  position:absolute;width:340px;background:var(--card);
+  border:1.5px solid var(--ink);border-radius:4px;
+  box-shadow:5px 5px 0 var(--line);padding:24px 24px 20px;
+}
+.idx-card.back{top:10px;right:0;transform:rotate(6deg);opacity:.45;height:280px;}
+.idx-card.mid{top:38px;right:38px;transform:rotate(-3deg);opacity:.75;height:310px;}
+.idx-card.front{top:68px;right:18px;transform:rotate(2deg);z-index:3;}
+.idx-card .itag{font-size:11px;text-transform:uppercase;letter-spacing:.09em;
+  color:var(--moss);font-weight:700;margin-bottom:12px;}
+.idx-card .q{font-family:Georgia,serif;font-size:20px;margin-bottom:14px;line-height:1.3;}
+.idx-card .opt{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;border:1px solid var(--line);border-radius:6px;
+  font-size:13.5px;margin-bottom:8px;color:var(--muted);
+}
+.idx-card .opt.picked{border-color:var(--moss);color:var(--ink);background:#4F6B5210;}
+.idx-card .opt .radio{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--muted);flex-shrink:0;}
+.idx-card .opt.picked .radio{border-color:var(--moss);background:var(--moss);}
+.pin{
+  position:absolute;top:-13px;left:22px;width:24px;height:24px;
+  border-radius:50%;background:var(--mustard);border:2px solid var(--ink);z-index:4;
+}
+
+/* ── Stats strip ── */
+.stats-strip{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--ink);}
+.stats-inner{
+  max-width:1180px;margin:0 auto;padding:0 32px;
+  display:flex;align-items:stretch;
+}
+.stat-item{
+  flex:1;padding:28px 20px;text-align:center;
+  border-right:1px solid rgba(255,255,255,.1);
+}
+.stat-item:last-child{border-right:none;}
+.stat-num{font-family:Georgia,serif;font-size:32px;font-weight:700;color:#F7F3EA;letter-spacing:-.5px;}
+.stat-lbl{font-size:12px;color:rgba(247,243,234,.45);margin-top:3px;text-transform:uppercase;letter-spacing:.5px;}
+
+/* ── Logo strip ── */
+.logo-strip{border-bottom:1px solid var(--line);padding:22px 32px;}
+.logo-strip-inner{
+  max-width:1180px;margin:0 auto;
+  display:flex;align-items:center;gap:32px;justify-content:space-between;flex-wrap:wrap;
+}
+.strip-label{font-size:12.5px;color:var(--muted);font-weight:600;white-space:nowrap;}
+.strip-names{display:flex;gap:32px;flex-wrap:wrap;}
+.strip-names span{font-family:Georgia,serif;font-size:16.5px;color:var(--muted);font-weight:600;}
+
+/* ── Section shell ── */
+.section{padding:96px 32px;max-width:1180px;margin:0 auto;}
+.section-head{max-width:600px;margin-bottom:52px;}
+.section-head h2{font-size:clamp(28px,3.4vw,40px);line-height:1.12;margin-bottom:14px;}
+.section-head p{font-size:16px;color:var(--muted);line-height:1.65;}
+.text-center{text-align:center;}
+.text-center .section-head{margin-left:auto;margin-right:auto;}
+
+/* ── Feature grid ── */
+.feature-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:1px;background:var(--line);border:1px solid var(--line);
+  border-radius:10px;overflow:hidden;
+}
+.feature{background:var(--card);padding:32px 28px;}
+.feature .num{
+  font-family:Georgia,serif;font-size:13px;color:var(--mustard);
+  font-weight:700;margin-bottom:16px;
+}
+.feature h3{font-size:18px;margin-bottom:9px;}
+.feature p{font-size:14px;color:var(--muted);line-height:1.55;margin:0;}
+
+/* ── Comparison ── */
+.comp-tabs{display:flex;gap:6px;margin-bottom:32px;}
+.ctab{
+  padding:8px 18px;border-radius:99px;font-size:13.5px;font-weight:600;
+  cursor:pointer;border:1.5px solid var(--line);color:var(--muted);
+  background:var(--card);transition:all .15s;font-family:inherit;
+}
+.ctab.on{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+.cpanel{display:none;}
+.cpanel.on{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.ccard{
+  background:var(--card);border:1.5px solid var(--line);
+  border-radius:8px;padding:26px;
+}
+.ccard.good{border-color:var(--moss);}
+.ccard h4{font-size:15.5px;font-weight:700;margin-bottom:14px;color:var(--ink);}
+.clist{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:9px;}
+.clist li{font-size:13.5px;color:var(--muted);display:flex;align-items:flex-start;gap:9px;line-height:1.4;}
+.clist li .ci{flex-shrink:0;font-size:15px;line-height:1.4;}
+
+/* ── Two-col ── */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center;}
+.two-col.flip{direction:rtl;}
+.two-col.flip>*{direction:ltr;}
+
+/* ── Builder mockup ── */
+.mock{
+  background:var(--card);border:1.5px solid var(--ink);border-radius:8px;
+  overflow:hidden;box-shadow:5px 5px 0 var(--line);
+}
+.mock-bar{
+  background:var(--paper);border-bottom:1px solid var(--line);
+  padding:10px 14px;display:flex;align-items:center;gap:8px;
+}
+.mock-dot{width:9px;height:9px;border-radius:50%;}
+.mock-body{display:grid;grid-template-columns:180px 1fr 220px;min-height:260px;}
+.mock-left{border-right:1px solid var(--line);padding:12px;}
+.mock-center{padding:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.mock-right{border-left:1px solid var(--line);padding:12px;}
+.mock-q{
+  background:var(--paper);border:1.5px solid var(--moss);
+  border-radius:6px;padding:14px 16px;width:100%;max-width:300px;
+}
+.mock-q-type{font-size:10px;color:var(--moss);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;}
+.mock-q-title{font-family:Georgia,serif;font-size:15px;color:var(--ink);}
+.mock-q-input{height:28px;background:var(--card);border:1.5px solid var(--line);border-radius:5px;margin-top:10px;}
+.mock-item{font-size:11.5px;color:var(--muted);padding:6px 8px;border-radius:5px;margin-bottom:3px;}
+.mock-item.sel{background:#4F6B5215;color:var(--moss);font-weight:600;}
+.mock-row{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);padding:5px 0;border-bottom:1px solid var(--faint);}
+
+/* ── Block types grid ── */
+.blocks-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(136px,1fr));gap:8px;margin-top:32px;
+}
+.bchip{
+  background:var(--card);border:1px solid var(--line);border-radius:6px;
+  padding:10px 12px;font-size:13px;color:var(--muted);
+  display:flex;align-items:center;gap:7px;
+}
+
+/* ── Integrations marquee ── */
+.marquee-wrap{overflow:hidden;padding:16px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+.marquee-track{display:flex;gap:14px;animation:marquee 28s linear infinite;width:max-content;}
+@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.int-pill{
+  display:flex;align-items:center;gap:9px;
+  background:var(--card);border:1.5px solid var(--line);
+  border-radius:6px;padding:10px 18px;white-space:nowrap;
+  font-size:13.5px;font-weight:600;color:var(--ink);
+}
+.int-mark{
+  width:22px;height:22px;border-radius:4px;display:flex;align-items:center;
+  justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0;
+}
+
+/* ── Templates ── */
+.tmpl-tabs{display:flex;gap:6px;margin-bottom:28px;}
+.ttab{
+  padding:7px 16px;border-radius:99px;font-size:13.5px;font-weight:600;
+  cursor:pointer;border:1.5px solid var(--line);color:var(--muted);
+  background:var(--card);transition:all .15s;font-family:inherit;
+}
+.ttab.on{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+.tgrid{display:none;}
+.tgrid.on{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}
+.tcard{
+  background:var(--card);border:1.5px solid var(--line);border-radius:8px;
+  overflow:hidden;cursor:pointer;transition:all .15s;
+}
+.tcard:hover{border-color:var(--ink);box-shadow:3px 3px 0 var(--line);transform:translate(-1px,-1px);}
+.tcard-preview{height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;}
+.tcard-preview-icon{font-size:32px;}
+.tcard-preview-label{font-size:12.5px;font-weight:700;}
+.tcard-body{padding:14px 16px;border-top:1px solid var(--line);}
+.tcard-body h4{font-size:13.5px;font-weight:700;color:var(--ink);margin-bottom:3px;}
+.tcard-body p{font-size:12px;color:var(--muted);}
+.tcard-meta{display:flex;justify-content:space-between;align-items:center;margin-top:10px;}
+.tcard-count{font-size:11.5px;color:var(--muted);}
+.tcard-use{
+  font-size:12px;font-weight:600;color:var(--moss);
+  background:none;border:none;cursor:pointer;font-family:inherit;
+  padding:4px 0;
+}
+.tcard-use:hover{text-decoration:underline;}
+
+/* ── Template editor modal ── */
+.modal-bg{
+  position:fixed;inset:0;background:rgba(33,37,59,.55);backdrop-filter:blur(3px);
+  z-index:200;display:none;align-items:center;justify-content:center;padding:20px;
+}
+.modal-bg.open{display:flex;}
+.modal{
+  background:var(--paper);border:1.5px solid var(--ink);border-radius:10px;
+  width:100%;max-width:740px;max-height:88vh;
+  display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:8px 8px 0 rgba(33,37,59,.15);
+}
+.modal-head{
+  display:flex;align-items:center;gap:12px;padding:18px 22px;
+  border-bottom:1px solid var(--line);flex-shrink:0;
+}
+.modal-title-in{
+  flex:1;font-family:Georgia,serif;font-size:17px;font-weight:600;
+  color:var(--ink);background:transparent;border:none;outline:none;
+}
+.modal-title-in:focus{border-bottom:2px solid var(--moss);}
+.modal-close{
+  background:none;border:none;cursor:pointer;color:var(--muted);
+  font-size:18px;padding:4px 8px;border-radius:5px;line-height:1;font-family:inherit;
+}
+.modal-close:hover{background:var(--faint);color:var(--ink);}
+.modal-body{overflow-y:auto;flex:1;padding:18px 22px;}
+.modal-foot{
+  padding:14px 22px;border-top:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;gap:12px;
+}
+/* Q items in modal */
+.q-list{display:flex;flex-direction:column;gap:8px;}
+.q-item{
+  background:var(--card);border:1.5px solid var(--line);border-radius:7px;
+  padding:12px 14px;display:flex;align-items:flex-start;gap:10px;transition:border-color .12s;
+}
+.q-item:hover{border-color:var(--ink);}
+.q-num{
+  width:20px;height:20px;border-radius:50%;background:var(--faint);
+  color:var(--muted);font-size:10px;font-weight:700;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;margin-top:2px;
+}
+.q-badge{
+  display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.4px;color:var(--muted);background:var(--faint);
+  border:1px solid var(--line);padding:2px 6px;border-radius:4px;margin-bottom:5px;
+}
+.q-title-in{
+  width:100%;font-size:13.5px;font-weight:600;color:var(--ink);
+  background:transparent;border:none;outline:none;font-family:inherit;line-height:1.4;
+}
+.q-title-in:focus{border-bottom:1.5px solid var(--moss);}
+.q-opt-row{display:flex;align-items:center;gap:6px;margin-top:4px;}
+.q-opt-dot{width:12px;height:12px;border-radius:3px;border:1.5px solid var(--line);flex-shrink:0;}
+.q-opt-in{font-size:12.5px;color:var(--muted);background:transparent;border:none;outline:none;flex:1;font-family:inherit;}
+.q-opt-in:focus{border-bottom:1px solid var(--line);}
+.q-opt-del{background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;opacity:0;transition:opacity .12s;font-family:inherit;}
+.q-opt-row:hover .q-opt-del{opacity:1;}
+.q-add-opt{font-size:12px;font-weight:600;color:var(--moss);background:none;border:none;cursor:pointer;font-family:inherit;margin-top:5px;padding:2px 0;}
+.q-req{display:flex;align-items:center;gap:6px;margin-top:7px;}
+.q-req label{font-size:11.5px;color:var(--muted);cursor:pointer;}
+.q-req input[type=checkbox]{accent-color:var(--moss);cursor:pointer;}
+.q-actions{display:flex;flex-direction:column;gap:5px;flex-shrink:0;}
+.q-act-btn{background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;padding:4px 5px;border-radius:4px;line-height:1;font-family:inherit;}
+.q-act-btn:hover{background:var(--faint);color:var(--ink);}
+.q-act-btn.del:hover{color:#C0441C;}
+.add-q-bar{margin-top:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.add-q-sel{
+  flex:1;min-width:150px;font-size:12.5px;padding:8px 10px;
+  border-radius:6px;border:1.5px solid var(--line);background:var(--card);
+  color:var(--ink);outline:none;cursor:pointer;font-family:inherit;
+}
+.add-q-sel:focus{border-color:var(--moss);}
+.add-q-go{font-size:13px;padding:8px 16px;border-radius:6px;}
+
+/* ── Testimonials ── */
+.testi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;}
+.testi{
+  background:var(--card);border:1.5px solid var(--line);
+  border-radius:8px;padding:22px;
+}
+.testi-stars{color:var(--mustard);font-size:13px;margin-bottom:11px;}
+.testi-text{font-size:14px;color:var(--ink);line-height:1.6;margin-bottom:15px;font-style:italic;}
+.testi-author{display:flex;align-items:center;gap:10px;}
+.testi-avatar{
+  width:34px;height:34px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;
+}
+.testi-name{font-size:13px;font-weight:700;color:var(--ink);}
+.testi-role{font-size:11.5px;color:var(--muted);}
+
+/* ── Analytics mockup ── */
+.an-mock{background:var(--card);border:1.5px solid var(--ink);border-radius:8px;padding:22px;box-shadow:4px 4px 0 var(--line);}
+.an-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.an-label{font-size:12px;color:var(--muted);width:76px;flex-shrink:0;}
+.an-track{flex:1;height:7px;background:var(--faint);border-radius:99px;overflow:hidden;}
+.an-bar{height:100%;border-radius:99px;}
+.an-val{font-size:11.5px;color:var(--muted);width:36px;text-align:right;}
+
+/* ── Pricing ── */
+.price-band{
+  background:var(--ink);color:var(--paper);border-radius:12px;
+  padding:52px 44px;display:grid;grid-template-columns:1.2fr 1fr;gap:40px;align-items:start;
+}
+.price-band h2{color:var(--paper);font-size:clamp(24px,2.8vw,34px);margin-bottom:12px;}
+.price-band>div>p{color:#c9cbe0;font-size:15.5px;line-height:1.65;max-width:400px;}
+.price-cards{display:flex;flex-direction:column;gap:14px;}
+.pcard{background:#2b2f4a;border:1px solid #ffffff18;border-radius:9px;padding:24px;position:relative;}
+.pcard.pop{border-color:var(--mustard);}
+.pop-badge{
+  position:absolute;top:-11px;left:50%;transform:translateX(-50%);
+  background:var(--mustard);color:var(--ink);font-size:10.5px;font-weight:700;
+  padding:3px 10px;border-radius:99px;white-space:nowrap;
+}
+.ptier{font-size:12px;font-weight:700;color:var(--mustard);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;}
+.pnum{font-family:Georgia,serif;font-size:36px;color:var(--paper);line-height:1;}
+.pnum em{font-size:16px;color:#c9cbe0;font-style:normal;font-family:'Work Sans',sans-serif;font-weight:500;}
+.pper{font-size:12px;color:#9294b0;margin-top:2px;margin-bottom:14px;}
+.pfeats{list-style:none;padding:0;margin:0 0 18px;display:flex;flex-direction:column;gap:7px;}
+.pfeats li{font-size:13.5px;color:#dfe0f0;display:flex;align-items:flex-start;gap:7px;}
+.pfeats li::before{content:"✓";color:var(--mustard);font-weight:700;flex-shrink:0;}
+.pcard .btn{width:100%;justify-content:center;font-size:13.5px;padding:10px 16px;}
+
+/* ── Final CTA ── */
+.final{text-align:center;padding:110px 32px 120px;}
+.final h2{font-size:clamp(30px,4vw,50px);margin-bottom:18px;}
+.final p{font-size:16.5px;color:var(--muted);margin-bottom:30px;}
+
+/* ── Divider ── */
+hr.div{border:none;border-top:1px solid var(--line);margin:0;}
+
+/* ── Footer ── */
+footer{border-top:1px solid var(--line);padding:36px 32px;font-size:13px;color:var(--muted);}
+.foot-inner{
+  max-width:1180px;margin:0 auto;
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;
+}
+.foot-links{display:flex;gap:24px;}
+.foot-links a{color:var(--muted);transition:color .15s;}
+.foot-links a:hover{color:var(--ink);}
+
+/* ── Responsive ── */
+@media(max-width:900px){
+  .hero{grid-template-columns:1fr;}
+  .hero-visual{height:340px;margin-top:12px;}
+  .idx-card{width:82%;}
+  .feature-grid{grid-template-columns:1fr;}
+  .two-col{grid-template-columns:1fr;gap:36px;}
+  .two-col.flip{direction:ltr;}
+  .cpanel.on{grid-template-columns:1fr;}
+  .price-band{grid-template-columns:1fr;}
+  .navlinks{display:none;}
+  .mock-body{grid-template-columns:1fr;}
+  .mock-left,.mock-right{display:none;}
+}
+</style>
+
+<!-- ── NAV ── -->
+<nav class="top">
+  <div class="logo"><div class="mark"></div>FormFlow</div>
+  <div class="navlinks">
+    <a href="#features">Features</a>
+    <a href="#templates">Templates</a>
+    <a href="#integrations">Integrations</a>
+    <a href="#pricing">Pricing</a>
+  </div>
+  <div class="navcta">
+    <a href="#" class="login-link">Log in</a>
+    <a href="#" class="btn btn-fill">Start for free</a>
+  </div>
+</nav>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div>
+    <div class="eyebrow"><span class="dot"></span>Unlimited forms · unlimited responses · always free to start</div>
+    <h1 class="headline">Forms people <em>actually</em> finish.</h1>
+    <p class="sub">FormFlow turns a wall of fields into one question at a time — with the logic, branching, and follow-up you'd expect from a good conversation, not a paper form.</p>
+    <div class="hero-ctas">
+      <a href="#" class="btn btn-fill btn-lg">Build your first form</a>
+      <a href="#templates" class="btn btn-lg">See templates →</a>
+    </div>
+    <div class="microline">
+      <span><span class="check">✓</span> No credit card</span>
+      <span><span class="check">✓</span> Free forever plan</span>
+      <span><span class="check">✓</span> Set up in 3 minutes</span>
+    </div>
+  </div>
+  <div class="hero-visual">
+    <div class="card-stack">
+      <div class="idx-card back"></div>
+      <div class="idx-card mid"></div>
+      <div class="idx-card front">
+        <div class="pin"></div>
+        <div class="itag">Question 3 of 6 — Client Intake</div>
+        <div class="q">What's your estimated project budget?</div>
+        <div class="opt picked"><span class="radio"></span>$5,000 – $20,000</div>
+        <div class="opt"><span class="radio"></span>$20,000 – $60,000</div>
+        <div class="opt"><span class="radio"></span>$60,000+</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STATS ── -->
+<div class="stats-strip">
+  <div class="stats-inner">
+    <div class="stat-item"><div class="stat-num">90K+</div><div class="stat-lbl">creators</div></div>
+    <div class="stat-item"><div class="stat-num">10M+</div><div class="stat-lbl">responses collected</div></div>
+    <div class="stat-item"><div class="stat-num">5 / 5</div><div class="stat-lbl">Capterra rating</div></div>
+    <div class="stat-item"><div class="stat-num">$0</div><div class="stat-lbl">to get started</div></div>
+  </div>
+</div>
+
+<!-- ── LOGO STRIP ── -->
+<div class="logo-strip">
+  <div class="logo-strip-inner">
+    <div class="strip-label">Trusted by teams at</div>
+    <div class="strip-names">
+      <span>Northwind</span><span>Alder &amp; Co.</span><span>Fernhill</span><span>Basalt Studio</span><span>Kettle</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── COMPARISON ── -->
+<section class="section" id="compare">
+  <div class="section-head">
+    <div class="eyebrow"><span class="dot"></span>Why teams switch</div>
+    <h2>Built like a good interview, not a spreadsheet.</h2>
+    <p>See how FormFlow stacks up against the tools you're probably already paying for.</p>
+  </div>
+  <div class="comp-tabs">
+    <button class="ctab on" onclick="swComp('typeform',this)">vs Typeform</button>
+    <button class="ctab" onclick="swComp('jotform',this)">vs Jotform</button>
+    <button class="ctab" onclick="swComp('google',this)">vs Google Forms</button>
+  </div>
+  <div id="c-typeform" class="cpanel on">
+    <div class="ccard"><h4>❌ Typeform</h4><ul class="clist">
+      <li><span class="ci">💸</span>$29+/mo for just 100 responses</li>
+      <li><span class="ci">🔒</span>Integrations gated behind higher tiers</li>
+      <li><span class="ci">🚫</span>Partial submissions not on basic plans</li>
+      <li><span class="ci">💰</span>Per-response charges on growth plan</li>
+    </ul></div>
+    <div class="ccard good"><h4>✅ FormFlow</h4><ul class="clist">
+      <li><span class="ci">✓</span>Free tier · Pro from $20/mo — no response caps</li>
+      <li><span class="ci">✓</span>All integrations on every paid plan</li>
+      <li><span class="ci">✓</span>Partial submissions on Pro+</li>
+      <li><span class="ci">✓</span>No per-response fees, ever</li>
+    </ul></div>
+  </div>
+  <div id="c-jotform" class="cpanel">
+    <div class="ccard"><h4>❌ Jotform</h4><ul class="clist">
+      <li><span class="ci">🎨</span>Outdated, cluttered interface</li>
+      <li><span class="ci">🚫</span>Jotform branding forced on free tier</li>
+      <li><span class="ci">💸</span>Storage limits even on paid plans</li>
+      <li><span class="ci">🐢</span>Complex to set up for simple forms</li>
+    </ul></div>
+    <div class="ccard good"><h4>✅ FormFlow</h4><ul class="clist">
+      <li><span class="ci">✓</span>Clean, modern one-question-at-a-time UX</li>
+      <li><span class="ci">✓</span>Remove branding on Pro</li>
+      <li><span class="ci">✓</span>Generous free plan, no storage gotchas</li>
+      <li><span class="ci">✓</span>Live in minutes, not hours</li>
+    </ul></div>
+  </div>
+  <div id="c-google" class="cpanel">
+    <div class="ccard"><h4>❌ Google Forms</h4><ul class="clist">
+      <li><span class="ci">😴</span>Identical-looking forms, zero brand control</li>
+      <li><span class="ci">❓</span>No real conditional logic or branching</li>
+      <li><span class="ci">🔗</span>Very limited third-party integrations</li>
+      <li><span class="ci">📉</span>Consistently lower completion rates</li>
+    </ul></div>
+    <div class="ccard good"><h4>✅ FormFlow</h4><ul class="clist">
+      <li><span class="ci">✓</span>On-brand, customised form experience</li>
+      <li><span class="ci">✓</span>Powerful conditional logic &amp; skip rules</li>
+      <li><span class="ci">✓</span>12+ native integrations + Zapier</li>
+      <li><span class="ci">✓</span>3–4× higher completion rates</li>
+    </ul></div>
+  </div>
+</section>
+
+<hr class="div">
+
+<!-- ── FEATURES ── -->
+<section class="section" id="features">
+  <div class="section-head">
+    <div class="eyebrow"><span class="dot"></span>What you get</div>
+    <h2>Every default assumes someone is on the other end deciding whether to keep going.</h2>
+  </div>
+  <div class="feature-grid">
+    <div class="feature"><div class="num">01</div><h3>One question at a time</h3><p>No scrolling walls of fields. Each answer clears the way for the next, so people finish instead of bouncing.</p></div>
+    <div class="feature"><div class="num">02</div><h3>Logic that remembers</h3><p>Branch on any answer, pipe earlier responses into later questions, skip what doesn't apply — all without code.</p></div>
+    <div class="feature"><div class="num">03</div><h3>Drop-off, not just totals</h3><p>See exactly which question loses people, and how long they spend before they leave.</p></div>
+    <div class="feature"><div class="num">04</div><h3>Your domain, your brand</h3><p>Custom domains, colors, and fonts. Forms that look like part of your product, not a bolted-on tool.</p></div>
+    <div class="feature"><div class="num">05</div><h3>Payments &amp; file upload</h3><p>Collect a Stripe payment or a file in the same flow. No separate tool, no copy-pasting between systems.</p></div>
+    <div class="feature"><div class="num">06</div><h3>Sync where you already work</h3><p>Sheets, Slack, your CRM, or a raw webhook — responses land where your team already looks.</p></div>
+  </div>
+</section>
+
+<hr class="div">
+
+<!-- ── BUILDER ── -->
+<section class="section">
+  <div class="two-col">
+    <div>
+      <div class="eyebrow"><span class="dot"></span>Form Builder</div>
+      <h2>Build in minutes, not hours.</h2>
+      <p style="font-size:16px;color:var(--muted);line-height:1.65;margin:14px 0 22px">Drag-and-drop question order, live preview as you type, full theme control. Any form you can imagine — without touching code.</p>
+      <ul class="clist" style="gap:12px">
+        <li><span class="ci">↕</span> Drag &amp; drop question reordering</li>
+        <li><span class="ci">🎨</span> Full theme — colors, fonts, background</li>
+        <li><span class="ci">📱</span> Mobile-optimised by default</li>
+        <li><span class="ci">👁</span> Live preview as you build</li>
+      </ul>
+    </div>
+    <div>
+      <div class="mock">
+        <div class="mock-bar">
+          <div class="mock-dot" style="background:#FF5F57"></div>
+          <div class="mock-dot" style="background:#FEBC2E"></div>
+          <div class="mock-dot" style="background:#28C840"></div>
+          <span style="font-size:11.5px;color:var(--muted);margin-left:8px">Client Intake Form</span>
+        </div>
+        <div class="mock-body">
+          <div class="mock-left">
+            <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Questions</div>
+            <div class="mock-item sel">1 · Welcome</div>
+            <div class="mock-item">2 · Name</div>
+            <div class="mock-item">3 · Budget</div>
+            <div class="mock-item">4 · Goals</div>
+            <div class="mock-item">5 · Thank you</div>
+          </div>
+          <div class="mock-center">
+            <div class="mock-q">
+              <div class="mock-q-type">Multiple Choice</div>
+              <div class="mock-q-title">What's your estimated budget?</div>
+              <div class="mock-q-input"></div>
+            </div>
+            <div style="margin-top:14px">
+              <div class="btn btn-moss" style="font-size:12px;padding:7px 14px;border-radius:6px">Next →</div>
+            </div>
+          </div>
+          <div class="mock-right">
+            <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Settings</div>
+            <div class="mock-row"><span>Required</span><span style="color:var(--moss)">●</span></div>
+            <div class="mock-row"><span>Placeholder</span><span>Edit</span></div>
+            <div class="mock-row"><span>Logic</span><span>Add</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="div">
+
+<!-- ── AI BUILDER ── -->
+<section class="section" style="background:var(--card);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:80px 32px;max-width:none;margin:0">
+  <div class="wrap">
+    <div class="two-col flip">
+      <div>
+        <div class="eyebrow"><span class="dot"></span>AI Builder</div>
+        <h2>Describe it once. Get a complete form.</h2>
+        <p style="font-size:16px;color:var(--muted);line-height:1.65;margin:14px 0 22px">Type what your form needs to do — the AI writes every question, sets up the logic, and gets out of the way so you can customise.</p>
+        <div style="background:var(--paper);border:1.5px solid var(--ink);border-radius:8px;padding:18px;margin-top:8px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-weight:600">✦ Try it</div>
+          <div style="font-family:Georgia,serif;font-size:15px;color:var(--ink);line-height:1.55;font-style:italic">"Create a client intake form for a design studio — budget, timeline, project type, goals, and how they heard about us."</div>
+          <div style="margin-top:14px;display:flex;justify-content:flex-end">
+            <div class="btn btn-fill" style="font-size:13px;padding:8px 16px;border-radius:6px">Generate →</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div style="background:var(--paper);border:1.5px solid var(--line);border-radius:8px;padding:20px">
+          <div style="font-size:22px;margin-bottom:10px">🤖</div>
+          <div style="font-family:Georgia,serif;font-size:15px;margin-bottom:6px">AI generation</div>
+          <div style="font-size:13px;color:var(--muted)">Describe it in plain English and get a full draft in seconds.</div>
+        </div>
+        <div style="background:var(--paper);border:1.5px solid var(--line);border-radius:8px;padding:20px">
+          <div style="font-size:22px;margin-bottom:10px">✏️</div>
+          <div style="font-family:Georgia,serif;font-size:15px;margin-bottom:6px">Full control</div>
+          <div style="font-size:13px;color:var(--muted)">Edit every question, add logic, make it yours.</div>
+        </div>
+        <div style="background:var(--paper);border:1.5px solid var(--line);border-radius:8px;padding:20px">
+          <div style="font-size:22px;margin-bottom:10px">🌍</div>
+          <div style="font-family:Georgia,serif;font-size:15px;margin-bottom:6px">Multi-language</div>
+          <div style="font-size:13px;color:var(--muted)">Generate in any language your audience speaks.</div>
+        </div>
+        <div style="background:var(--paper);border:1.5px solid var(--line);border-radius:8px;padding:20px">
+          <div style="font-size:22px;margin-bottom:10px">⚡</div>
+          <div style="font-family:Georgia,serif;font-size:15px;margin-bottom:6px">Instant publish</div>
+          <div style="font-size:13px;color:var(--muted)">From idea to live form in under 60 seconds.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── BLOCK TYPES ── -->
+<section class="section">
+  <div class="section-head text-center">
+    <div class="eyebrow"><span class="dot"></span>Question types</div>
+    <h2>30+ block types for every use case.</h2>
+    <p>From simple text inputs to file uploads, payments, and custom code — everything in one builder.</p>
+  </div>
+  <div class="blocks-grid">
+    <div class="bchip">📝 Short Text</div><div class="bchip">📄 Long Text</div>
+    <div class="bchip">☑️ Multiple Choice</div><div class="bchip">🔽 Dropdown</div>
+    <div class="bchip">⭐ Rating</div><div class="bchip">📊 NPS Score</div>
+    <div class="bchip">🔢 Number</div><div class="bchip">📧 Email</div>
+    <div class="bchip">📞 Phone</div><div class="bchip">📅 Date</div>
+    <div class="bchip">🕐 Time</div><div class="bchip">📁 File Upload</div>
+    <div class="bchip">💳 Payment</div><div class="bchip">🖼️ Picture Choice</div>
+    <div class="bchip">📋 Matrix</div><div class="bchip">🔀 Ranking</div>
+    <div class="bchip">🎯 Opinion Scale</div><div class="bchip">🔗 URL</div>
+    <div class="bchip">📍 Address</div><div class="bchip">✍️ Signature</div>
+    <div class="bchip">📑 Statement</div><div class="bchip">🎛️ Slider</div>
+    <div class="bchip">🧮 Calculator</div><div class="bchip">💬 Hidden Field</div>
+    <div class="bchip">📆 Date Range</div><div class="bchip">🎬 Video Embed</div>
+    <div class="bchip">🧩 Custom HTML</div><div class="bchip">◑ Yes / No</div>
+    <div class="bchip">🤝 Welcome Screen</div><div class="bchip">🎉 Thank You</div>
+  </div>
+</section>
+
+<hr class="div">
+
+<!-- ── ANALYTICS ── -->
+<section class="section">
+  <div class="two-col">
+    <div>
+      <div class="eyebrow"><span class="dot"></span>Analytics</div>
+      <h2>Know where people drop off.</h2>
+      <p style="font-size:16px;color:var(--muted);line-height:1.65;margin:14px 0 22px">Built-in analytics show views, starts, and completions for every form. See question-by-question drop-off and fix what isn't working.</p>
+      <ul class="clist" style="gap:12px">
+        <li><span class="ci">👁</span> Views, starts &amp; completion tracking</li>
+        <li><span class="ci">📉</span> Question-level drop-off rates</li>
+        <li><span class="ci">⏱</span> Average time to complete</li>
+        <li><span class="ci">📊</span> Response summaries &amp; distributions</li>
+      </ul>
+    </div>
+    <div>
+      <div class="an-mock">
+        <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:16px;font-family:Georgia,serif">Response funnel</div>
+        <div class="an-row"><div class="an-label">Views</div><div class="an-track"><div class="an-bar" style="width:100%;background:#4F6B52"></div></div><div class="an-val">2,431</div></div>
+        <div class="an-row"><div class="an-label">Started</div><div class="an-track"><div class="an-bar" style="width:72%;background:#7A9E7E"></div></div><div class="an-val">1,752</div></div>
+        <div class="an-row"><div class="an-label">Completed</div><div class="an-track"><div class="an-bar" style="width:54%;background:#E2A33B"></div></div><div class="an-val">1,313</div></div>
+        <div style="border-top:1px solid var(--line);padding-top:14px;margin-top:6px">
+          <div style="font-size:12.5px;font-weight:700;color:var(--ink);margin-bottom:10px;font-family:Georgia,serif">Drop-off by question</div>
+          <div class="an-row"><div class="an-label">Q1 Name</div><div class="an-track"><div class="an-bar" style="width:96%;background:#4F6B52"></div></div><div class="an-val">96%</div></div>
+          <div class="an-row"><div class="an-label">Q2 Email</div><div class="an-track"><div class="an-bar" style="width:84%;background:#7A9E7E"></div></div><div class="an-val">84%</div></div>
+          <div class="an-row"><div class="an-label">Q3 Phone</div><div class="an-track"><div class="an-bar" style="width:63%;background:#E2A33B"></div></div><div class="an-val">63%</div></div>
+          <div class="an-row"><div class="an-label">Q4 Budget</div><div class="an-track"><div class="an-bar" style="width:54%;background:#C0441C"></div></div><div class="an-val">54%</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="div">
+
+<!-- ── INTEGRATIONS ── -->
+<section class="section" id="integrations">
+  <div class="section-head text-center">
+    <div class="eyebrow"><span class="dot"></span>Integrations</div>
+    <h2>Connect your entire stack.</h2>
+    <p>Native integrations plus Zapier — responses land where your team already works.</p>
+  </div>
+</section>
+<div class="marquee-wrap">
+  <div class="marquee-track">
+    <div class="int-pill"><div class="int-mark" style="background:#635BFF">S</div>Stripe</div>
+    <div class="int-pill"><div class="int-mark" style="background:#0F9D58">G</div>Google Sheets</div>
+    <div class="int-pill"><div class="int-mark" style="background:#1A1A1A">N</div>Notion</div>
+    <div class="int-pill"><div class="int-mark" style="background:#4A154B">S</div>Slack</div>
+    <div class="int-pill"><div class="int-mark" style="background:#EA4335">✉</div>Email</div>
+    <div class="int-pill"><div class="int-mark" style="background:#FF4A00">Z</div>Zapier</div>
+    <div class="int-pill"><div class="int-mark" style="background:#374151">⚙</div>Webhook</div>
+    <div class="int-pill"><div class="int-mark" style="background:#006BFF">C</div>Calendly</div>
+    <div class="int-pill"><div class="int-mark" style="background:#111827">C</div>Cal.com</div>
+    <div class="int-pill"><div class="int-mark" style="background:#0EA5E9">S</div>SavvyCal</div>
+    <div class="int-pill"><div class="int-mark" style="background:#246FDB">G</div>Google Tag Manager</div>
+    <div class="int-pill"><div class="int-mark" style="background:#1877F2">f</div>Meta Pixel</div>
+    <!-- duplicate for seamless loop -->
+    <div class="int-pill"><div class="int-mark" style="background:#635BFF">S</div>Stripe</div>
+    <div class="int-pill"><div class="int-mark" style="background:#0F9D58">G</div>Google Sheets</div>
+    <div class="int-pill"><div class="int-mark" style="background:#1A1A1A">N</div>Notion</div>
+    <div class="int-pill"><div class="int-mark" style="background:#4A154B">S</div>Slack</div>
+    <div class="int-pill"><div class="int-mark" style="background:#EA4335">✉</div>Email</div>
+    <div class="int-pill"><div class="int-mark" style="background:#FF4A00">Z</div>Zapier</div>
+    <div class="int-pill"><div class="int-mark" style="background:#374151">⚙</div>Webhook</div>
+    <div class="int-pill"><div class="int-mark" style="background:#006BFF">C</div>Calendly</div>
+    <div class="int-pill"><div class="int-mark" style="background:#111827">C</div>Cal.com</div>
+    <div class="int-pill"><div class="int-mark" style="background:#0EA5E9">S</div>SavvyCal</div>
+    <div class="int-pill"><div class="int-mark" style="background:#246FDB">G</div>Google Tag Manager</div>
+    <div class="int-pill"><div class="int-mark" style="background:#1877F2">f</div>Meta Pixel</div>
+  </div>
+</div>
+
+<!-- ── TEMPLATES ── -->
+<section class="section" id="templates">
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:32px;flex-wrap:wrap;gap:16px">
+    <div>
+      <div class="eyebrow"><span class="dot"></span>Templates</div>
+      <h2 style="font-size:clamp(28px,3.4vw,40px);line-height:1.12;margin-bottom:6px">500+ ready-to-use templates.</h2>
+      <p style="font-size:15.5px;color:var(--muted)">Click any template to open it in the editor and make it yours.</p>
+    </div>
+    <a href="#" class="btn">Browse all templates →</a>
+  </div>
+  <div class="tmpl-tabs">
+    <button class="ttab on" onclick="swTmpl('forms',this)">📋 Forms</button>
+    <button class="ttab" onclick="swTmpl('surveys',this)">📊 Surveys</button>
+    <button class="ttab" onclick="swTmpl('quizzes',this)">🧠 Quizzes</button>
+  </div>
+
+  <div id="tg-forms" class="tgrid on">
+    <div class="tcard" onclick="openTpl('testimonial')">
+      <div class="tcard-preview" style="background:#FEF9C3"><div class="tcard-preview-icon">⭐</div><div class="tcard-preview-label" style="color:#92400E">Testimonial Form</div></div>
+      <div class="tcard-body"><h4>Testimonial Collection</h4><p>Collect reviews &amp; social proof from happy customers</p><div class="tcard-meta"><span class="tcard-count">7 questions</span><button class="tcard-use">Edit template →</button></div></div>
+    </div>
+    <div class="tcard" onclick="openTpl('client-intake')">
+      <div class="tcard-preview" style="background:#EDE9FE"><div class="tcard-preview-icon">📋</div><div class="tcard-preview-label" style="color:#5B21B6">Client Intake</div></div>
+      <div class="tcard-body"><h4>Client Intake Form</h4><p>Onboard new clients with all the right info upfront</p><div class="tcard-meta"><span class="tcard-count">9 questions</span><button class="tcard-use">Edit template →</button></div></div>
+    </div>
+    <div class="tcard" onclick="openTpl('lead-capture')">
+      <div class="tcard-preview" style="background:#DCFCE7"><div class="tcard-preview-icon">🎯</div><div class="tcard-preview-label" style="color:#15803D">Lead Capture</div></div>
+      <div class="tcard-body"><h4>Lead Capture Form</h4><p>Turn website visitors into qualified leads</p><div class="tcard-meta"><span class="tcard-count">6 questions</span><button class="tcard-use">Edit template →</button></div></div>
+    </div>
+    <div class="tcard" onclick="openTpl('contact')">
+      <div class="tcard-preview" style="background:#FEE2E2"><div class="tcard-preview-icon">📞</div><div class="tcard-preview-label" style="color:#B91C1C">Contact Form</div></div>
+      <div class="tcard-body"><h4>Contact Form</h4><p>A friendly way to hear from visitors</p><div class="tcard-meta"><span class="tcard-count">5 questions</span><button class="tcard-use">Edit template →</button></div></div>
+    </div>
+    <div class="tcard" onclick="openTpl('job-application')">
+      <div class="tcard-preview" style="background:#E0F2FE"><div class="tcard-preview-icon">📝</div><div class="tcard-preview-label" style="color:#0369A1">Job Application</div></div>
+      <div class="tcard-body"><h4>Job Application</h4><p>Streamline hiring with a polished application</p><div class="tcard-meta"><span class="tcard-count">10 questions</span><button class="tcard-use">Edit template →</button></div></div>
+    </div>
+    <div class="tcard" onclick="openTpl('order')">
+      <div class="tcard-preview" style="background:#FFEDD5"><div class="tcard-preview-icon">🛒</div><div class="tcard-preview-label" style="color:#C2410C">Order Form</div></div>
+      <div class="tcard-body"><h4>Product Order Form</h4><p>Sell products with Stripe payment integration</p><div class="tcard-meta"><span class="tcard-count">7 questions</span><button class="tcard-use">Edit template →</button></div></div>
+    </div>
+  </div>
+
+  <div id="tg-surveys" class="tgrid">
+    <div class="tcard" onclick="openTpl('market-research')">
+      <div class="tcard-preview" style="background:#F0FDF4"><div class="tcard-preview-icon">🔍</div><div class="tcard-preview-label" style="color:#15803D">Market Research</div></div>
+      <div class="tcard-body"><h4>Market Research Survey</h4><p>Validate product-market fit with real data</p><div class="tcard-meta"><span class="tcard-count">8 questions</span><button class="tcard-use">Edit template →</button></div></div>
+    </div>
+    <div class="tcard" onclick="openTpl('saas-onboarding')">
+      <div class="tcard-preview" style="background:#EFF6FF"><div class="tcard-preview-icon">🚀</div><div class="tcard-preview-label" style="color:#1D4ED8">SaaS Onboarding</div></div>
+      <div class="tcard-body"><h4>SaaS Onboarding Survey</h4><p>Understand new user goals &amp; tailor their experience</p><div class="tcard-meta"><span class="tcard-count">7 questions</span><button class="tcard-use">Edit template →</button></div></div>
+    </div>
+    <div class="tcard" onclick="openTpl('cancellation')">
+      <div class="tcard-preview" style="background:#FFF1F2"><div class="tcard-preview-icon">👋</div><div class="tcard-preview-label" style="color:#BE123C">Cancellation</div></div>
+      <div class="tcard-body"><h4>Cancellation Survey</h4><p>Learn why customers churn &amp; win them back</p><div class="tcard-meta"><span class="tcard-count">6 questions</span><button class="tcard-use">Edit template →</button></div></div>
+    </div>
+    <div class="tcard" onclick="openTpl('nps')">
+      <div class="tcard-preview" style="background:#FEFCE8"><div class="tcard-preview-icon">📊</div><div class="tcard-preview-label" style="color:#854D0E">NPS Survey</div></div>
+      <div class="tcard-body"><h4>Net Promoter Score</h4><p>Measure customer loyalty with the industry standard</p><div class="tcard-meta"><span class="tcard-count">4 questions</span><button class="tcard-use">Edit template →</button></div></div>
+    </div>
+    <div class="tcard" onclick="openTpl('employee')">
+      <div class="tcard-preview" style="background:#F5F5F4"><div class="tcard-preview-icon">💼</div><div class="tcard-preview-label" style="color:#44403C">Employee Satisfaction</div></div>
+      <div class="tcard-body"><h4>Employee Satisfaction</h4><p>Keep your team happy with regular pulse surveys</p><div class="tcard-meta"><span class="tcard-count">7 questions</span><button class="tcard-use">Edit template →</button></div></div>
+    </div>
+    <div class="tcard" onclick="openTpl('post-event')">
+      <div class="tcard-preview" style="background:#F5F3FF"><div class="tcard-preview-icon">🎓</div><div class="tcard-preview-label" style="color:#6D28D9">Post-Event</div></div>
+      <div class="tcard-body"><h4>Post-Event Feedback</h4><p>Capture insights while the experience is fresh</p><div class="tcard-meta"><span class="tcard-count">7 questions</span><button class="tcard-use">Edit template →</button></div></div>
+    </div>
+  </div>
+
+  <div id="tg-quizzes" class="tgrid">
+    <div class="tcard" onclick="openTpl('digital-marketing')">
+      <div class="tcard-preview" style="background:#FFEDD5"><div class="tcard-preview-icon">📱</div><div class="tcard-preview-label" style="color:#C2410C">Digital Marketing</div></div>
+      <div class="tcard-body"><h4>Digital Marketing Quiz</h4><p>Test your audience's marketing knowledge</p><div class="tcard-meta"><span class="tcard-count">6 questions</span><button class="tcard-use">Edit template →</button></div></div>
+    </div>
+    <div class="tcard" onclick="openTpl('personality')">
+      <div class="tcard-preview" style="background:#E0F2FE"><div class="tcard-preview-icon">🧠</div><div class="tcard-preview-label" style="color:#0369A1">Personality Quiz</div></div>
+      <div class="tcard-body"><h4>Personality Quiz</h4><p>Engage your audience with fun personality insights</p><div class="tcard-meta"><span class="tcard-count">7 questions</span><button class="tcard-use">Edit template →</button></div></div>
+    </div>
+    <div class="tcard" onclick="openTpl('lead-gen-quiz')">
+      <div class="tcard-preview" style="background:#DCFCE7"><div class="tcard-preview-icon">💡</div><div class="tcard-preview-label" style="color:#15803D">Lead Gen Quiz</div></div>
+      <div class="tcard-body"><h4>Lead Generation Quiz</h4><p>Qualify leads while delivering personalised value</p><div class="tcard-meta"><span class="tcard-count">8 questions</span><button class="tcard-use">Edit template →</button></div></div>
+    </div>
+    <div class="tcard" onclick="openTpl('product-recommender')">
+      <div class="tcard-preview" style="background:#FAE8FF"><div class="tcard-preview-icon">🎯</div><div class="tcard-preview-label" style="color:#86198F">Product Recommender</div></div>
+      <div class="tcard-body"><h4>Product Recommender</h4><p>Help customers find the perfect product</p><div class="tcard-meta"><span class="tcard-count">6 questions</span><button class="tcard-use">Edit template →</button></div></div>
+    </div>
+    <div class="tcard" onclick="openTpl('trivia')">
+      <div class="tcard-preview" style="background:#FEF9C3"><div class="tcard-preview-icon">🏆</div><div class="tcard-preview-label" style="color:#854D0E">Trivia Challenge</div></div>
+      <div class="tcard-body"><h4>Trivia Challenge</h4><p>Gamify your content with scored knowledge quizzes</p><div class="tcard-meta"><span class="tcard-count">5 questions</span><button class="tcard-use">Edit template →</button></div></div>
+    </div>
+    <div class="tcard" onclick="openTpl('skills')">
+      <div class="tcard-preview" style="background:#FEE2E2"><div class="tcard-preview-icon">🔥</div><div class="tcard-preview-label" style="color:#B91C1C">Skills Assessment</div></div>
+      <div class="tcard-body"><h4>Skills Assessment</h4><p>Evaluate competencies with structured scoring</p><div class="tcard-meta"><span class="tcard-count">8 questions</span><button class="tcard-use">Edit template →</button></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── TEMPLATE EDITOR MODAL ── -->
+<div class="modal-bg" id="modal-bg" onclick="handleBg(event)">
+  <div class="modal">
+    <div class="modal-head">
+      <span id="m-icon" style="font-size:20px">📋</span>
+      <input class="modal-title-in" id="m-title" type="text" value="Template" />
+      <span id="m-count" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
+      <button class="modal-close" onclick="closeTpl()">✕</button>
+    </div>
+    <div class="modal-body"><div class="q-list" id="m-qlist"></div>
+      <div class="add-q-bar">
+        <select class="add-q-sel" id="m-add-type">
+          <option value="short_text">Short Text</option><option value="long_text">Long Text</option>
+          <option value="multiple_choice">Multiple Choice</option><option value="dropdown">Dropdown</option>
+          <option value="rating">Rating</option><option value="nps">NPS Score</option>
+          <option value="yes_no">Yes / No</option><option value="email">Email</option>
+          <option value="phone">Phone</option><option value="number">Number</option>
+          <option value="date">Date</option><option value="file_upload">File Upload</option>
+        </select>
+        <button class="btn add-q-go" onclick="addQ()">+ Add question</button>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <div style="font-size:12.5px;color:var(--muted)">💡 Click any field to edit it inline</div>
+      <div style="display:flex;gap:10px">
+        <button class="btn" onclick="closeTpl()">Cancel</button>
+        <button class="btn btn-fill" onclick="useTpl()">Use this template →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="div">
+
+<!-- ── TESTIMONIALS ── -->
+<section class="section" style="background:var(--card);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:80px 32px;max-width:none;margin:0">
+  <div class="wrap">
+    <div class="section-head text-center">
+      <div class="eyebrow"><span class="dot"></span>What people say</div>
+      <h2>Loved by creators worldwide.</h2>
+    </div>
+    <div class="testi-grid">
+      <div class="testi"><div class="testi-stars">★★★★★</div><p class="testi-text">"I switched from Typeform and immediately cut my form costs by 80%. The UI is just as beautiful and my completion rates actually went up."</p><div class="testi-author"><div class="testi-avatar" style="background:#4F6B52">S</div><div><div class="testi-name">Sarah K.</div><div class="testi-role">Founder, SaaS startup</div></div></div></div>
+      <div class="testi"><div class="testi-stars">★★★★★</div><p class="testi-text">"The AI form builder is something else. Two sentences and I had a complete, professional intake form ready to publish."</p><div class="testi-author"><div class="testi-avatar" style="background:#21253B">M</div><div><div class="testi-name">Marco R.</div><div class="testi-role">Freelance Designer</div></div></div></div>
+      <div class="testi"><div class="testi-stars">★★★★★</div><p class="testi-text">"Partial submissions alone are worth the Pro plan. We used to lose 30% of our lead forms to drop-off. Now we capture those too."</p><div class="testi-author"><div class="testi-avatar" style="background:#E2A33B;color:#21253B">A</div><div><div class="testi-name">Amira T.</div><div class="testi-role">Marketing Director</div></div></div></div>
+      <div class="testi"><div class="testi-stars">★★★★★</div><p class="testi-text">"Responses go straight into our Google Sheet and fire a Zapier automation. Zero setup headaches. It just works."</p><div class="testi-author"><div class="testi-avatar" style="background:#4F6B52">J</div><div><div class="testi-name">James W.</div><div class="testi-role">Operations Lead</div></div></div></div>
+      <div class="testi"><div class="testi-stars">★★★★★</div><p class="testi-text">"We run surveys for 50+ clients. FormFlow's white-label options let us deliver polished forms under our own brand at a fraction of the old cost."</p><div class="testi-author"><div class="testi-avatar" style="background:#21253B">L</div><div><div class="testi-name">Lena M.</div><div class="testi-role">Agency Owner</div></div></div></div>
+      <div class="testi"><div class="testi-stars">★★★★★</div><p class="testi-text">"No per-response pricing. No surprise bills. Just a great product at a fair price. Finally."</p><div class="testi-author"><div class="testi-avatar" style="background:#C0441C">R</div><div><div class="testi-name">Rafael D.</div><div class="testi-role">Indie Maker</div></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PRICING ── -->
+<section class="section" id="pricing">
+  <div class="price-band">
+    <div>
+      <h2>Free while you're small. Fair once you're not.</h2>
+      <p>Most teams outgrow "free" long before they need to pay. FormFlow doesn't cap responses or forms on any plan — you only pay for the things that actually cost more to run.</p>
+      <a href="#" class="btn btn-inv btn-lg" style="margin-top:22px;display:inline-flex">Compare all plans →</a>
+    </div>
+    <div class="price-cards">
+      <div class="pcard">
+        <div class="ptier">Free</div>
+        <div class="pnum">$0<em> / forever</em></div>
+        <div class="pper">no credit card · 1 seat</div>
+        <ul class="pfeats">
+          <li>100 responses/month</li>
+          <li>Unlimited forms</li>
+          <li>All 30+ question types</li>
+          <li>Basic analytics</li>
+          <li>500+ templates</li>
+        </ul>
+        <a href="#" class="btn btn-inv">Get started free</a>
+      </div>
+      <div class="pcard pop">
+        <div class="pop-badge">Most popular</div>
+        <div class="ptier">Pro</div>
+        <div class="pnum">$20<em> / mo</em></div>
+        <div class="pper">billed annually · 3 seats</div>
+        <ul class="pfeats">
+          <li>5,000 responses/month</li>
+          <li>Remove branding</li>
+          <li>Custom domain</li>
+          <li>Partial submissions</li>
+          <li>Respondent notifications</li>
+          <li>All integrations</li>
+        </ul>
+        <a href="#" class="btn btn-fill">Start Pro trial</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FINAL CTA ── -->
+<section class="final">
+  <h2>Your next form takes three minutes.</h2>
+  <p>No demo call. No sales team. Just a blank form and a question to start with.</p>
+  <a href="#" class="btn btn-fill btn-lg">Start building — it's free</a>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div class="foot-inner">
+    <div class="logo"><div class="mark"></div>FormFlow</div>
+    <div class="foot-links">
+      <a href="#">Features</a><a href="#">Templates</a>
+      <a href="#">Pricing</a><a href="#">Privacy</a><a href="#">Terms</a>
+    </div>
+    <div>© 2025 FormFlow. Made for people who hate wasted fields.</div>
+  </div>
+</footer>
+
+<script>
+// ── Tab switchers ─────────────────────────────────────────────
+function swComp(id, btn) {
+  document.querySelectorAll('.cpanel').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.ctab').forEach(b=>b.classList.remove('on'));
+  document.getElementById('c-'+id).classList.add('on');
+  btn.classList.add('on');
+}
+function swTmpl(id, btn) {
+  document.querySelectorAll('.tgrid').forEach(g=>g.classList.remove('on'));
+  document.querySelectorAll('.ttab').forEach(b=>b.classList.remove('on'));
+  document.getElementById('tg-'+id).classList.add('on');
+  btn.classList.add('on');
+}
+
+// ── Template data ─────────────────────────────────────────────
+const TYPE_LABELS = {
+  short_text:'Short Text', long_text:'Long Text', multiple_choice:'Multiple Choice',
+  dropdown:'Dropdown', rating:'Rating', nps:'NPS Score', yes_no:'Yes / No',
+  email:'Email', phone:'Phone', number:'Number', date:'Date',
+  file_upload:'File Upload', welcome_screen:'Welcome Screen', thank_you_screen:'Thank You Screen',
+};
+const TEMPLATES = {
+  'testimonial': { icon:'⭐', title:'Testimonial Collection', questions:[
+    {type:'welcome_screen',title:'Are you ready to share your testimonial?',options:[],required:false},
+    {type:'short_text',title:"What's your full name?",options:[],required:true},
+    {type:'short_text',title:'What is your job title and company?',options:[],required:false},
+    {type:'rating',title:'How would you rate your overall experience?',options:[],required:true},
+    {type:'long_text',title:'Tell us about your experience — what problem did we solve?',options:[],required:true},
+    {type:'yes_no',title:'Can we feature this testimonial publicly on our website?',options:[],required:true},
+    {type:'thank_you_screen',title:'Thank you for your review! 🙏',options:[],required:false},
+  ]},
+  'client-intake': { icon:'📋', title:'Client Intake Form', questions:[
+    {type:'short_text',title:'Your full name',options:[],required:true},
+    {type:'short_text',title:'Email address',options:[],required:true},
+    {type:'short_text',title:'Phone number',options:[],required:false},
+    {type:'short_text',title:'Company or organisation name',options:[],required:false},
+    {type:'multiple_choice',title:'What type of project is this?',options:['Website design','Mobile app','Branding','Marketing campaign','Other'],required:true},
+    {type:'multiple_choice',title:'What is your estimated budget?',options:['Under $1,000','$1,000–$5,000','$5,000–$20,000','$20,000+'],required:true},
+    {type:'short_text',title:'What is your desired timeline?',options:[],required:false},
+    {type:'long_text',title:'Describe your goals — what does success look like?',options:[],required:true},
+    {type:'short_text',title:'How did you hear about us?',options:[],required:false},
+  ]},
+  'lead-capture': { icon:'🎯', title:'Lead Capture Form', questions:[
+    {type:'short_text',title:'Your first name',options:[],required:true},
+    {type:'short_text',title:'Work email address',options:[],required:true},
+    {type:'short_text',title:'Company name',options:[],required:false},
+    {type:'multiple_choice',title:'Company size',options:['1–10','11–50','51–200','200+'],required:false},
+    {type:'multiple_choice',title:"What's your biggest challenge right now?",options:['Lead generation','Customer retention','Team productivity','Product development','Other'],required:false},
+    {type:'long_text',title:'Anything specific you'd like us to know?',options:[],required:false},
+  ]},
+  'contact': { icon:'📞', title:'Contact Form', questions:[
+    {type:'short_text',title:'Your name',options:[],required:true},
+    {type:'short_text',title:'Email address',options:[],required:true},
+    {type:'short_text',title:'Subject',options:[],required:true},
+    {type:'multiple_choice',title:'How can we help you?',options:['General inquiry','Technical support','Billing','Partnership','Other'],required:false},
+    {type:'long_text',title:'Your message',options:[],required:true},
+  ]},
+  'job-application': { icon:'📝', title:'Job Application', questions:[
+    {type:'short_text',title:'Full name',options:[],required:true},
+    {type:'short_text',title:'Email address',options:[],required:true},
+    {type:'short_text',title:'Phone number',options:[],required:false},
+    {type:'short_text',title:'Position you are applying for',options:[],required:true},
+    {type:'short_text',title:'LinkedIn profile URL',options:[],required:false},
+    {type:'number',title:'Years of relevant experience',options:[],required:false},
+    {type:'multiple_choice',title:'Preferred work arrangement',options:['Remote','On-site','Hybrid'],required:false},
+    {type:'long_text',title:'Why do you want to work with us? Tell us about yourself.',options:[],required:true},
+    {type:'file_upload',title:'Upload your resume / CV',options:[],required:true},
+    {type:'long_text',title:'Is there anything else you'd like us to know?',options:[],required:false},
+  ]},
+  'order': { icon:'🛒', title:'Product Order Form', questions:[
+    {type:'short_text',title:'Your full name',options:[],required:true},
+    {type:'short_text',title:'Email address for order confirmation',options:[],required:true},
+    {type:'multiple_choice',title:'Select a product',options:['Starter Pack – $29','Professional Pack – $79','Enterprise Pack – $199'],required:true},
+    {type:'number',title:'Quantity',options:[],required:true},
+    {type:'long_text',title:'Shipping address',options:[],required:true},
+    {type:'short_text',title:'Promo code (optional)',options:[],required:false},
+    {type:'short_text',title:'Anything else to note for your order?',options:[],required:false},
+  ]},
+  'market-research': { icon:'🔍', title:'Market Research Survey', questions:[
+    {type:'multiple_choice',title:'Which industry are you in?',options:['Technology','Healthcare','Finance','Education','Retail','Other'],required:true},
+    {type:'multiple_choice',title:'What is your role?',options:['Founder / CEO','Product','Engineering','Marketing','Sales','Other'],required:false},
+    {type:'multiple_choice',title:'What are your biggest pain points?',options:['Finding customers','Retaining customers','Team management','Building product','Competition'],required:false},
+    {type:'rating',title:'How satisfied are you with current solutions in the market?',options:[],required:true},
+    {type:'multiple_choice',title:'How much would you pay to fully solve this?',options:["$0 — I wouldn't pay","$1–$50/mo","$51–$200/mo","$200+/mo"],required:false},
+    {type:'long_text',title:'What would the ideal solution look like for you?',options:[],required:false},
+    {type:'multiple_choice',title:'How do you prefer to evaluate new tools?',options:['Free trial','Demo / call','Reviews / case studies','Referral'],required:false},
+    {type:'short_text',title:'Email for research summary (optional)',options:[],required:false},
+  ]},
+  'saas-onboarding': { icon:'🚀', title:'SaaS Onboarding Survey', questions:[
+    {type:'multiple_choice',title:'What is your primary goal with our product?',options:['Grow revenue','Save time','Reduce costs','Better collaboration','Better analytics'],required:true},
+    {type:'multiple_choice',title:'Team size',options:['Just me','2–10','11–50','50+'],required:false},
+    {type:'multiple_choice',title:'How would you describe your use case?',options:['Internal tool','Client-facing','Personal project','Agency / freelance'],required:false},
+    {type:'multiple_choice',title:'Which feature are you most excited about?',options:['Form builder','Analytics','Integrations','AI generation','Templates'],required:false},
+    {type:'rating',title:'How easy was our signup process?',options:[],required:true},
+    {type:'long_text',title:'What should we build next?',options:[],required:false},
+    {type:'short_text',title:'How did you hear about us?',options:[],required:false},
+  ]},
+  'cancellation': { icon:'👋', title:'Cancellation Survey', questions:[
+    {type:'multiple_choice',title:'Why are you cancelling?',options:['Too expensive','Missing a feature','Found a better alternative','No longer need it','Technical issues','Just testing'],required:true},
+    {type:'nps',title:'How likely are you to recommend us to someone else?',options:[],required:true},
+    {type:'long_text',title:'What would have made you stay?',options:[],required:false},
+    {type:'rating',title:'Overall, how satisfied were you with the product?',options:[],required:true},
+    {type:'yes_no',title:'Would you consider coming back if we added what you needed?',options:[],required:false},
+    {type:'short_text',title:'Email us if you'd like a personal response',options:[],required:false},
+  ]},
+  'nps': { icon:'📊', title:'Net Promoter Score Survey', questions:[
+    {type:'nps',title:'How likely are you to recommend us to a friend or colleague?',options:[],required:true},
+    {type:'multiple_choice',title:'What is the primary reason for your score?',options:['Product quality','Customer support','Value for money','Ease of use','Missing features'],required:false},
+    {type:'long_text',title:'What could we do to improve your score?',options:[],required:false},
+    {type:'short_text',title:'Your name (optional)',options:[],required:false},
+  ]},
+  'employee': { icon:'💼', title:'Employee Satisfaction Survey', questions:[
+    {type:'rating',title:'How satisfied are you with your role overall?',options:[],required:true},
+    {type:'rating',title:'How would you rate your work-life balance?',options:[],required:true},
+    {type:'multiple_choice',title:'How well do you feel your efforts are recognised?',options:['Very well','Somewhat','Not very well','Not at all'],required:false},
+    {type:'rating',title:"How confident are you in leadership's direction?",options:[],required:false},
+    {type:'yes_no',title:'Do you feel you have the tools to do your job well?',options:[],required:false},
+    {type:'long_text',title:'What would make your work experience better?',options:[],required:false},
+    {type:'nps',title:'How likely are you to recommend us as a great place to work?',options:[],required:true},
+  ]},
+  'post-event': { icon:'🎓', title:'Post-Event Feedback', questions:[
+    {type:'rating',title:'How would you rate the event overall?',options:[],required:true},
+    {type:'rating',title:'How relevant was the content to you?',options:[],required:false},
+    {type:'rating',title:'How would you rate the speakers / presenters?',options:[],required:false},
+    {type:'multiple_choice',title:'How did you attend?',options:['In-person','Online / virtual'],required:false},
+    {type:'multiple_choice',title:'Which session was your favourite?',options:['Opening keynote','Workshop','Panel discussion','Networking','Closing keynote'],required:false},
+    {type:'long_text',title:'What could we improve for next time?',options:[],required:false},
+    {type:'yes_no',title:'Would you attend this event again?',options:[],required:true},
+  ]},
+  'digital-marketing': { icon:'📱', title:'Digital Marketing Quiz', questions:[
+    {type:'welcome_screen',title:'Test your Digital Marketing knowledge! 🎯',options:[],required:false},
+    {type:'multiple_choice',title:'What does CTR stand for?',options:['Click-Through Rate','Cost To Reach','Customer Track Record','Content Traffic Ratio'],required:true},
+    {type:'multiple_choice',title:'Which metric measures the cost of acquiring one customer?',options:['CPA','CPM','CTR','ROAS'],required:true},
+    {type:'multiple_choice',title:'What is a "lookalike audience"?',options:['People similar to existing customers','People who visited your site','Your email subscribers','A retargeting list'],required:true},
+    {type:'multiple_choice',title:'What does SEO stand for?',options:['Search Engine Optimisation','Social Engagement Output','Sponsored External Offers','Site Experience Overhaul'],required:true},
+    {type:'short_text',title:'Get your results emailed to you',options:[],required:false},
+  ]},
+  'personality': { icon:'🧠', title:'Personality Quiz', questions:[
+    {type:'welcome_screen',title:'Discover your creator personality type! 🎨',options:[],required:false},
+    {type:'multiple_choice',title:'When starting a new project, you tend to…',options:['Plan everything out first','Dive in and figure it out','Research what others have done','Collaborate immediately'],required:true},
+    {type:'multiple_choice',title:'Your ideal work environment is…',options:['Quiet solo focus time','A buzzing coworking space','Flexible, switching between both','Fully remote'],required:true},
+    {type:'multiple_choice',title:'When you hit a creative block, you…',options:['Take a walk','Look for inspiration online','Chat with a friend','Push through'],required:true},
+    {type:'multiple_choice',title:'You measure success by…',options:['Revenue and metrics','Personal satisfaction','Audience growth','Peer recognition'],required:true},
+    {type:'multiple_choice',title:'Your favourite tool is…',options:['A notebook and pen','A spreadsheet','A design tool','A messaging app'],required:true},
+    {type:'short_text',title:'Where should we send your result?',options:[],required:true},
+  ]},
+  'lead-gen-quiz': { icon:'💡', title:'Lead Generation Quiz', questions:[
+    {type:'welcome_screen',title:'Find the right plan for your team in 2 minutes',options:[],required:false},
+    {type:'multiple_choice',title:'What type of forms do you need most?',options:['Lead capture / contact forms','Surveys & feedback','Quizzes & assessments','Order / payment forms'],required:true},
+    {type:'multiple_choice',title:'How many responses do you expect per month?',options:['Under 100','100–1,000','1,000–10,000','10,000+'],required:true},
+    {type:'multiple_choice',title:'How many team members need access?',options:['Just me','2–3 people','4–10 people','More than 10'],required:true},
+    {type:'multiple_choice',title:'Which integration matters most?',options:['Google Sheets','Slack','Stripe payments','Zapier / webhooks','Email notifications'],required:false},
+    {type:'yes_no',title:'Do you need to remove the FormFlow branding?',options:[],required:false},
+    {type:'short_text',title:'Your name',options:[],required:true},
+    {type:'short_text',title:'Email for your personalised recommendation',options:[],required:true},
+  ]},
+  'product-recommender': { icon:'🎯', title:'Product Recommender', questions:[
+    {type:'welcome_screen',title:'Find your perfect product in under a minute',options:[],required:false},
+    {type:'multiple_choice',title:'What is your primary goal?',options:['Build muscle','Lose weight','Improve endurance','Boost energy','Reduce stress'],required:true},
+    {type:'multiple_choice',title:'Current fitness level?',options:['Beginner','Intermediate','Advanced','Athletic / competitive'],required:false},
+    {type:'multiple_choice',title:'How much time can you commit per day?',options:['Under 15 minutes','15–30 minutes','30–60 minutes','60+ minutes'],required:false},
+    {type:'multiple_choice',title:'Home or gym?',options:['Home','Gym','Both','Outdoors'],required:false},
+    {type:'short_text',title:'Email for your personalised recommendation',options:[],required:true},
+  ]},
+  'trivia': { icon:'🏆', title:'Trivia Challenge', questions:[
+    {type:'welcome_screen',title:"Ready for today's trivia? 🏆",options:[],required:false},
+    {type:'multiple_choice',title:'What year was the World Wide Web invented?',options:['1985','1989','1993','1997'],required:true},
+    {type:'multiple_choice',title:'Which planet is closest to the Sun?',options:['Venus','Earth','Mercury','Mars'],required:true},
+    {type:'multiple_choice',title:'How many bones are in the adult human body?',options:['196','206','216','226'],required:true},
+    {type:'multiple_choice',title:'Who painted the Mona Lisa?',options:['Michelangelo','Raphael','Leonardo da Vinci','Caravaggio'],required:true},
+    {type:'short_text',title:'Enter your email to see your score',options:[],required:true},
+  ]},
+  'skills': { icon:'🔥', title:'Skills Assessment', questions:[
+    {type:'short_text',title:'Full name',options:[],required:true},
+    {type:'short_text',title:'Email address',options:[],required:true},
+    {type:'multiple_choice',title:'Rate your proficiency in JavaScript',options:['No experience','Beginner','Intermediate','Advanced','Expert'],required:false},
+    {type:'multiple_choice',title:'Rate your proficiency in UI / UX Design',options:['No experience','Beginner','Intermediate','Advanced','Expert'],required:false},
+    {type:'multiple_choice',title:'Rate your proficiency in Data Analysis',options:['No experience','Beginner','Intermediate','Advanced','Expert'],required:false},
+    {type:'multiple_choice',title:'Rate your proficiency in Project Management',options:['No experience','Beginner','Intermediate','Advanced','Expert'],required:false},
+    {type:'long_text',title:'Describe a project where you applied these skills',options:[],required:true},
+    {type:'file_upload',title:'Upload your portfolio or CV (optional)',options:[],required:false},
+  ]},
+};
+
+// ── Modal state ───────────────────────────────────────────────
+let qs = [], nid = 1;
+const gid = () => 'q'+(nid++);
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function openTpl(key) {
+  const t = TEMPLATES[key]; if(!t) return;
+  document.getElementById('m-icon').textContent = t.icon;
+  document.getElementById('m-title').value = t.title;
+  qs = t.questions.map(q=>({...q, id:gid(), options:[...(q.options||[])], required:!!q.required}));
+  render();
+  document.getElementById('modal-bg').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeTpl(){
+  document.getElementById('modal-bg').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function handleBg(e){ if(e.target===document.getElementById('modal-bg')) closeTpl(); }
+
+function render(){
+  const list = document.getElementById('m-qlist');
+  list.innerHTML='';
+  qs.forEach((q,i)=>{
+    const hasOpts = (q.type==='multiple_choice'||q.type==='dropdown'||q.type==='yes_no');
+    const opts = hasOpts ? `<div id="opts-${q.id}">${
+      (q.type==='yes_no'?['Yes','No']:q.options).map((o,oi)=>`
+        <div class="q-opt-row">
+          <div class="q-opt-dot"></div>
+          <input class="q-opt-in" value="${esc(o)}" placeholder="Option ${oi+1}" oninput="updOpt('${q.id}',${oi},this.value)" ${q.type==='yes_no'?'readonly':''}/>
+          ${q.type!=='yes_no'?`<button class="q-opt-del" onclick="delOpt('${q.id}',${oi})">✕</button>`:''}
+        </div>`).join('')}
+      ${q.type!=='yes_no'?`<button class="q-add-opt" onclick="addOpt('${q.id}')">+ Add option</button>`:''}
+    </div>` : '';
+    const el = document.createElement('div');
+    el.className='q-item';
+    el.innerHTML=`
+      <div class="q-num">${i+1}</div>
+      <div style="flex:1;min-width:0">
+        <span class="q-badge">${TYPE_LABELS[q.type]||q.type}</span>
+        <input class="q-title-in" value="${esc(q.title)}" placeholder="Question text…" oninput="updTitle('${q.id}',this.value)"/>
+        ${opts}
+        <div class="q-req"><input type="checkbox" id="req-${q.id}" ${q.required?'checked':''} onchange="updReq('${q.id}',this.checked)"/><label for="req-${q.id}">Required</label></div>
+      </div>
+      <div class="q-actions">
+        <button class="q-act-btn" onclick="moveQ('${q.id}',-1)" ${i===0?'style="opacity:.3"':''} title="Move up">↑</button>
+        <button class="q-act-btn" onclick="moveQ('${q.id}',1)" ${i===qs.length-1?'style="opacity:.3"':''} title="Move down">↓</button>
+        <button class="q-act-btn del" onclick="delQ('${q.id}')" title="Delete">🗑</button>
+      </div>`;
+    list.appendChild(el);
+  });
+  document.getElementById('m-count').textContent = qs.length+' questions';
+}
+
+function updTitle(id,v){const q=qs.find(x=>x.id===id);if(q)q.title=v;}
+function updOpt(id,i,v){const q=qs.find(x=>x.id===id);if(q)q.options[i]=v;}
+function addOpt(id){const q=qs.find(x=>x.id===id);if(!q)return;q.options.push('Option '+(q.options.length+1));render();}
+function delOpt(id,i){const q=qs.find(x=>x.id===id);if(!q||q.options.length<=1)return;q.options.splice(i,1);render();}
+function updReq(id,v){const q=qs.find(x=>x.id===id);if(q)q.required=v;}
+function moveQ(id,dir){const i=qs.findIndex(x=>x.id===id),j=i+dir;if(j<0||j>=qs.length)return;[qs[i],qs[j]]=[qs[j],qs[i]];render();}
+function delQ(id){qs=qs.filter(x=>x.id!==id);render();}
+function addQ(){
+  const type=document.getElementById('m-add-type').value;
+  const opts=(type==='multiple_choice'||type==='dropdown')?['Option 1','Option 2','Option 3']:[];
+  qs.push({id:gid(),type,title:'',options:opts,required:false});
+  render();
+  setTimeout(()=>{const b=document.querySelector('.modal-body');b.scrollTo({top:b.scrollHeight,behavior:'smooth'});},50);
+}
+function useTpl(){
+  const title=document.getElementById('m-title').value||'Untitled Form';
+  closeTpl();
+  const t=document.createElement('div');
+  t.textContent=`✅ "${title}" opened in builder!`;
+  Object.assign(t.style,{position:'fixed',bottom:'28px',left:'50%',transform:'translateX(-50%)',
+    background:'#21253B',color:'#F7F3EA',padding:'12px 24px',borderRadius:'8px',
+    fontSize:'14px',fontWeight:'600',zIndex:'9999',boxShadow:'4px 4px 0 rgba(33,37,59,.2)',whiteSpace:'nowrap'});
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),2800);
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTpl();});
+</script>

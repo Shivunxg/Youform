@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useAuthStore } from '@/stores/authStore';
 import AppShell from '@/components/ui/AppShell';
+import TemplatePickerModal from '@/components/ui/TemplatePickerModal';
 import toast from 'react-hot-toast';
 import { clsx } from 'clsx';
 
@@ -18,6 +19,7 @@ const STATUS_COLORS = {
 
 export default function DashboardPage() {
   const [menuOpen, setMenuOpen] = useState(null);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { user } = useAuthStore();
@@ -32,21 +34,6 @@ export default function DashboardPage() {
     queryKey: ['forms', activeWorkspaceId],
     queryFn: () => api.forms.list(activeWorkspaceId),
     enabled: !!activeWorkspaceId,
-  });
-
-  const createMutation = useMutation({
-    mutationFn: async () => {
-      // Re-fetch workspace if missing
-      let wsId = activeWorkspaceId;
-      if (!wsId) {
-        const ws = await fetchWorkspaces();
-        wsId = ws?.[0]?.id;
-      }
-      if (!wsId) throw new Error('No workspace found. Please refresh.');
-      return api.forms.create(wsId, { title: 'Untitled form' });
-    },
-    onSuccess: ({ form }) => navigate(`/forms/${form.id}/builder`),
-    onError: (err) => toast.error(err.message),
   });
 
   const duplicateMutation = useMutation({
@@ -64,6 +51,9 @@ export default function DashboardPage() {
 
   return (
     <AppShell>
+      {showTemplatePicker && (
+        <TemplatePickerModal onClose={() => setShowTemplatePicker(false)} />
+      )}
       <div className="max-w-6xl mx-auto px-4 py-6">
         {/* Workspace header */}
         <div className="flex items-center justify-between mb-6">
@@ -82,12 +72,10 @@ export default function DashboardPage() {
             </button>
           </div>
           <button
-            onClick={() => createMutation.mutate()}
-            disabled={createMutation.isPending}
-            className="flex items-center gap-1.5 px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+            onClick={() => setShowTemplatePicker(true)}
+            className="flex items-center gap-1.5 px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold rounded-lg transition-colors"
           >
-            {createMutation.isPending ? <Loader className="w-4 h-4 animate-spin" /> : '+'}
-            New Form
+            + New Form
           </button>
         </div>
 
@@ -107,7 +95,7 @@ export default function DashboardPage() {
             </div>
           ) : forms.length === 0 ? (
             <EmptyState
-              onCreate={() => createMutation.mutate()}
+              onCreate={() => setShowTemplatePicker(true)}
               onInvite={() => navigate('/settings/members')}
             />
           ) : (
