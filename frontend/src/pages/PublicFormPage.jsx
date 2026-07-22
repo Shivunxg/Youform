@@ -8,6 +8,8 @@ import { clsx } from 'clsx';
 export default function PublicFormPage() {
   const { slug } = useParams();
   const [form, setForm] = useState(null);
+  const [requiresPassword, setRequiresPassword] = useState(false);
+  const [passwordUnlocked, setPasswordUnlocked] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -23,10 +25,13 @@ export default function PublicFormPage() {
 
   useEffect(() => {
     api.public.getForm(slug)
-      .then(({ form }) => {
+      .then(({ form, requiresPassword }) => {
         setForm(form);
+        setRequiresPassword(!!requiresPassword);
         setLoading(false);
-        api.public.startForm(form.id).catch(() => {});
+        if (!requiresPassword) {
+          api.public.startForm(form.id).catch(() => {});
+        }
 
         // Inject hidden fields from URL params
         const hiddenFields = form.settings?.hiddenFields ?? [];
@@ -50,6 +55,21 @@ export default function PublicFormPage() {
   if (loading) return <FullPageSpinner />;
   if (error) return <ErrorPage message={error} />;
   if (!form) return null;
+
+  // Password gate
+  if (requiresPassword && !passwordUnlocked) {
+    return (
+      <PasswordGate
+        slug={slug}
+        formTitle={form.title}
+        primaryColor={form.theme?.primaryColor ?? '#6366f1'}
+        onUnlocked={() => {
+          setPasswordUnlocked(true);
+          api.public.startForm(form.id).catch(() => {});
+        }}
+      />
+    );
+  }
 
   const questions = (form.questions ?? []).filter(q => q.type !== 'thank_you_screen');
   const thankYouQ = (form.questions ?? []).find(q => q.type === 'thank_you_screen');
@@ -130,6 +150,7 @@ export default function PublicFormPage() {
               isLast={isLast}
               submitting={submitting}
               submitError={submitError}
+              formId={form.id}
             />
           ) : (
             <p className="text-gray-400 text-center">This form has no questions.</p>
@@ -149,7 +170,7 @@ export default function PublicFormPage() {
   );
 }
 
-function QuestionSlide({ question, answer, onAnswer, primary, index, total, onNext, onPrev, isFirst, isLast, submitting, submitError }) {
+function QuestionSlide({ question, answer, onAnswer, primary, index, total, onNext, onPrev, isFirst, isLast, submitting, submitError, formId }) {
   if (question.type === 'welcome_screen') {
     return (
       <div className="text-center animate-fade-in">
@@ -176,7 +197,7 @@ function QuestionSlide({ question, answer, onAnswer, primary, index, total, onNe
       {question.description && <p className="text-gray-500 mb-6">{question.description}</p>}
 
       <div className="mt-6 mb-8">
-        <PublicAnswerInput question={question} answer={answer} onAnswer={onAnswer} primary={primary} />
+        <PublicAnswerInput question={question} answer={answer} onAnswer={onAnswer} primary={primary} formId={formId} />
       </div>
 
       {submitError && (
@@ -206,7 +227,7 @@ function QuestionSlide({ question, answer, onAnswer, primary, index, total, onNe
   );
 }
 
-function PublicAnswerInput({ question, answer, onAnswer, primary }) {
+function PublicAnswerInput({ question, answer, onAnswer, primary, formId }) {
   const { type, config } = question;
 
   if (['short_text', 'email', 'phone', 'number'].includes(type)) {
@@ -347,17 +368,156 @@ function PublicAnswerInput({ question, answer, onAnswer, primary }) {
   if (type === 'statement') return <p className="text-gray-600 text-lg leading-relaxed">{question.description}</p>;
 
   if (type === 'file_upload') {
-    return (
-      <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-2xl p-12 cursor-pointer hover:border-gray-400 transition-colors">
-        <span className="text-4xl mb-3">📎</span>
-        <span className="text-gray-600 font-medium">Click to upload a file</span>
-        <span className="text-sm text-gray-400 mt-1">{(config?.allowedTypes ?? []).join(', ').toUpperCase()} · Max {config?.maxSizeMb ?? 10}MB</span>
-        <input type="file" className="hidden" />
-      </label>
-    );
+    return <FileUploadInput config={config} answer={answer} onAnswer={onAnswer} formId={formId} primary={primary} />;
   }
 
   return null;
+}
+
+function FileUploadInput({ config, answer, onAnswer, formId, primary }) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+  const maxMb = config?.maxSizeMb ?? 10;
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > maxMb * 1024 * 1024) {
+      setUploadError(`File too large. Max size is ${maxMb}MB.`);
+      return;
+    }
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const result = await api.public.uploadFile(formId, file);
+      onAnswer(result.url);
+    } catch (err) {
+      setUploadError(err.message || 'Upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  if (answer) {
+    return (
+      <div className="border-2 border-green-400 rounded-2xl p-6 bg-green-50">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">✅</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-green-800 truncate">File uploaded</p>
+            <a href={answer} target="_blank" rel="noreferrer" className="text-xs text-green-600 underline truncate block">
+              {answer.split('/').pop()}
+            </a>
+          </div>
+          <button
+            onClick={() => onAnswer(null)}
+            className="text-xs text-gray-400 hover:text-red-400 transition-colors shrink-0"
+          >
+            Remove
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <label className={clsx(
+        'flex flex-col items-center justify-center border-2 border-dashed rounded-2xl p-12 cursor-pointer transition-colors',
+        uploading ? 'border-gray-200 bg-gray-50 cursor-wait' : 'border-gray-300 hover:border-gray-400'
+      )}>
+        {uploading ? (
+          <>
+            <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin mb-3" style={{ borderColor: primary, borderTopColor: 'transparent' }} />
+            <span className="text-gray-500 font-medium">Uploading…</span>
+          </>
+        ) : (
+          <>
+            <span className="text-4xl mb-3">📎</span>
+            <span className="text-gray-600 font-medium">Click to upload a file</span>
+            <span className="text-sm text-gray-400 mt-1">
+              {(config?.allowedTypes ?? []).join(', ').toUpperCase() || 'Any file type'} · Max {maxMb}MB
+            </span>
+          </>
+        )}
+        <input
+          type="file"
+          className="hidden"
+          disabled={uploading}
+          accept={config?.allowedTypes?.map(t => `.${t}`).join(',') || undefined}
+          onChange={handleFile}
+        />
+      </label>
+      {uploadError && <p className="text-red-500 text-sm mt-2">{uploadError}</p>}
+    </div>
+  );
+}
+
+function PasswordGate({ slug, formTitle, primaryColor, onUnlocked }) {
+  const [password, setPassword] = useState('');
+  const [show, setShow] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!password) return;
+    setChecking(true);
+    setError(null);
+    try {
+      const { valid } = await api.public.verifyPassword(slug, password);
+      if (valid) {
+        onUnlocked();
+      } else {
+        setError('Incorrect password. Please try again.');
+      }
+    } catch {
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
+      <div className="w-full max-w-sm bg-white rounded-2xl border-2 border-[#111] p-8" style={{ boxShadow: '6px 6px 0 #111' }}>
+        <div className="text-center mb-6">
+          <div className="text-4xl mb-3">🔒</div>
+          <h1 className="text-xl font-bold text-[#111]">{formTitle || 'Protected Form'}</h1>
+          <p className="text-sm text-gray-500 mt-1">Enter the password to access this form.</p>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="relative">
+            <input
+              type={show ? 'text' : 'password'}
+              className="w-full border-2 border-[#111] rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-offset-1 pr-12"
+              style={{ focusRingColor: primaryColor }}
+              placeholder="Password"
+              value={password}
+              autoFocus
+              onChange={e => setPassword(e.target.value)}
+            />
+            <button
+              type="button"
+              onClick={() => setShow(v => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs font-medium"
+            >
+              {show ? 'Hide' : 'Show'}
+            </button>
+          </div>
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+          <button
+            type="submit"
+            disabled={checking || !password}
+            className="w-full py-3 rounded-xl text-white font-semibold text-base transition-opacity hover:opacity-90 disabled:opacity-40"
+            style={{ backgroundColor: primaryColor }}
+          >
+            {checking ? 'Checking…' : 'Unlock form'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
 }
 
 function ThankYouScreen({ question, primary, formTitle, quizScore, quizMode }) {

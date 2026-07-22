@@ -57,6 +57,8 @@ export const api = {
     update: (id, body)     => patch(`/forms/${id}`, body),
     delete: (id)           => del(`/forms/${id}`),
     duplicate: (id)        => post(`/forms/${id}/duplicate`),
+    setPassword: (id, password) => post(`/forms/${id}/password`, { password }),
+    removePassword: (id)   => del(`/forms/${id}/password`),
     saveQuestions: (id, questions) => put(`/forms/${id}/questions`, { questions }),
     addQuestion: (id, body) => post(`/forms/${id}/questions`, body),
     updateQuestion: (fid, qid, body) => patch(`/forms/${fid}/questions/${qid}`, body),
@@ -81,6 +83,17 @@ export const api = {
     startForm: (fid)       => post(`/public/forms/${fid}/start`),
     submit: (fid, body)    => post(`/public/forms/${fid}/responses`, body),
     partial: (fid, body)   => post(`/public/forms/${fid}/responses/partial`, body),
+    verifyPassword: (slug, password) => post(`/public/forms/${slug}/verify-password`, { password }),
+    uploadFile: async (formId, file) => {
+      const headers = await getHeaders();
+      delete headers['Content-Type']; // let browser set multipart boundary
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(`${BASE}/public/forms/${formId}/upload`, { method: 'POST', headers, body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      return data;
+    },
   },
 
   // ── Templates ──────────────────────────────────────────────

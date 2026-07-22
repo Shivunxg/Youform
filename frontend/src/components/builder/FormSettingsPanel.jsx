@@ -1,7 +1,10 @@
-import { X, Lock, Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { X, Lock, Plus, Trash2, Eye, EyeOff, ShieldCheck, ShieldOff } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import { useBuilderStore } from '@/stores/builderStore';
 import { hasFeature } from '@/lib/plans';
+import { api } from '@/lib/api';
+import toast from 'react-hot-toast';
 
 function FeatureToggle({ label, description, value, onChange, plan, feature }) {
   const allowed = hasFeature(plan, feature);
@@ -40,6 +43,86 @@ function Section({ title, children }) {
     <div className="mb-1">
       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-1">{title}</p>
       <div className="px-4">{children}</div>
+    </div>
+  );
+}
+
+function PasswordSection({ formId }) {
+  const [password, setPassword] = useState('');
+  const [show, setShow] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [hasPassword, setHasPassword] = useState(null); // null = unknown
+
+  const handleSet = async () => {
+    if (!password.trim()) return;
+    setSaving(true);
+    try {
+      await api.forms.setPassword(formId, password.trim());
+      toast.success('Password set');
+      setHasPassword(true);
+      setPassword('');
+    } catch {
+      toast.error('Could not set password');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemove = async () => {
+    setSaving(true);
+    try {
+      await api.forms.removePassword(formId);
+      toast.success('Password removed');
+      setHasPassword(false);
+    } catch {
+      toast.error('Could not remove password');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="py-3 border-b border-gray-100">
+      <div className="flex items-center gap-1.5 mb-1">
+        <p className="text-sm font-medium text-gray-800">Password protection</p>
+      </div>
+      <p className="text-xs text-gray-400 mb-3">Require a password before respondents can access the form.</p>
+      {hasPassword === true ? (
+        <button
+          onClick={handleRemove}
+          disabled={saving}
+          className="flex items-center gap-1.5 text-xs text-red-500 font-bold hover:underline disabled:opacity-50"
+        >
+          <ShieldOff className="w-3.5 h-3.5" /> {saving ? 'Removing…' : 'Remove password'}
+        </button>
+      ) : (
+        <div className="space-y-2">
+          <div className="relative">
+            <input
+              type={show ? 'text' : 'password'}
+              className="input text-sm pr-16"
+              placeholder="Set a password…"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSet()}
+            />
+            <button
+              type="button"
+              onClick={() => setShow(v => !v)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              {show ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+          <button
+            onClick={handleSet}
+            disabled={saving || !password.trim()}
+            className="flex items-center gap-1.5 text-xs text-[#f97316] font-bold hover:underline disabled:opacity-40"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" /> {saving ? 'Saving…' : 'Set password'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -178,6 +261,11 @@ export default function FormSettingsPanel({ onClose }) {
             <Plus className="w-3 h-3" /> Add field
           </button>
         </div>
+      </Section>
+
+      {/* Security */}
+      <Section title="Security">
+        <PasswordSection formId={form.id} />
       </Section>
 
       {/* Schedule */}

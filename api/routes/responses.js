@@ -1,5 +1,8 @@
 import { Router } from 'express';
 import { body, validationResult } from 'express-validator';
+import multer from 'multer';
+import bcrypt from 'bcryptjs';
+import { nanoid } from 'nanoid';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { requireAuth, optionalAuth } from '../lib/auth.js';
 import { createError } from '../lib/errorHandler.js';
@@ -7,6 +10,7 @@ import { canAcceptResponse } from '../lib/plans.js';
 import { responseQueue } from '../lib/queues.js';
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
 // ============================================================
 // PUBLIC: GET /public/forms/:slug
@@ -54,6 +58,48 @@ router.post('/public/forms/:formId/start', async (req, res, next) => {
 
     await supabaseAdmin.from('forms').update({ starts_count: form.starts_count + 1 }).eq('id', req.params.formId);
     res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
+// ============================================================
+// PUBLIC: POST /public/forms/:slug/verify-password
+// ============================================================
+router.post('/public/forms/:slug/verify-password', async (req, res, next) => {
+  try {
+    const { data: form } = await supabaseAdmin.from('forms')
+      .select('password_hash').eq('slug', req.params.slug).single();
+    if (!form) throw createError(404, 'Form not found');
+    if (!form.password_hash) return res.json({ valid: true });
+    const valid = await bcrypt.compare(String(req.body.password ?? ''), form.password_hash);
+    res.json({ valid });
+  } catch (err) { next(err); }
+});
+
+// ============================================================
+// PUBLIC: POST /public/forms/:formId/upload
+// Upload a file for a file_upload question answer
+// ============================================================
+router.post('/public/forms/:formId/upload', upload.single('file'), async (req, res, next) => {
+  try {
+    const { formId } = req.params;
+    if (!req.file) throw createError(400, 'No file provided');
+
+    const { data: form } = await supabaseAdmin.from('forms')
+      .select('id, status').eq('id', formId).single();
+    if (!form || form.status !== 'published') throw createError(404, 'Form not found');
+
+    const ext = (req.file.originalname.split('.').pop() ?? 'bin').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const path = `${formId}/${nanoid()}.${ext}`;
+
+    const { data, error } = await supabaseAdmin.storage
+      .from('form-uploads')
+      .upload(path, req.file.buffer, { contentType: req.file.mimetype, upsert: false });
+
+    if (error) throw createError(500, `Storage error: ${error.message}`);
+
+    const { data: { publicUrl } } = supabaseAdmin.storage.from('form-uploads').getPublicUrl(data.path);
+
+    res.json({ url: publicUrl, name: req.file.originalname, size: req.file.size, type: req.file.mimetype });
   } catch (err) { next(err); }
 });
 
