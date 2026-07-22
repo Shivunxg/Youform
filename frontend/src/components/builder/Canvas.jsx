@@ -3,12 +3,12 @@ import { Plus, Paintbrush, GitBranch, Monitor, Smartphone, Check, Loader } from 
 import { useBuilderStore } from '@/stores/builderStore';
 import { TypePickerDropdown } from './BlockList';
 import { clsx } from 'clsx';
-import toast from 'react-hot-toast';
 
 export default function Canvas({ onToggleDesign }) {
   const {
     form, questions, selectedQuestionId, addQuestion,
     isDirty, isSaving, previewDevice, setPreviewDevice,
+    openLogicPanel, logicPanelOpen,
   } = useBuilderStore();
 
   const [showAddPicker, setShowAddPicker] = useState(false);
@@ -62,8 +62,11 @@ export default function Canvas({ onToggleDesign }) {
 
         {/* Logic */}
         <button
-          onClick={() => toast('Logic editor coming in the next update ⚡', { duration: 2000 })}
-          className="btn-ghost text-xs h-7 px-2.5 gap-1.5 rounded-lg"
+          onClick={openLogicPanel}
+          className={clsx(
+            'btn-ghost text-xs h-7 px-2.5 gap-1.5 rounded-lg',
+            logicPanelOpen && 'bg-brand-50 text-brand-600'
+          )}
         >
           <GitBranch className="w-3.5 h-3.5" /> Logic
         </button>

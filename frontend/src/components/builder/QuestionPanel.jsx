@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { nanoid } from 'nanoid';
 import { Plus, Trash2, X, GitBranch } from 'lucide-react';
 import { useBuilderStore } from '@/stores/builderStore';
@@ -185,8 +185,16 @@ const OPERATORS = [
 ];
 
 function LogicEditor({ question, onUpdate }) {
-  const { questions } = useBuilderStore();
+  const { questions, logicPanelOpen, closeLogicPanel } = useBuilderStore();
   const [open, setOpen] = useState(false);
+  const sectionRef = useRef(null);
+
+  useEffect(() => {
+    if (logicPanelOpen) {
+      setOpen(true);
+      setTimeout(() => sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    }
+  }, [logicPanelOpen]);
 
   const rules = question.logic ?? [];
   const hasRules = rules.length > 0;
@@ -217,9 +225,9 @@ function LogicEditor({ question, onUpdate }) {
   ];
 
   return (
-    <div className="border-t border-gray-100 pt-4 mt-2">
+    <div ref={sectionRef} className="border-t border-gray-100 pt-4 mt-2">
       <button
-        onClick={() => setOpen(v => !v)}
+        onClick={() => { setOpen(v => !v); if (open) closeLogicPanel(); }}
         className="flex items-center gap-2 w-full text-left"
       >
         <GitBranch className="w-3.5 h-3.5 text-gray-400 shrink-0" />

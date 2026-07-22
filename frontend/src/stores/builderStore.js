@@ -44,6 +44,7 @@ export const useBuilderStore = create((set, get) => ({
   previewMode: false,     // false = editor, true = preview
   previewDevice: 'desktop', // 'desktop' | 'mobile'
   showFormSettings: false,
+  logicPanelOpen: false,
 
   // ── Load ───────────────────────────────────────────────────
   loadForm: async (formId) => {
@@ -60,6 +61,13 @@ export const useBuilderStore = create((set, get) => ({
   selectQuestion: (id) => set({ selectedQuestionId: id, showFormSettings: false }),
   deselect: () => set({ selectedQuestionId: null }),
   toggleFormSettings: () => set(s => ({ showFormSettings: !s.showFormSettings, selectedQuestionId: null })),
+  openLogicPanel: () => {
+    const { questions, selectedQuestionId } = get();
+    const answerable = questions.find(q => !['welcome_screen', 'thank_you_screen', 'statement'].includes(q.type));
+    const targetId = selectedQuestionId ?? answerable?.id ?? null;
+    set({ logicPanelOpen: true, selectedQuestionId: targetId, showFormSettings: false });
+  },
+  closeLogicPanel: () => set({ logicPanelOpen: false }),
 
   // ── Add question ───────────────────────────────────────────
   addQuestion: (type, afterId) => {
