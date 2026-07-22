@@ -1,12 +1,97 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { nanoid } from 'nanoid';
-import { Plus, Trash2, X, GitBranch } from 'lucide-react';
+import { Plus, Trash2, X, GitBranch, AtSign } from 'lucide-react';
 import { useBuilderStore } from '@/stores/builderStore';
 import { QUESTION_META } from './questionMeta';
 import { clsx } from 'clsx';
 
+// Textarea with @-variable picker for answer piping
+function PipingTextarea({ value, onChange, placeholder, rows = 2, pipableQuestions }) {
+  const [showPicker, setShowPicker] = useState(false);
+  const textareaRef = useRef(null);
+  const pickerRef = useRef(null);
+
+  useEffect(() => {
+    if (!showPicker) return;
+    const handler = (e) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target) &&
+          textareaRef.current && !textareaRef.current.contains(e.target)) {
+        setShowPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showPicker]);
+
+  const insertVariable = (qId) => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const snippet = `@{${qId}}`;
+    const next = value.slice(0, start) + snippet + value.slice(end);
+    onChange(next);
+    setShowPicker(false);
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(start + snippet.length, start + snippet.length);
+    }, 0);
+  };
+
+  return (
+    <div className="relative">
+      <textarea
+        ref={textareaRef}
+        rows={rows}
+        className="input resize-none text-sm pr-7"
+        placeholder={placeholder}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+      />
+      {pipableQuestions.length > 0 && (
+        <button
+          type="button"
+          title="Insert answer from previous question"
+          onClick={() => setShowPicker(v => !v)}
+          className={clsx(
+            'absolute right-2 top-2 p-0.5 rounded transition-colors',
+            showPicker ? 'text-[#f97316]' : 'text-gray-300 hover:text-gray-500'
+          )}
+        >
+          <AtSign className="w-3.5 h-3.5" />
+        </button>
+      )}
+      {showPicker && (
+        <div
+          ref={pickerRef}
+          className="absolute right-0 top-8 z-50 w-56 bg-white border-2 border-[#111] rounded-xl shadow-lg overflow-hidden"
+          style={{ boxShadow: '4px 4px 0 #111' }}
+        >
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-3 py-2 border-b border-gray-100">
+            Insert answer from…
+          </p>
+          <div className="max-h-48 overflow-y-auto p-1">
+            {pipableQuestions.map(q => (
+              <button
+                key={q.id}
+                onClick={() => insertVariable(q.id)}
+                className="w-full text-left px-2.5 py-1.5 text-xs font-medium text-[#111] hover:bg-orange-50 rounded-lg transition-colors truncate"
+              >
+                <span className="text-[#f97316] font-mono mr-1.5">@</span>
+                {q.title || 'Untitled'}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const ANSWERABLE_TYPES = new Set(['short_text','long_text','multiple_choice','dropdown','yes_no','rating','nps','email','phone','number','date']);
+
 export default function QuestionPanel() {
-  const { getSelectedQuestion, updateQuestion, updateQuestionConfig, deselect, form } = useBuilderStore();
+  const { getSelectedQuestion, updateQuestion, updateQuestionConfig, deselect, form, questions } = useBuilderStore();
   const question = getSelectedQuestion();
   const quizMode = form?.settings?.quizMode ?? false;
 
@@ -19,6 +104,12 @@ export default function QuestionPanel() {
   }
 
   const meta = QUESTION_META[question.type] ?? {};
+
+  // Questions that appear before the current one and can be piped
+  const currentPos = question.position ?? 0;
+  const pipable = questions.filter(q =>
+    ANSWERABLE_TYPES.has(q.type) && (q.position ?? 0) < currentPos && q.id !== question.id
+  );
 
   return (
     <aside className="w-72 bg-white border-l border-gray-100 overflow-y-auto shrink-0">
@@ -37,24 +128,22 @@ export default function QuestionPanel() {
         {/* Question title */}
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Question</label>
-          <textarea
-            rows={2}
-            className="input resize-none text-sm"
-            placeholder="Your question…"
+          <PipingTextarea
             value={question.title}
-            onChange={e => updateQuestion(question.id, { title: e.target.value })}
+            onChange={v => updateQuestion(question.id, { title: v })}
+            placeholder="Your question…"
+            pipableQuestions={pipable}
           />
         </div>
 
         {/* Description */}
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Description <span className="text-gray-400 font-normal">(optional)</span></label>
-          <textarea
-            rows={2}
-            className="input resize-none text-sm"
-            placeholder="Add a hint or extra detail…"
+          <PipingTextarea
             value={question.description ?? ''}
-            onChange={e => updateQuestion(question.id, { description: e.target.value })}
+            onChange={v => updateQuestion(question.id, { description: v })}
+            placeholder="Add a hint or extra detail…"
+            pipableQuestions={pipable}
           />
         </div>
 

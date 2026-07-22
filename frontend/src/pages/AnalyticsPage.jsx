@@ -188,24 +188,32 @@ export default function AnalyticsPage() {
   );
 }
 
-function ChoiceDistribution({ title, q, stat, choices, total }) {
-  // We can't get per-choice counts from current API (only total answered)
-  // Show a placeholder note — upgrade path for detailed breakdown
+function ChoiceDistribution({ title, q, stat, choices }) {
+  const distribution = stat.distribution ?? {};
+  const maxCount = Math.max(...choices.map(c => distribution[c.id] ?? 0), 1);
   return (
     <div className="bg-white rounded-xl border-2 border-[#111] p-6 mb-4" style={{ boxShadow: '4px 4px 0 #111' }}>
       <h2 className="text-sm font-bold text-[#111] mb-1" style={SG}>{title || 'Untitled'}</h2>
       <p className="text-xs text-gray-400 mb-4">{stat.answered} answer{stat.answered !== 1 ? 's' : ''} · {choices.length} option{choices.length !== 1 ? 's' : ''}</p>
       <div className="space-y-2">
-        {choices.slice(0, 8).map(c => (
-          <div key={c.id} className="flex items-center gap-3">
-            <p className="text-xs text-[#111] w-28 truncate shrink-0">{c.label}</p>
-            <div className="flex-1 h-4 bg-gray-100 rounded border border-gray-200">
-              <div className="h-full bg-[#f97316]/30 rounded" style={{ width: `${Math.random() * 60 + 10}%` }} />
+        {choices.slice(0, 10).map(c => {
+          const count = distribution[c.id] ?? 0;
+          const pct = stat.answered > 0 ? Math.round((count / stat.answered) * 100) : 0;
+          const barPct = maxCount > 0 ? Math.round((count / maxCount) * 100) : 0;
+          return (
+            <div key={c.id} className="flex items-center gap-3">
+              <p className="text-xs text-[#111] w-28 truncate shrink-0">{c.label}</p>
+              <div className="flex-1 h-5 bg-gray-100 rounded overflow-hidden border border-gray-200">
+                <div className="h-full bg-[#f97316] rounded transition-all" style={{ width: `${barPct}%` }} />
+              </div>
+              <span className="text-xs font-bold text-gray-600 w-14 text-right shrink-0">
+                {pct}% <span className="text-gray-400 font-normal">({count})</span>
+              </span>
             </div>
-          </div>
-        ))}
-        {choices.length > 8 && (
-          <p className="text-[10px] text-gray-400">+{choices.length - 8} more options</p>
+          );
+        })}
+        {choices.length > 10 && (
+          <p className="text-[10px] text-gray-400">+{choices.length - 10} more options</p>
         )}
       </div>
     </div>

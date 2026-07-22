@@ -332,13 +332,29 @@ router.get('/forms/:formId/analytics', requireAuth, async (req, res, next) => {
     const total = responses?.length ?? 0;
     const completed = responses?.filter(r => !r.is_partial).length ?? 0;
 
-    // Per-question response count (how many people answered each question)
+    const CHOICE_TYPES = new Set(['multiple_choice', 'dropdown', 'yes_no', 'rating', 'nps']);
+
+    // Per-question response count + per-choice distribution
     const questionStats = form.questions.map(q => {
-      const answered = (responses ?? []).filter(r => {
+      const distribution = {};
+      let answered = 0;
+      for (const r of (responses ?? [])) {
         const a = r.answers?.[q.id];
-        return a !== undefined && a !== null && a !== '';
-      }).length;
-      return { question_id: q.id, title: q.title, answered, drop_off: total - answered };
+        if (a === undefined || a === null || a === '') continue;
+        answered++;
+        if (CHOICE_TYPES.has(q.type)) {
+          const ids = Array.isArray(a) ? a : [String(a)];
+          ids.forEach(id => { distribution[id] = (distribution[id] ?? 0) + 1; });
+        }
+      }
+      return {
+        question_id: q.id,
+        title: q.title,
+        type: q.type,
+        answered,
+        drop_off: total - answered,
+        ...(CHOICE_TYPES.has(q.type) ? { distribution } : {}),
+      };
     });
 
     const avgCompletionMs = completed > 0

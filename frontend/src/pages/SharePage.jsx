@@ -1,11 +1,50 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Link, Code, QrCode, ExternalLink, Copy, Check } from 'lucide-react';
+import { Link, Code, QrCode, ExternalLink, Copy, Check, Download } from 'lucide-react';
+import QRCode from 'qrcode';
 import { api } from '@/lib/api';
 import FormHeader from '@/components/builder/FormHeader';
 import toast from 'react-hot-toast';
 import { clsx } from 'clsx';
+
+function QRCodeCanvas({ url }) {
+  const canvasRef = useRef(null);
+  useEffect(() => {
+    if (!url || !canvasRef.current) return;
+    QRCode.toCanvas(canvasRef.current, url, {
+      width: 160,
+      margin: 2,
+      color: { dark: '#111111', light: '#FFFFFF' },
+    }).catch(() => {});
+  }, [url]);
+
+  const handleDownload = () => {
+    if (!canvasRef.current) return;
+    const link = document.createElement('a');
+    link.download = 'qr-code.png';
+    link.href = canvasRef.current.toDataURL('image/png');
+    link.click();
+  };
+
+  return (
+    <div className="flex items-center gap-6">
+      <canvas ref={canvasRef} className="rounded-xl border-2 border-[#111] shrink-0" style={{ boxShadow: '4px 4px 0 #111' }} />
+      <div>
+        <p className="text-sm text-gray-700 mb-3">
+          Print or display this QR code so respondents can scan it with their phone.
+        </p>
+        <button
+          onClick={handleDownload}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-[#111] text-xs font-bold text-[#111] hover:-translate-y-px transition-all"
+          style={{ boxShadow: '2px 2px 0 #111' }}
+        >
+          <Download className="w-3.5 h-3.5" /> Download PNG
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function SharePage() {
   const { formId } = useParams();
@@ -144,47 +183,41 @@ export default function SharePage() {
 
           {/* QR Code */}
           <Section icon={<QrCode className="w-4 h-4" />} title="QR Code">
-            <div className="flex items-center gap-6">
-              <div className="w-28 h-28 bg-white border-2 border-gray-200 rounded-xl flex items-center justify-center shrink-0">
-                <div className="text-center">
-                  <span className="text-3xl">🔲</span>
-                  <p className="text-[9px] text-gray-400 mt-1">QR Code</p>
-                </div>
-              </div>
-              <div>
-                <p className="text-sm text-gray-700 mb-2">
-                  Print or display this QR code so respondents can scan it with their phone.
-                </p>
-                <button
-                  onClick={() => toast('QR code download coming soon!', { icon: '🔲' })}
-                  className="btn-secondary text-xs px-3 py-1.5 h-auto"
-                >
-                  Download QR Code
-                </button>
-              </div>
-            </div>
+            <QRCodeCanvas url={publicUrl} />
           </Section>
 
           {/* Social share */}
           <Section title="Share on social">
             <div className="flex gap-2 flex-wrap">
               {[
-                { label: 'Twitter / X', emoji: '𝕏', color: '#000000' },
-                { label: 'LinkedIn', emoji: 'in', color: '#0A66C2' },
-                { label: 'WhatsApp', emoji: '💬', color: '#25D366' },
-                { label: 'Facebook', emoji: 'f', color: '#1877F2' },
+                {
+                  label: 'Twitter / X', emoji: '𝕏', color: '#000000',
+                  href: `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Fill out my form: ${publicUrl}`)}`,
+                },
+                {
+                  label: 'LinkedIn', emoji: 'in', color: '#0A66C2',
+                  href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(publicUrl)}`,
+                },
+                {
+                  label: 'WhatsApp', emoji: '💬', color: '#25D366',
+                  href: `https://wa.me/?text=${encodeURIComponent(`Fill out my form: ${publicUrl}`)}`,
+                },
+                {
+                  label: 'Facebook', emoji: 'f', color: '#1877F2',
+                  href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(publicUrl)}`,
+                },
               ].map(s => (
-                <button
+                <a
                   key={s.label}
-                  onClick={() => {
-                    const text = encodeURIComponent(`Check out this form: ${publicUrl}`);
-                    toast(`Opening ${s.label}…`);
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white hover:shadow-sm text-xs font-medium text-gray-700 transition-all"
+                  href={s.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-[#111] bg-white hover:-translate-y-px text-xs font-bold text-[#111] transition-all"
+                  style={{ boxShadow: '2px 2px 0 #111' }}
                 >
                   <span className="font-bold" style={{ color: s.color }}>{s.emoji}</span>
                   {s.label}
-                </button>
+                </a>
               ))}
             </div>
           </Section>

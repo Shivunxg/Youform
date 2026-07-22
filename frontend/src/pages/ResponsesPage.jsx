@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Download, Trash2, X, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { Download, Trash2, X, ChevronLeft, ChevronRight, Search, CheckSquare, Square } from 'lucide-react';
 import { api } from '@/lib/api';
 import FormHeader from '@/components/builder/FormHeader';
 import toast from 'react-hot-toast';
@@ -35,6 +35,7 @@ export default function ResponsesPage() {
   const { formId } = useParams();
   const qc = useQueryClient();
   const [selected, setSelected] = useState(null);
+  const [checkedIds, setCheckedIds] = useState(new Set());
   const [filter, setFilter] = useState('complete');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -61,6 +62,18 @@ export default function ResponsesPage() {
       toast.success('Response deleted');
       qc.invalidateQueries(['responses', formId]);
       setSelected(null);
+    },
+    onError: () => toast.error('Could not delete'),
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids) => {
+      await Promise.all([...ids].map(id => api.responses.delete(formId, id)));
+    },
+    onSuccess: () => {
+      toast.success(`${checkedIds.size} response${checkedIds.size !== 1 ? 's' : ''} deleted`);
+      setCheckedIds(new Set());
+      qc.invalidateQueries(['responses', formId]);
     },
     onError: () => toast.error('Could not delete'),
   });
@@ -123,6 +136,23 @@ export default function ResponsesPage() {
 
             <div className="flex-1" />
 
+            {/* Bulk delete */}
+            {checkedIds.size > 0 && (
+              <button
+                onClick={() => {
+                  if (confirm(`Delete ${checkedIds.size} selected response${checkedIds.size !== 1 ? 's' : ''}?`)) {
+                    bulkDeleteMutation.mutate(checkedIds);
+                  }
+                }}
+                disabled={bulkDeleteMutation.isPending}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-red-400 text-xs font-bold text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                style={SG}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete {checkedIds.size}
+              </button>
+            )}
+
             {/* Stats */}
             <span className="text-xs text-gray-500 font-medium">
               {total} response{total !== 1 ? 's' : ''}
@@ -155,6 +185,22 @@ export default function ResponsesPage() {
               <table className="w-full text-sm border-collapse">
                 <thead className="sticky top-0 bg-white z-10">
                   <tr className="border-b-2 border-[#111]">
+                    <th className="px-3 py-2.5 w-8">
+                      <button
+                        onClick={() => {
+                          if (checkedIds.size === responses.length) {
+                            setCheckedIds(new Set());
+                          } else {
+                            setCheckedIds(new Set(responses.map(r => r.id)));
+                          }
+                        }}
+                        className="text-gray-400 hover:text-[#111] transition-colors"
+                      >
+                        {checkedIds.size === responses.length && responses.length > 0
+                          ? <CheckSquare className="w-4 h-4 text-[#f97316]" />
+                          : <Square className="w-4 h-4" />}
+                      </button>
+                    </th>
                     <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-500 whitespace-nowrap w-32" style={SG}>#</th>
                     <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-500 whitespace-nowrap" style={SG}>Submitted</th>
                     <th className="text-left px-4 py-2.5 text-xs font-bold text-gray-500 whitespace-nowrap" style={SG}>Respondent</th>
@@ -169,15 +215,30 @@ export default function ResponsesPage() {
                 <tbody>
                   {responses.map((r, i) => {
                     const isSelected = r.id === selected;
+                    const isChecked = checkedIds.has(r.id);
                     return (
                       <tr
                         key={r.id}
                         onClick={() => setSelected(isSelected ? null : r.id)}
                         className={clsx(
                           'border-b border-gray-100 cursor-pointer transition-colors',
-                          isSelected ? 'bg-orange-50' : 'hover:bg-gray-50'
+                          isChecked ? 'bg-orange-50/60' : isSelected ? 'bg-orange-50' : 'hover:bg-gray-50'
                         )}
                       >
+                        <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
+                          <button
+                            onClick={() => setCheckedIds(prev => {
+                              const next = new Set(prev);
+                              next.has(r.id) ? next.delete(r.id) : next.add(r.id);
+                              return next;
+                            })}
+                            className="text-gray-400 hover:text-[#111] transition-colors"
+                          >
+                            {isChecked
+                              ? <CheckSquare className="w-4 h-4 text-[#f97316]" />
+                              : <Square className="w-4 h-4" />}
+                          </button>
+                        </td>
                         <td className="px-4 py-3 text-xs text-gray-400 font-mono">
                           {r.is_partial && (
                             <span className="mr-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-300">PARTIAL</span>
