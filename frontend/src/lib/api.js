@@ -101,6 +101,10 @@ export const api = {
     test: (fid, iid)       => post(`/forms/${fid}/integrations/${iid}/test`),
     getNotifications: (fid) => get(`/forms/${fid}/notifications`),
     saveNotifications: (fid, body) => put(`/forms/${fid}/notifications`, body),
+    googleSheets: {
+      listSheets:  (fid)       => get(`/forms/${fid}/integrations/google-sheets/sheets`),
+      createSheet: (fid, body) => post(`/forms/${fid}/integrations/google-sheets/create-sheet`, body),
+    },
   },
 
   // ── Billing ────────────────────────────────────────────────

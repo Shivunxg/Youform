@@ -7,6 +7,7 @@ import formsRouter from './routes/forms.js';
 import responsesRouter from './routes/responses.js';
 import workspacesRouter from './routes/workspaces.js';
 import integrationsRouter from './routes/integrations.js';
+import oauthRouter from './routes/oauth.js';
 import billingRouter from './routes/billing.js';
 import templatesRouter from './routes/templates.js';
 
@@ -30,6 +31,7 @@ app.use('/api', formsRouter);
 app.use('/api', responsesRouter);
 app.use('/api/workspaces', workspacesRouter);
 app.use('/api', integrationsRouter);
+app.use('/api/oauth', oauthRouter);
 app.use('/api/billing', billingRouter);
 app.use('/api/templates', templatesRouter);
 app.use((req, res) => res.status(404).json({ error: `${req.method} ${req.path} not found` }));

@@ -4,6 +4,7 @@ import { supabaseAdmin } from '../lib/supabase.js';
 import { requireAuth } from '../lib/auth.js';
 import { createError } from '../lib/errorHandler.js';
 import { hasFeature } from '../lib/plans.js';
+import { getValidToken, listUserSheets, getSpreadsheetMeta, createSpreadsheet } from '../lib/googleSheets.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -137,6 +138,79 @@ router.post('/forms/:formId/integrations/:integrationId/test', async (req, res, 
 });
 
 // ============================================================
+// GET /forms/:formId/integrations/google-sheets/sheets
+// List user's Google Sheets (after OAuth)
+// ============================================================
+router.get('/forms/:formId/integrations/google-sheets/sheets', async (req, res, next) => {
+  try {
+    await getFormAndCheckAccess(req.params.formId, req.user.id);
+
+    const { data: integration } = await supabaseAdmin
+      .from('integrations')
+      .select('id, config')
+      .eq('form_id', req.params.formId)
+      .eq('type', 'google_sheets')
+      .maybeSingle();
+
+    if (!integration?.config?.access_token) {
+      throw createError(400, 'Google account not connected. Please connect first.');
+    }
+
+    const { accessToken, updatedConfig } = await getValidToken(integration.config);
+
+    // Persist refreshed token if needed
+    if (updatedConfig) {
+      await supabaseAdmin.from('integrations')
+        .update({ config: updatedConfig }).eq('id', integration.id);
+    }
+
+    const sheets = await listUserSheets(accessToken);
+    res.json({ sheets });
+  } catch (err) { next(err); }
+});
+
+// ============================================================
+// POST /forms/:formId/integrations/google-sheets/create-sheet
+// Create a new spreadsheet and save it to the integration
+// ============================================================
+router.post('/forms/:formId/integrations/google-sheets/create-sheet', async (req, res, next) => {
+  try {
+    await getFormAndCheckAccess(req.params.formId, req.user.id);
+    const { title } = req.body;
+
+    const { data: integration } = await supabaseAdmin
+      .from('integrations')
+      .select('id, config')
+      .eq('form_id', req.params.formId)
+      .eq('type', 'google_sheets')
+      .maybeSingle();
+
+    if (!integration?.config?.access_token) {
+      throw createError(400, 'Google account not connected.');
+    }
+
+    const { accessToken, updatedConfig } = await getValidToken(integration.config);
+
+    const spreadsheet = await createSpreadsheet(accessToken, title || 'FormFlow Responses');
+    const spreadsheetId   = spreadsheet.spreadsheetId;
+    const spreadsheetName = spreadsheet.properties.title;
+    const sheetName       = spreadsheet.sheets?.[0]?.properties?.title || 'Sheet1';
+
+    const newConfig = {
+      ...(updatedConfig ?? integration.config),
+      spreadsheetId,
+      spreadsheetName,
+      sheetName,
+    };
+
+    await supabaseAdmin.from('integrations')
+      .update({ config: newConfig, enabled: true }).eq('id', integration.id);
+
+    res.json({ spreadsheetId, spreadsheetName, sheetName });
+  } catch (err) { next(err); }
+});
+
+// ============================================================
 // GET /workspaces/:workspaceId/notification-settings
 // ============================================================
 router.get('/forms/:formId/notifications', async (req, res, next) => {
@@ -193,10 +267,13 @@ function validateIntegrationConfig(type, config) {
 
 function redactConfig(type, config) {
   const redacted = { ...config };
-  // Redact secrets
-  if (redacted.secret) redacted.secret = '***';
-  if (redacted.apiKey) redacted.apiKey = '***';
-  if (redacted.accessToken) redacted.accessToken = '***';
+  // Redact secrets and OAuth tokens
+  if (redacted.secret)        delete redacted.secret;
+  if (redacted.apiKey)        delete redacted.apiKey;
+  if (redacted.accessToken)   delete redacted.accessToken;
+  if (redacted.access_token)  delete redacted.access_token;
+  if (redacted.refresh_token) delete redacted.refresh_token;
+  if (redacted.token_expiry)  delete redacted.token_expiry;
   return redacted;
 }
 
