@@ -63,7 +63,7 @@ router.get('/users', async (req, res, next) => {
     let q = supabaseAdmin
       .from('profiles')
       .select(
-        'id, email, full_name, avatar_url, created_at, is_platform_admin, workspace_members(role, workspaces(id, name, plan))',
+        'id, email, full_name, avatar_url, created_at, is_platform_admin, workspace_members!user_id(role, workspaces(id, name, plan))',
         { count: 'exact' }
       )
       .order('created_at', { ascending: false })
@@ -96,7 +96,7 @@ router.get('/workspaces', async (req, res, next) => {
     const { page = 1, limit = 25, search, plan } = req.query;
     let q = supabaseAdmin
       .from('workspaces')
-      .select('id, name, slug, plan, responses_count, created_at, subscription_status', { count: 'exact' })
+      .select('id, name, slug, plan, created_at, subscription_status', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range((+page - 1) * +limit, +page * +limit - 1);
     if (search) q = q.ilike('name', `%${search}%`);

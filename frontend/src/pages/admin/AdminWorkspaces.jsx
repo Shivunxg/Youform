@@ -88,7 +88,7 @@ export default function AdminWorkspaces() {
             <tr className="border-b-2 border-[#111] bg-[#FFFBF2]">
               <th className="text-left px-5 py-3 font-bold text-[#111]">Workspace</th>
               <th className="text-left px-5 py-3 font-bold text-[#111]">Plan</th>
-              <th className="text-right px-5 py-3 font-bold text-[#111]">Responses</th>
+              <th className="text-left px-5 py-3 font-bold text-[#111]">Status</th>
               <th className="text-left px-5 py-3 font-bold text-[#111]">Created</th>
               <th className="px-5 py-3" />
             </tr>
@@ -120,8 +120,10 @@ export default function AdminWorkspaces() {
                       {ws.plan ?? 'free'}
                     </span>
                   </td>
-                  <td className="px-5 py-3.5 text-right font-bold text-[#111]">
-                    {(ws.responses_count ?? 0).toLocaleString()}
+                  <td className="px-5 py-3.5">
+                    <span className={`text-xs font-bold capitalize ${ws.subscription_status === 'active' ? 'text-emerald-600' : ws.subscription_status ? 'text-amber-600' : 'text-gray-400'}`}>
+                      {ws.subscription_status ?? '—'}
+                    </span>
                   </td>
                   <td className="px-5 py-3.5 text-gray-500">{formatDate(ws.created_at)}</td>
                   <td className="px-5 py-3.5 text-right">
