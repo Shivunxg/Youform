@@ -1,4 +1,5 @@
-import { X, Lock } from 'lucide-react';
+import { X, Lock, Plus, Trash2 } from 'lucide-react';
+import { nanoid } from 'nanoid';
 import { useBuilderStore } from '@/stores/builderStore';
 import { hasFeature } from '@/lib/plans';
 
@@ -129,6 +130,54 @@ export default function FormSettingsPanel({ onClose }) {
           plan={plan}
           feature="respondent_notifications"
         />
+      </Section>
+
+      {/* Quiz mode */}
+      <Section title="Quiz & Scoring">
+        <FeatureToggle
+          label="Quiz mode"
+          description="Assign scores to answers and show results at the end"
+          value={settings.quizMode}
+          onChange={v => update('quizMode', v)}
+          plan={plan}
+          feature="remove_branding"
+        />
+      </Section>
+
+      {/* Hidden fields */}
+      <Section title="Hidden Fields">
+        <div className="py-2 space-y-2">
+          <p className="text-[10px] text-gray-400 leading-relaxed">
+            Capture URL parameters with every response. Pass values as <code className="bg-gray-100 px-1 rounded">?field=value</code>.
+          </p>
+          {(settings.hiddenFields ?? []).map((field, i) => (
+            <div key={field.id} className="flex items-center gap-1.5">
+              <input
+                className="input text-xs py-1 flex-1 font-mono"
+                placeholder="field_name"
+                value={field.key}
+                onChange={e => {
+                  const updated = (settings.hiddenFields ?? []).map((f, j) =>
+                    j === i ? { ...f, key: e.target.value.replace(/\s/g, '_').toLowerCase() } : f
+                  );
+                  update('hiddenFields', updated);
+                }}
+              />
+              <button
+                onClick={() => update('hiddenFields', (settings.hiddenFields ?? []).filter((_, j) => j !== i))}
+                className="p-1 text-gray-300 hover:text-red-400 shrink-0"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+          <button
+            onClick={() => update('hiddenFields', [...(settings.hiddenFields ?? []), { id: nanoid(), key: '' }])}
+            className="flex items-center gap-1 text-xs text-[#f97316] font-bold hover:underline mt-1"
+          >
+            <Plus className="w-3 h-3" /> Add field
+          </button>
+        </div>
       </Section>
 
       {/* Schedule */}

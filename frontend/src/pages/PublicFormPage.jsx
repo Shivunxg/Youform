@@ -17,6 +17,7 @@ export default function PublicFormPage() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  const [quizScore, setQuizScore] = useState(null);
   const startedAt = useRef(Date.now());
   const respondentId = useRef(nanoid());
 
@@ -25,8 +26,20 @@ export default function PublicFormPage() {
       .then(({ form }) => {
         setForm(form);
         setLoading(false);
-        // Track start
         api.public.startForm(form.id).catch(() => {});
+
+        // Inject hidden fields from URL params
+        const hiddenFields = form.settings?.hiddenFields ?? [];
+        if (hiddenFields.length > 0) {
+          const params = new URLSearchParams(window.location.search);
+          const injected = {};
+          hiddenFields.forEach(f => {
+            if (f.key && params.has(f.key)) injected[`__hf_${f.key}`] = params.get(f.key);
+          });
+          if (Object.keys(injected).length > 0) {
+            setAnswers(a => ({ ...a, ...injected }));
+          }
+        }
       })
       .catch(err => {
         setError(err.message);
@@ -63,6 +76,9 @@ export default function PublicFormPage() {
           utm_medium: new URLSearchParams(window.location.search).get('utm_medium'),
           utm_campaign: new URLSearchParams(window.location.search).get('utm_campaign'),
         });
+        if (form.settings?.quizMode) {
+          setQuizScore(computeScore(questions, answers));
+        }
         setSubmitted(true);
       } catch (err) {
         setSubmitError(err.message);
@@ -99,10 +115,10 @@ export default function PublicFormPage() {
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-16">
         <div className="w-full max-w-xl">
           {submitted ? (
-            <ThankYouScreen question={thankYouQ} primary={primary} formTitle={form.title} />
+            <ThankYouScreen question={thankYouQ} primary={primary} formTitle={form.title} quizScore={quizScore} quizMode={form.settings?.quizMode} />
           ) : current ? (
             <QuestionSlide
-              question={current}
+              question={pipeAnswers(current, questions, answers)}
               answer={answers[current.id]}
               onAnswer={(v) => setAnswer(current.id, v)}
               primary={primary}
@@ -344,7 +360,7 @@ function PublicAnswerInput({ question, answer, onAnswer, primary }) {
   return null;
 }
 
-function ThankYouScreen({ question, primary, formTitle }) {
+function ThankYouScreen({ question, primary, formTitle, quizScore, quizMode }) {
   return (
     <div className="text-center animate-fade-in">
       <div className="text-6xl mb-6">🎉</div>
@@ -354,6 +370,13 @@ function ThankYouScreen({ question, primary, formTitle }) {
       <p className="text-lg text-gray-500">
         {question?.config?.message ?? 'Your response has been recorded.'}
       </p>
+      {quizMode && quizScore !== null && (
+        <div className="mt-8 inline-block px-8 py-5 rounded-2xl border-2 border-gray-200 bg-white shadow-sm">
+          <p className="text-sm font-semibold text-gray-500 mb-1">Your score</p>
+          <p className="text-5xl font-bold" style={{ color: primary }}>{quizScore}</p>
+          <p className="text-sm text-gray-400 mt-1">points</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -362,6 +385,40 @@ function hasAnswer(answer) {
   if (answer === undefined || answer === null || answer === '') return false;
   if (Array.isArray(answer)) return answer.length > 0;
   return true;
+}
+
+// ── Answer piping ─────────────────────────────────────────────────────
+// Replace @{questionId} in title/description with the respondent's answer
+function pipeAnswers(question, questions, answers) {
+  const replace = (text) => {
+    if (!text || !text.includes('@{')) return text;
+    return text.replace(/@\{([^}]+)\}/g, (_, qId) => {
+      const q = questions.find(q => q.id === qId);
+      if (!q) return `@{${qId}}`;
+      const ans = answers[qId];
+      if (ans === undefined || ans === null || ans === '') return '…';
+      if (Array.isArray(ans)) {
+        return ans.map(id => (q.config?.choices ?? []).find(c => c.id === id)?.label ?? id).join(', ');
+      }
+      const choice = (q.config?.choices ?? []).find(c => c.id === ans);
+      return choice?.label ?? String(ans);
+    });
+  };
+  return { ...question, title: replace(question.title), description: replace(question.description) };
+}
+
+// ── Quiz scoring ──────────────────────────────────────────────────────
+function computeScore(questions, answers) {
+  let total = 0;
+  for (const q of questions) {
+    const scores = q.config?.scores;
+    if (!scores) continue;
+    const ans = answers[q.id];
+    if (ans === undefined || ans === null) continue;
+    const ids = Array.isArray(ans) ? ans : [ans];
+    ids.forEach(id => { total += Number(scores[id] ?? 0); });
+  }
+  return total;
 }
 
 function matchesCondition(answer, condition) {

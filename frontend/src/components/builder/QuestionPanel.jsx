@@ -6,8 +6,9 @@ import { QUESTION_META } from './questionMeta';
 import { clsx } from 'clsx';
 
 export default function QuestionPanel() {
-  const { getSelectedQuestion, updateQuestion, updateQuestionConfig, deselect } = useBuilderStore();
+  const { getSelectedQuestion, updateQuestion, updateQuestionConfig, deselect, form } = useBuilderStore();
   const question = getSelectedQuestion();
+  const quizMode = form?.settings?.quizMode ?? false;
 
   if (!question) {
     return (
@@ -66,7 +67,7 @@ export default function QuestionPanel() {
         />
 
         {/* Type-specific config */}
-        <TypeConfig question={question} onConfig={updateQuestionConfig} />
+        <TypeConfig question={question} onConfig={updateQuestionConfig} quizMode={quizMode} />
 
         {/* Logic */}
         {!['welcome_screen', 'thank_you_screen', 'statement'].includes(question.type) && (
@@ -79,12 +80,32 @@ export default function QuestionPanel() {
 
 // ── Type-specific config renderers ─────────────────────────────────────────
 
-function TypeConfig({ question, onConfig }) {
+function TypeConfig({ question, onConfig, quizMode }) {
   const update = (updates) => onConfig(question.id, updates);
   const { type, config } = question;
 
   if (type === 'multiple_choice' || type === 'dropdown') {
-    return <ChoicesConfig config={config} onConfig={update} allowMultiple={type === 'multiple_choice'} />;
+    return <ChoicesConfig config={config} onConfig={update} allowMultiple={type === 'multiple_choice'} quizMode={quizMode} />;
+  }
+  if (type === 'yes_no' && quizMode) {
+    return (
+      <div className="space-y-3">
+        <p className="text-xs font-medium text-gray-600">Quiz scores</p>
+        {['Yes', 'No'].map(opt => (
+          <div key={opt} className="flex items-center gap-2">
+            <span className="text-xs text-gray-600 w-8">{opt}</span>
+            <input
+              type="number"
+              className="input text-xs py-1 w-20"
+              placeholder="0"
+              value={config.scores?.[opt] ?? ''}
+              onChange={e => update({ scores: { ...(config.scores ?? {}), [opt]: e.target.value === '' ? undefined : +e.target.value } })}
+            />
+            <span className="text-xs text-gray-400">pts</span>
+          </div>
+        ))}
+      </div>
+    );
   }
   if (type === 'rating') {
     return (
@@ -298,15 +319,16 @@ function LogicEditor({ question, onUpdate }) {
   );
 }
 
-function ChoicesConfig({ config, onConfig, allowMultiple }) {
+function ChoicesConfig({ config, onConfig, allowMultiple, quizMode }) {
   const choices = config.choices ?? [];
   const addChoice = () => onConfig({ choices: [...choices, { id: nanoid(), label: '' }] });
   const removeChoice = (id) => onConfig({ choices: choices.filter(c => c.id !== id) });
   const updateChoice = (id, label) => onConfig({ choices: choices.map(c => c.id === id ? { ...c, label } : c) });
+  const updateScore = (id, val) => onConfig({ scores: { ...(config.scores ?? {}), [id]: val === '' ? undefined : +val } });
 
   return (
     <div className="space-y-2">
-      <label className="block text-xs font-medium text-gray-600">Choices</label>
+      <label className="block text-xs font-medium text-gray-600">Choices {quizMode && <span className="text-[10px] text-[#f97316] font-bold ml-1">+ Score</span>}</label>
       <div className="space-y-1.5">
         {choices.map(c => (
           <div key={c.id} className="flex items-center gap-1.5">
@@ -316,12 +338,25 @@ function ChoicesConfig({ config, onConfig, allowMultiple }) {
               onChange={e => updateChoice(c.id, e.target.value)}
               placeholder="Option label"
             />
+            {quizMode && (
+              <input
+                type="number"
+                className="input text-xs py-1.5 w-14 text-center"
+                placeholder="0"
+                title="Score for this choice"
+                value={config.scores?.[c.id] ?? ''}
+                onChange={e => updateScore(c.id, e.target.value)}
+              />
+            )}
             <button onClick={() => removeChoice(c.id)} className="p-1 text-gray-300 hover:text-red-400">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
         ))}
       </div>
+      {quizMode && choices.length > 0 && (
+        <p className="text-[10px] text-gray-400">Score inputs are in points (leave blank for 0)</p>
+      )}
       <button onClick={addChoice} className="btn-ghost text-xs w-full justify-center py-1.5 border border-dashed border-gray-200">
         <Plus className="w-3.5 h-3.5" /> Add option
       </button>
