@@ -1,5 +1,5 @@
 import express from 'express';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth } from '../lib/auth.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { nanoid } from 'nanoid';
 
