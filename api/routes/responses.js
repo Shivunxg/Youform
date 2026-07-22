@@ -356,9 +356,11 @@ router.get('/forms/:formId/responses/export/csv', requireAuth, async (req, res, 
       .select('role').eq('workspace_id', form.workspace_id).eq('user_id', req.user.id).single();
     if (!member) throw createError(403, 'Access denied');
 
+    // Capped at 5k rows to prevent OOM; large exports need a streaming/chunked approach.
     const { data: responses } = await supabaseAdmin.from('responses')
       .select('*').eq('form_id', formId).eq('is_partial', false).eq('is_test', false)
-      .order('submitted_at', { ascending: false });
+      .order('submitted_at', { ascending: false })
+      .limit(5000);
 
     // Build CSV
     const questions = form.questions;
@@ -404,10 +406,12 @@ router.get('/forms/:formId/analytics', requireAuth, async (req, res, next) => {
       .select('role').eq('workspace_id', form.workspace_id).eq('user_id', req.user.id).single();
     if (!member) throw createError(403, 'Access denied');
 
-    // Fetch responses for drop-off analysis
+    // Fetch responses for drop-off analysis — capped at 10k to prevent OOM.
+    // For high-volume forms, replace with server-side SQL aggregation.
     const { data: responses } = await supabaseAdmin.from('responses')
       .select('answers, completion_time_ms, is_partial')
-      .eq('form_id', formId).eq('is_test', false);
+      .eq('form_id', formId).eq('is_test', false)
+      .limit(10000);
 
     const total = responses?.length ?? 0;
     const completed = responses?.filter(r => !r.is_partial).length ?? 0;

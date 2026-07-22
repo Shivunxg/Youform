@@ -193,14 +193,21 @@ router.post('/accept-invite/:token', async (req, res, next) => {
     const { data: profile } = await supabaseAdmin.from('profiles').select('email').eq('id', req.user.id).single();
     if (profile?.email !== invite.email) throw createError(403, 'This invite was sent to a different email address');
 
+    // Atomic claim: UPDATE WHERE accepted_at IS NULL — only one concurrent
+    // request wins; the other sees 0 rows and gets a 409 instead of a duplicate member.
+    const { data: claimed } = await supabaseAdmin.from('workspace_invites')
+      .update({ accepted_at: new Date().toISOString() })
+      .eq('id', invite.id)
+      .is('accepted_at', null)
+      .select();
+    if (!claimed || claimed.length === 0) throw createError(409, 'Invite has already been accepted');
+
     await supabaseAdmin.from('workspace_members').insert({
       workspace_id: invite.workspace_id,
       user_id: req.user.id,
       role: invite.role,
       invited_by: invite.invited_by,
     });
-
-    await supabaseAdmin.from('workspace_invites').update({ accepted_at: new Date().toISOString() }).eq('id', invite.id);
 
     res.json({ success: true, workspace_id: invite.workspace_id, role: invite.role });
   } catch (err) { next(err); }
