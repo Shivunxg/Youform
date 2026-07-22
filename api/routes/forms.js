@@ -362,6 +362,47 @@ router.delete('/forms/:formId/questions/:questionId', async (req, res, next) => 
 });
 
 // ============================================================
+// NOTIFICATIONS
+// GET  /forms/:formId/notifications
+// PUT  /forms/:formId/notifications
+// ============================================================
+
+router.get('/forms/:formId/notifications', async (req, res, next) => {
+  try {
+    const { data: form } = await supabaseAdmin.from('forms').select('workspace_id').eq('id', req.params.formId).single();
+    if (!form) throw createError(404, 'Form not found');
+    const { data: member } = await supabaseAdmin.from('workspace_members')
+      .select('role').eq('workspace_id', form.workspace_id).eq('user_id', req.user.id).single();
+    if (!member) throw createError(403, 'Access denied');
+
+    const { data } = await supabaseAdmin
+      .from('notification_settings')
+      .select('*')
+      .eq('form_id', req.params.formId);
+    res.json({ notifications: data ?? [] });
+  } catch (err) { next(err); }
+});
+
+router.put('/forms/:formId/notifications', async (req, res, next) => {
+  try {
+    const { data: form } = await supabaseAdmin.from('forms').select('workspace_id').eq('id', req.params.formId).single();
+    if (!form) throw createError(404, 'Form not found');
+    const { data: member } = await supabaseAdmin.from('workspace_members')
+      .select('role').eq('workspace_id', form.workspace_id).eq('user_id', req.user.id).single();
+    if (!member || !['owner', 'admin', 'editor'].includes(member.role)) throw createError(403, 'Access denied');
+
+    const { event = 'new_response', enabled = true } = req.body;
+    const { data, error } = await supabaseAdmin
+      .from('notification_settings')
+      .upsert({ form_id: req.params.formId, user_id: req.user.id, event, enabled },
+               { onConflict: 'form_id,user_id,event' })
+      .select().single();
+    if (error) throw error;
+    res.json({ notification: data });
+  } catch (err) { next(err); }
+});
+
+// ============================================================
 // DUPLICATE form
 // POST /forms/:formId/duplicate
 // ============================================================

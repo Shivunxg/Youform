@@ -44,11 +44,12 @@ export default function PublicFormPage() {
   const primary = theme.primaryColor ?? '#6366f1';
 
   const current = questions[currentIndex];
-  const isLast = currentIndex === questions.length - 1;
+  const nextIndex = current ? getNextIndex(currentIndex, questions, answers) : questions.length;
+  const isLast = nextIndex >= questions.length;
 
   const handleNext = async () => {
-    if (isLast) {
-      // Submit
+    const resolvedNext = current ? getNextIndex(currentIndex, questions, answers) : questions.length;
+    if (resolvedNext >= questions.length) {
       setSubmitting(true);
       setSubmitError(null);
       try {
@@ -69,7 +70,7 @@ export default function PublicFormPage() {
         setSubmitting(false);
       }
     } else {
-      setCurrentIndex(i => i + 1);
+      setCurrentIndex(resolvedNext);
     }
   };
 
@@ -361,6 +362,36 @@ function hasAnswer(answer) {
   if (answer === undefined || answer === null || answer === '') return false;
   if (Array.isArray(answer)) return answer.length > 0;
   return true;
+}
+
+function matchesCondition(answer, condition) {
+  if (!condition) return false;
+  const { op, value } = condition;
+  const a = answer ?? '';
+  switch (op) {
+    case 'eq':       return String(a) === String(value ?? '');
+    case 'neq':      return String(a) !== String(value ?? '');
+    case 'contains': return String(a).toLowerCase().includes(String(value ?? '').toLowerCase());
+    case 'gt':       return Number(a) > Number(value ?? 0);
+    case 'lt':       return Number(a) < Number(value ?? 0);
+    case 'answered': return hasAnswer(answer);
+    default:         return false;
+  }
+}
+
+function getNextIndex(currentIdx, questions, answers) {
+  const current = questions[currentIdx];
+  if (!current) return currentIdx + 1;
+  const rules = current.logic ?? [];
+  const currentAnswer = answers[current.id];
+  for (const rule of rules) {
+    if (matchesCondition(currentAnswer, rule.condition)) {
+      if (rule.target === 'end') return questions.length;
+      const targetIdx = questions.findIndex(q => q.id === rule.target);
+      if (targetIdx >= 0) return targetIdx;
+    }
+  }
+  return currentIdx + 1;
 }
 
 function FullPageSpinner() {

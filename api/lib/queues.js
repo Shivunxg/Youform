@@ -18,12 +18,12 @@ async function processResponse({ responseId, formId, workspaceId }) {
 
   const { data: form } = await supabaseAdmin
     .from('forms')
-    .select('title, responses_count, questions(id, title, type)')
+    .select('title, responses_count, settings, created_by, questions(id, title, type)')
     .eq('id', formId).single();
 
   if (!response || !form) return;
 
-  // ── Email notifications ──────────────────────────────────
+  // ── Email notifications (notification_settings table) ────
   const { data: notifications } = await supabaseAdmin
     .from('notification_settings')
     .select('*, profiles(email)')
@@ -31,13 +31,47 @@ async function processResponse({ responseId, formId, workspaceId }) {
     .eq('event', 'new_response')
     .eq('enabled', true);
 
+  const notifiedUserIds = new Set();
+
   for (const notif of notifications ?? []) {
+    notifiedUserIds.add(notif.user_id);
     await emailService.sendNewResponseNotification({
       to:            notif.profiles.email,
       formTitle:     form.title,
       formUrl:       `${process.env.APP_URL}/forms/${formId}/responses`,
       responseCount: form.responses_count,
     }).catch(() => {});
+  }
+
+  // ── Owner notification (from form settings, default on) ──
+  if (form.settings?.notifyOwner !== false && form.created_by && !notifiedUserIds.has(form.created_by)) {
+    const { data: creator } = await supabaseAdmin
+      .from('profiles').select('email').eq('id', form.created_by).single();
+    if (creator?.email) {
+      await emailService.sendNewResponseNotification({
+        to:            creator.email,
+        formTitle:     form.title,
+        formUrl:       `${process.env.APP_URL}/forms/${formId}/responses`,
+        responseCount: form.responses_count,
+      }).catch(() => {});
+    }
+  }
+
+  // ── Respondent confirmation email ────────────────────────
+  if (form.settings?.notifyRespondent) {
+    const respondentEmail = response.respondent_email
+      ?? (form.questions ?? [])
+          .filter(q => q.type === 'email')
+          .map(q => response.answers?.[q.id])
+          .find(v => v && String(v).includes('@'));
+    if (respondentEmail) {
+      await emailService.sendRespondentConfirmation({
+        to:        String(respondentEmail),
+        formTitle: form.title,
+        subject:   form.settings.confirmationEmailSubject || `Thanks for completing "${form.title}"`,
+        body:      form.settings.confirmationEmailBody || `Your response to "${form.title}" has been received. Thank you!`,
+      }).catch(() => {});
+    }
   }
 
   // ── Integration triggers ─────────────────────────────────

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { nanoid } from 'nanoid';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2, X, GitBranch } from 'lucide-react';
 import { useBuilderStore } from '@/stores/builderStore';
 import { QUESTION_META } from './questionMeta';
 import { clsx } from 'clsx';
@@ -67,6 +67,11 @@ export default function QuestionPanel() {
 
         {/* Type-specific config */}
         <TypeConfig question={question} onConfig={updateQuestionConfig} />
+
+        {/* Logic */}
+        {!['welcome_screen', 'thank_you_screen', 'statement'].includes(question.type) && (
+          <LogicEditor question={question} onUpdate={updateQuestion} />
+        )}
       </div>
     </aside>
   );
@@ -166,6 +171,123 @@ function TypeConfig({ question, onConfig }) {
     );
   }
   return null;
+}
+
+// ── Logic Editor ───────────────────────────────────────────────────────────
+
+const OPERATORS = [
+  { value: 'eq',       label: 'equals' },
+  { value: 'neq',      label: 'does not equal' },
+  { value: 'contains', label: 'contains' },
+  { value: 'gt',       label: 'is greater than' },
+  { value: 'lt',       label: 'is less than' },
+  { value: 'answered', label: 'is answered' },
+];
+
+function LogicEditor({ question, onUpdate }) {
+  const { questions } = useBuilderStore();
+  const [open, setOpen] = useState(false);
+
+  const rules = question.logic ?? [];
+  const hasRules = rules.length > 0;
+
+  const addRule = () => {
+    const nextQ = questions.find(q => q.id !== question.id && !['welcome_screen', 'thank_you_screen'].includes(q.type));
+    const newRule = { id: nanoid(), condition: { op: 'eq', value: '' }, target: nextQ?.id ?? 'end' };
+    onUpdate(question.id, { logic: [...rules, newRule] });
+  };
+
+  const updateRule = (ruleId, patch) => {
+    onUpdate(question.id, { logic: rules.map(r => r.id === ruleId ? { ...r, ...patch } : r) });
+  };
+
+  const deleteRule = (ruleId) => {
+    onUpdate(question.id, { logic: rules.filter(r => r.id !== ruleId) });
+  };
+
+  const answerableQuestions = questions.filter(q =>
+    !['welcome_screen', 'thank_you_screen', 'statement'].includes(q.type)
+  );
+
+  const targetOptions = [
+    ...answerableQuestions
+      .filter(q => q.id !== question.id)
+      .map(q => ({ value: q.id, label: (q.title?.slice(0, 40) || 'Untitled question') })),
+    { value: 'end', label: '→ Submit form' },
+  ];
+
+  return (
+    <div className="border-t border-gray-100 pt-4 mt-2">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-2 w-full text-left"
+      >
+        <GitBranch className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+        <span className="text-xs font-medium text-gray-600 flex-1">Logic</span>
+        {hasRules && (
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-brand-100 text-brand-600">
+            {rules.length} rule{rules.length !== 1 ? 's' : ''}
+          </span>
+        )}
+        <span className="text-gray-400 text-xs">{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div className="mt-3 space-y-3">
+          {rules.length === 0 ? (
+            <p className="text-xs text-gray-400">No logic rules yet. Add a rule to skip or jump based on the answer.</p>
+          ) : (
+            rules.map((rule, i) => (
+              <div key={rule.id} className="bg-gray-50 rounded-lg p-2.5 space-y-2 border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">If answer…</span>
+                  <button onClick={() => deleteRule(rule.id)} className="p-0.5 text-gray-300 hover:text-red-400">
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+
+                <select
+                  className="input text-xs py-1"
+                  value={rule.condition.op}
+                  onChange={e => updateRule(rule.id, { condition: { ...rule.condition, op: e.target.value } })}
+                >
+                  {OPERATORS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+
+                {rule.condition.op !== 'answered' && (
+                  <input
+                    className="input text-xs py-1"
+                    placeholder="Value…"
+                    value={rule.condition.value ?? ''}
+                    onChange={e => updateRule(rule.id, { condition: { ...rule.condition, value: e.target.value } })}
+                  />
+                )}
+
+                <div>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide block mb-1">Then jump to…</span>
+                  <select
+                    className="input text-xs py-1"
+                    value={rule.target ?? 'end'}
+                    onChange={e => updateRule(rule.id, { target: e.target.value })}
+                  >
+                    {targetOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+              </div>
+            ))
+          )}
+
+          <button onClick={addRule} className="btn-ghost text-xs w-full justify-center py-1.5 border border-dashed border-gray-200">
+            <Plus className="w-3.5 h-3.5" /> Add rule
+          </button>
+
+          {hasRules && (
+            <p className="text-[10px] text-gray-400">Rules are evaluated top to bottom. If no rule matches, the next question is shown.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function ChoicesConfig({ config, onConfig, allowMultiple }) {

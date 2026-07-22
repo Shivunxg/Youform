@@ -136,7 +136,7 @@ export default function FormSettingsPage() {
 
             <SettingRow
               label="Send confirmation to respondent"
-              description="Email a copy of their answers to the respondent."
+              description="Email respondents when they submit. Requires an email question in the form."
               pro={!hasFeature(plan, 'respondent_notifications')}
               plan={plan}
             >
@@ -146,6 +146,35 @@ export default function FormSettingsPage() {
                 onChange={v => setLocal(s => ({ ...s, notifyRespondent: v }))}
               />
             </SettingRow>
+
+            {settings.notifyRespondent && hasFeature(plan, 'respondent_notifications') && (
+              <>
+                <SettingRow
+                  label="Confirmation subject"
+                  description="Subject line for the confirmation email."
+                >
+                  <input
+                    type="text"
+                    className="input text-sm w-64"
+                    placeholder={`Thanks for completing "${form.title}"`}
+                    value={settings.confirmationEmailSubject ?? ''}
+                    onChange={e => setLocal(s => ({ ...s, confirmationEmailSubject: e.target.value }))}
+                  />
+                </SettingRow>
+                <SettingRow
+                  label="Confirmation message"
+                  description="Body text of the confirmation email."
+                >
+                  <textarea
+                    rows={3}
+                    className="input text-sm w-64 resize-none"
+                    placeholder="Your response has been received. Thank you!"
+                    value={settings.confirmationEmailBody ?? ''}
+                    onChange={e => setLocal(s => ({ ...s, confirmationEmailBody: e.target.value }))}
+                  />
+                </SettingRow>
+              </>
+            )}
           </SettingsSection>
 
           {/* Schedule & Limits */}
