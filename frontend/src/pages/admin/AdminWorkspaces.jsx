@@ -36,10 +36,10 @@ export default function AdminWorkspaces() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-workspaces', debouncedSearch, planFilter, page],
     queryFn: () => api.admin.workspaces({
-      search: debouncedSearch || undefined,
-      plan: planFilter || undefined,
       page,
       limit: 25,
+      ...(debouncedSearch ? { search: debouncedSearch } : {}),
+      ...(planFilter ? { plan: planFilter } : {}),
     }),
   });
 

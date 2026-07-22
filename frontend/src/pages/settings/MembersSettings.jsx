@@ -16,8 +16,10 @@ const ROLE_COLORS = {
 };
 
 export default function MembersSettings() {
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { activeWorkspaceId, workspaces } = useWorkspaceStore();
   const { user } = useAuthStore();
+  const myRole = workspaces.find(w => w.id === activeWorkspaceId)?.role ?? 'viewer';
+  const canManage = ['owner', 'admin'].includes(myRole);
   const qc = useQueryClient();
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -68,20 +70,19 @@ export default function MembersSettings() {
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <select className="input text-sm py-1.5 w-36">
-            <option>All workspaces</option>
-          </select>
-          {atLimit ? (
-            <a href="/settings/billing" className="btn-secondary flex items-center gap-1.5 text-amber-600">
-              <Lock className="w-3.5 h-3.5" /> Upgrade to invite
-            </a>
-          ) : (
-            <button onClick={() => setShowInvite(true)} className="btn-primary">
-              + Invite
-            </button>
-          )}
-        </div>
+        {canManage && (
+          <div className="flex items-center gap-2">
+            {atLimit ? (
+              <a href="/settings/billing" className="btn-secondary flex items-center gap-1.5 text-amber-600">
+                <Lock className="w-3.5 h-3.5" /> Upgrade to invite
+              </a>
+            ) : (
+              <button onClick={() => setShowInvite(true)} className="btn-primary">
+                + Invite
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Seat limit warning */}
@@ -96,7 +97,7 @@ export default function MembersSettings() {
       )}
 
       {/* Invite form */}
-      {showInvite && !atLimit && (
+      {canManage && showInvite && !atLimit && (
         <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
           <h3 className="text-sm font-semibold text-gray-800 mb-3">Invite team member</h3>
           <div className="flex gap-2">
@@ -161,7 +162,7 @@ export default function MembersSettings() {
                 <span className={clsx('badge capitalize', ROLE_COLORS[m.role] ?? 'bg-gray-100 text-gray-600')}>
                   {m.role}
                 </span>
-                {!isMe && m.role !== 'owner' && (
+                {canManage && !isMe && m.role !== 'owner' && (
                   <button
                     onClick={() => { if (confirm('Remove this member?')) removeMutation.mutate(profile.id); }}
                     className="text-xs text-red-400 hover:text-red-600"

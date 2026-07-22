@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { MoreHorizontal, Edit2, BarChart2, Copy, Trash2, ExternalLink, Users, Loader } from 'lucide-react';
+import { MoreHorizontal, Edit2, Eye, BarChart2, Copy, Trash2, ExternalLink, Users, Loader } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -48,6 +48,8 @@ export default function DashboardPage() {
 
   const forms = data?.forms ?? [];
   const activeWs = workspaces.find(w => w.id === activeWorkspaceId);
+  const myRole = activeWs?.role ?? 'viewer';
+  const canEdit = ['owner', 'admin', 'editor'].includes(myRole);
 
   return (
     <AppShell>
@@ -58,20 +60,28 @@ export default function DashboardPage() {
         {/* Workspace header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/settings/members')}
-              className="btn btn-secondary btn-sm text-xs py-1.5 px-3"
-            >
-              <Users className="w-3.5 h-3.5" />
-              + Invite Team
-            </button>
+            {canEdit ? (
+              <button
+                onClick={() => navigate('/settings/members')}
+                className="btn btn-secondary btn-sm text-xs py-1.5 px-3"
+              >
+                <Users className="w-3.5 h-3.5" />
+                + Invite Team
+              </button>
+            ) : (
+              <span className="px-2.5 py-1 rounded-lg border-2 border-[#111] text-xs font-bold text-gray-500 bg-gray-100">
+                Viewer
+              </span>
+            )}
           </div>
-          <button
-            onClick={() => setShowTemplatePicker(true)}
-            className="btn btn-primary"
-          >
-            + New Form
-          </button>
+          {canEdit && (
+            <button
+              onClick={() => setShowTemplatePicker(true)}
+              className="btn btn-primary"
+            >
+              + New Form
+            </button>
+          )}
         </div>
 
         {/* Loading workspace */}
@@ -90,6 +100,7 @@ export default function DashboardPage() {
             </div>
           ) : forms.length === 0 ? (
             <EmptyState
+              canEdit={canEdit}
               onCreate={() => setShowTemplatePicker(true)}
               onInvite={() => navigate('/settings/members')}
             />
@@ -99,9 +110,10 @@ export default function DashboardPage() {
                 <FormCard
                   key={form.id}
                   form={form}
+                  canEdit={canEdit}
                   menuOpen={menuOpen === form.id}
                   onMenuToggle={(id) => setMenuOpen(menuOpen === id ? null : id)}
-                  onEdit={() => navigate(`/forms/${form.id}/builder`)}
+                  onEdit={() => navigate(canEdit ? `/forms/${form.id}/builder` : `/forms/${form.id}/responses`)}
                   onResponses={() => navigate(`/forms/${form.id}/responses`)}
                   onAnalytics={() => navigate(`/forms/${form.id}/analytics`)}
                   onDuplicate={() => { duplicateMutation.mutate(form.id); setMenuOpen(null); }}
@@ -116,7 +128,7 @@ export default function DashboardPage() {
   );
 }
 
-function FormCard({ form, menuOpen, onMenuToggle, onEdit, onResponses, onAnalytics, onDuplicate, onDelete }) {
+function FormCard({ form, canEdit, menuOpen, onMenuToggle, onEdit, onResponses, onAnalytics, onDuplicate, onDelete }) {
   return (
     <div
       className="bg-white rounded-xl border-2 border-[#111] group cursor-pointer overflow-hidden transition-all duration-100 hover:-translate-y-0.5"
@@ -136,16 +148,20 @@ function FormCard({ form, menuOpen, onMenuToggle, onEdit, onResponses, onAnalyti
             </button>
             {menuOpen && (
               <div className="absolute right-0 top-9 w-44 bg-white rounded-xl border-2 border-[#111] py-1 z-20" style={{boxShadow:'4px 4px 0 #111'}}>
-                <MenuItem icon={Edit2}     label="Edit"      onClick={onEdit} />
+                <MenuItem icon={canEdit ? Edit2 : Eye} label={canEdit ? 'Edit' : 'View'} onClick={onEdit} />
                 <MenuItem icon={BarChart2} label="Analytics" onClick={onAnalytics} />
-                <MenuItem icon={Copy}      label="Duplicate" onClick={onDuplicate} />
                 {form.status === 'published' && (
                   <a href={`/f/${form.slug}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-[#111] hover:bg-[#FFFBF2]">
                     <ExternalLink className="w-3.5 h-3.5" /> View live
                   </a>
                 )}
-                <div className="border-t-2 border-[#111] my-1" />
-                <MenuItem icon={Trash2} label="Archive" onClick={onDelete} danger />
+                {canEdit && (
+                  <>
+                    <MenuItem icon={Copy} label="Duplicate" onClick={onDuplicate} />
+                    <div className="border-t-2 border-[#111] my-1" />
+                    <MenuItem icon={Trash2} label="Archive" onClick={onDelete} danger />
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -178,16 +194,20 @@ function MenuItem({ icon: Icon, label, onClick, danger }) {
   );
 }
 
-function EmptyState({ onCreate, onInvite }) {
+function EmptyState({ canEdit, onCreate, onInvite }) {
   return (
     <div className="text-center py-24">
       <div className="w-16 h-16 rounded-xl border-2 border-[#111] flex items-center justify-center mx-auto mb-5 text-3xl bg-yellow-300" style={{boxShadow:'4px 4px 0 #111'}}>📋</div>
       <h3 className="font-bold font-bold text-[#111] text-lg mb-1">No forms yet</h3>
-      <p className="text-gray-500 text-sm mb-6">Create your first form or start from a template.</p>
-      <div className="flex items-center justify-center gap-3">
-        <button onClick={onCreate} className="btn btn-primary">+ Create Form</button>
-        <button onClick={onInvite} className="btn btn-secondary"><Users className="w-4 h-4" /> Invite Team</button>
-      </div>
+      <p className="text-gray-500 text-sm mb-6">
+        {canEdit ? 'Create your first form or start from a template.' : 'No forms have been created in this workspace yet.'}
+      </p>
+      {canEdit && (
+        <div className="flex items-center justify-center gap-3">
+          <button onClick={onCreate} className="btn btn-primary">+ Create Form</button>
+          <button onClick={onInvite} className="btn btn-secondary"><Users className="w-4 h-4" /> Invite Team</button>
+        </div>
+      )}
     </div>
   );
 }

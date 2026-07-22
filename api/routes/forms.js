@@ -267,7 +267,7 @@ router.put(
 
       // Atomic delete+insert via DB function — prevents partial saves
       const payload = questions.map((q, i) => ({
-        id: q.id,
+        id: q.id ?? nanoid(),
         type: q.type,
         position: q.position ?? i,
         title: q.title ?? '',

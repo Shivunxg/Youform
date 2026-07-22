@@ -8,6 +8,7 @@ import LoginPage    from '@/pages/LoginPage';
 import SignupPage   from '@/pages/SignupPage';
 import DashboardPage   from '@/pages/DashboardPage';
 import BuilderPage      from '@/pages/BuilderPage';
+import LogicBuilderPage from '@/pages/LogicBuilderPage';
 import ResponsesPage    from '@/pages/ResponsesPage';
 import AnalyticsPage    from '@/pages/AnalyticsPage';
 import IntegratePage    from '@/pages/IntegratePage';
@@ -96,6 +97,7 @@ export default function App() {
       <Route path="/settings/account" element={<RequireAuth><AccountSettings /></RequireAuth>} />
 
       <Route path="/forms/:formId/builder"   element={<RequireAuth><BuilderPage /></RequireAuth>} />
+      <Route path="/forms/:formId/logic"     element={<RequireAuth><LogicBuilderPage /></RequireAuth>} />
       <Route path="/forms/:formId/responses" element={<RequireAuth><ResponsesPage /></RequireAuth>} />
       <Route path="/forms/:formId/analytics" element={<RequireAuth><AnalyticsPage /></RequireAuth>} />
       <Route path="/forms/:formId/integrate" element={<RequireAuth><IntegratePage /></RequireAuth>} />

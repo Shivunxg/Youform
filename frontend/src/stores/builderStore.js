@@ -44,6 +44,7 @@ export const useBuilderStore = create((set, get) => ({
   previewMode: false,     // false = editor, true = preview
   previewDevice: 'desktop', // 'desktop' | 'mobile'
   showFormSettings: false,
+  designPanelOpen: false,
   logicPanelOpen: false,
 
   // ── Load ───────────────────────────────────────────────────
@@ -58,9 +59,10 @@ export const useBuilderStore = create((set, get) => ({
   },
 
   // ── Question selection ─────────────────────────────────────
-  selectQuestion: (id) => set({ selectedQuestionId: id, showFormSettings: false }),
+  selectQuestion: (id) => set({ selectedQuestionId: id, showFormSettings: false, designPanelOpen: false }),
   deselect: () => set({ selectedQuestionId: null }),
-  toggleFormSettings: () => set(s => ({ showFormSettings: !s.showFormSettings, selectedQuestionId: null })),
+  toggleFormSettings: () => set(s => ({ showFormSettings: !s.showFormSettings, designPanelOpen: false, selectedQuestionId: null })),
+  toggleDesignPanel: () => set(s => ({ designPanelOpen: !s.designPanelOpen, showFormSettings: false, selectedQuestionId: null })),
   openLogicPanel: () => {
     const { questions, selectedQuestionId } = get();
     const answerable = questions.find(q => !['welcome_screen', 'thank_you_screen', 'statement'].includes(q.type));

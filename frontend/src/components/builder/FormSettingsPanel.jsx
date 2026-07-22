@@ -206,10 +206,10 @@ export default function FormSettingsPanel({ onClose }) {
           feature="respondent_notifications"
         />
         <FeatureToggle
-          label="Send copy to respondent"
-          description="Email respondent a copy of their answers"
-          value={settings.respondentCopy}
-          onChange={v => update('respondentCopy', v)}
+          label="Send confirmation to respondent"
+          description="Email respondent a confirmation after they submit"
+          value={settings.notifyRespondent}
+          onChange={v => update('notifyRespondent', v)}
           plan={plan}
           feature="respondent_notifications"
         />

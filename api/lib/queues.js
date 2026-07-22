@@ -1,4 +1,5 @@
 import { supabaseAdmin } from './supabase.js';
+import { hasFeature } from './plans.js';
 import { emailService } from './email.js';
 import { logger } from './logger.js';
 import { getValidToken, ensureHeaders, appendRow } from './googleSheets.js';
@@ -60,8 +61,9 @@ async function processResponse({ responseId, formId, workspaceId }) {
     }
   }
 
-  // ── Respondent confirmation email ────────────────────────
-  if (form.settings?.notifyRespondent) {
+  // ── Respondent confirmation email (Pro+) ─────────────────
+  const { data: ws } = await supabaseAdmin.from('workspaces').select('plan').eq('id', workspaceId).single();
+  if (form.settings?.notifyRespondent && hasFeature(ws?.plan, 'respondent_notifications')) {
     const respondentEmail = response.respondent_email
       ?? (form.questions ?? [])
           .filter(q => q.type === 'email')

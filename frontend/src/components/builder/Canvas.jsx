@@ -3,18 +3,22 @@ import { Plus, Paintbrush, GitBranch, Monitor, Smartphone, Check, Loader } from 
 import { useBuilderStore } from '@/stores/builderStore';
 import { TypePickerDropdown } from './BlockList';
 import { clsx } from 'clsx';
+import toast from 'react-hot-toast';
 
 export default function Canvas({ onToggleDesign }) {
   const {
     form, questions, selectedQuestionId, addQuestion,
     isDirty, isSaving, previewDevice, setPreviewDevice,
-    openLogicPanel, logicPanelOpen,
+    openLogicPanel, logicPanelOpen, designPanelOpen, toggleDesignPanel,
   } = useBuilderStore();
 
   const [showAddPicker, setShowAddPicker] = useState(false);
   const pickerRef = useRef(null);
 
-  const primary = form?.theme?.primaryColor ?? '#6366f1';
+  const primary = form?.theme?.buttonColor ?? form?.theme?.primaryColor ?? '#6366f1';
+  const bgColor = form?.theme?.backgroundColor;
+  const questionColor = form?.theme?.questionColor;
+  const textAlign = form?.theme?.alignment ?? 'left';
   const mainBlocks = questions.filter(q => q.type !== 'thank_you_screen');
   const selected = questions.find(q => q.id === selectedQuestionId);
   const currentIndex = mainBlocks.findIndex(q => q.id === selectedQuestionId);
@@ -54,8 +58,11 @@ export default function Canvas({ onToggleDesign }) {
 
         {/* Design */}
         <button
-          onClick={onToggleDesign}
-          className="btn-ghost text-xs h-7 px-2.5 gap-1.5 rounded-lg"
+          onClick={toggleDesignPanel}
+          className={clsx(
+            'btn-ghost text-xs h-7 px-2.5 gap-1.5 rounded-lg',
+            designPanelOpen && 'bg-brand-50 text-brand-600'
+          )}
         >
           <Paintbrush className="w-3.5 h-3.5" /> Design
         </button>
@@ -132,14 +139,18 @@ export default function Canvas({ onToggleDesign }) {
         {selected ? (
           <div
             className={clsx(
-              'bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 transition-all duration-200',
+              'rounded-2xl shadow-lg overflow-hidden border border-gray-100 transition-all duration-200',
               previewDevice === 'mobile' ? 'w-80' : 'w-full max-w-xl'
             )}
-            style={{ fontFamily: form?.theme?.fontFamily ?? 'Inter, system-ui, sans-serif' }}
+            style={{
+              fontFamily: form?.theme?.fontFamily ?? 'Inter, system-ui, sans-serif',
+              backgroundColor: bgColor ?? '#FFFFFF',
+              textAlign,
+            }}
           >
             {/* Progress bar */}
             {selected.type !== 'thank_you_screen' && mainBlocks.length > 0 && (
-              <div className="h-1 bg-gray-100">
+              <div className="h-1" style={{ backgroundColor: `${primary}33` }}>
                 <div
                   className="h-full transition-all duration-300"
                   style={{
@@ -154,6 +165,7 @@ export default function Canvas({ onToggleDesign }) {
               <BlockPreview
                 question={selected}
                 primary={primary}
+                questionColor={questionColor}
                 index={currentIndex}
                 total={mainBlocks.length}
               />
@@ -176,19 +188,21 @@ export default function Canvas({ onToggleDesign }) {
 }
 
 // ── Block preview (WYSIWYG, non-interactive) ──────────────────────────────────
-function BlockPreview({ question, primary, index, total }) {
+function BlockPreview({ question, primary, questionColor, index, total }) {
+  const qc = questionColor ?? '#111111';
+
   if (question.type === 'welcome_screen') {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-center">
-        <h1 className="text-2xl font-bold text-gray-900 mb-3 leading-tight text-balance">
-          {question.title || <span className="text-gray-300 italic">Welcome title…</span>}
+        <h1 className="text-2xl font-bold mb-3 leading-tight text-balance" style={{ color: qc }}>
+          {question.title || <span className="opacity-30 italic">Welcome title…</span>}
         </h1>
         {question.config?.description && (
-          <p className="text-gray-500 mb-8 text-sm leading-relaxed">{question.config.description}</p>
+          <p className="mb-8 text-sm leading-relaxed opacity-70" style={{ color: qc }}>{question.config.description}</p>
         )}
         <button
-          className="px-8 py-2.5 rounded-xl text-white font-medium text-sm cursor-default select-none"
-          style={{ backgroundColor: primary }}
+          className="px-8 py-2.5 rounded-xl font-medium text-sm cursor-default select-none"
+          style={{ backgroundColor: primary, color: '#fff' }}
         >
           {question.config?.buttonLabel ?? 'Start'}
         </button>
@@ -200,10 +214,10 @@ function BlockPreview({ question, primary, index, total }) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-center">
         <div className="text-5xl mb-4">🎉</div>
-        <h2 className="text-2xl font-semibold text-gray-900 mb-2 text-balance">
+        <h2 className="text-2xl font-semibold mb-2 text-balance" style={{ color: qc }}>
           {question.title || 'Thank you!'}
         </h2>
-        <p className="text-gray-500 text-sm">{question.config?.message ?? 'Your response has been recorded.'}</p>
+        <p className="text-sm opacity-60" style={{ color: qc }}>{question.config?.message ?? 'Your response has been recorded.'}</p>
       </div>
     );
   }
@@ -211,23 +225,23 @@ function BlockPreview({ question, primary, index, total }) {
   return (
     <div className="flex-1 flex flex-col">
       {total > 0 && index >= 0 && (
-        <p className="text-xs text-gray-400 mb-2">{index + 1} / {total}</p>
+        <p className="text-xs opacity-40 mb-2" style={{ color: qc }}>{index + 1} / {total}</p>
       )}
-      <h2 className="text-xl font-semibold text-gray-900 mb-1 leading-snug text-balance">
-        {question.title || <span className="text-gray-300 italic">Question text…</span>}
+      <h2 className="text-xl font-semibold mb-1 leading-snug text-balance" style={{ color: qc }}>
+        {question.title || <span className="opacity-30 italic">Question text…</span>}
         {question.required && <span className="text-red-400 ml-1">*</span>}
       </h2>
       {question.description && (
-        <p className="text-sm text-gray-500 mb-4 leading-relaxed">{question.description}</p>
+        <p className="text-sm mb-4 leading-relaxed opacity-60" style={{ color: qc }}>{question.description}</p>
       )}
       <div className="mt-4 pointer-events-none select-none">
         <AnswerPreview question={question} primary={primary} />
       </div>
       <div className="mt-auto pt-6 flex items-center justify-between">
-        <span className="text-xs text-gray-300">← Back</span>
+        <span className="text-xs opacity-30" style={{ color: qc }}>← Back</span>
         <button
-          className="px-5 py-2 rounded-lg text-white text-sm font-medium cursor-default"
-          style={{ backgroundColor: primary }}
+          className="px-5 py-2 rounded-lg text-sm font-medium cursor-default"
+          style={{ backgroundColor: primary, color: '#fff' }}
         >
           Next →
         </button>

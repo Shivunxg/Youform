@@ -4,24 +4,34 @@ import { requirePlatformAdmin } from '../lib/auth.js';
 import { createError } from '../lib/errorHandler.js';
 import { PLANS } from '../lib/plans.js';
 
+const PLAN_PRICES = { free: 0, pro: 29, business: 79, enterprise: 199 };
+
 const router = Router();
 router.use(requirePlatformAdmin);
 
 // GET /admin/stats
 router.get('/stats', async (req, res, next) => {
   try {
+    const thisMonth = new Date();
+    thisMonth.setDate(1); thisMonth.setHours(0, 0, 0, 0);
+
     const [
       { count: totalUsers },
       { count: totalWorkspaces },
       { count: totalForms },
       { count: totalResponses },
       { data: planRows },
+      { count: activeWorkspaces },
     ] = await Promise.all([
       supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }),
       supabaseAdmin.from('workspaces').select('*', { count: 'exact', head: true }),
       supabaseAdmin.from('forms').select('*', { count: 'exact', head: true }),
       supabaseAdmin.from('responses').select('*', { count: 'exact', head: true }).eq('is_test', false),
       supabaseAdmin.from('workspaces').select('plan'),
+      supabaseAdmin.from('workspace_usage')
+        .select('*', { count: 'exact', head: true })
+        .eq('month', thisMonth.toISOString().split('T')[0])
+        .gt('responses_used', 0),
     ]);
 
     const plans = { free: 0, pro: 0, business: 0, enterprise: 0 };
@@ -30,7 +40,19 @@ router.get('/stats', async (req, res, next) => {
       plans[tier] = (plans[tier] ?? 0) + 1;
     }
 
-    res.json({ totalUsers, totalWorkspaces, totalForms, totalResponses, plans });
+    const mrr = Object.entries(plans).reduce(
+      (sum, [plan, count]) => sum + count * (PLAN_PRICES[plan] ?? 0), 0
+    );
+
+    res.json({
+      totalUsers, totalWorkspaces, totalForms, totalResponses,
+      plans,
+      mrr,
+      arr: mrr * 12,
+      paidWorkspaces: (plans.pro ?? 0) + (plans.business ?? 0) + (plans.enterprise ?? 0),
+      freeWorkspaces: plans.free ?? 0,
+      activeWorkspaces: activeWorkspaces ?? 0,
+    });
   } catch (err) { next(err); }
 });
 
@@ -40,7 +62,10 @@ router.get('/users', async (req, res, next) => {
     const { page = 1, limit = 25, search } = req.query;
     let q = supabaseAdmin
       .from('profiles')
-      .select('id, email, full_name, avatar_url, created_at, is_platform_admin', { count: 'exact' })
+      .select(
+        'id, email, full_name, avatar_url, created_at, is_platform_admin, workspace_members(role, workspaces(id, name, plan))',
+        { count: 'exact' }
+      )
       .order('created_at', { ascending: false })
       .range((+page - 1) * +limit, +page * +limit - 1);
     if (search) q = q.ilike('email', `%${search}%`);

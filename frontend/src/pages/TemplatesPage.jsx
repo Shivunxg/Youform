@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { Search, Loader } from 'lucide-react';
+import { nanoid } from 'nanoid';
 import { api } from '@/lib/api';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { TEMPLATES, CATEGORIES, getTemplatesByCategory } from '@/lib/templates';
@@ -15,10 +16,19 @@ const CATEGORY_LABELS = { forms: 'Form', surveys: 'Survey', quizzes: 'Quiz' };
 
 export default function TemplatesPage() {
   const navigate = useNavigate();
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { activeWorkspaceId, workspaces } = useWorkspaceStore();
   const [category, setCategory] = useState('all');
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(null);
+
+  const myRole = workspaces.find(w => w.id === activeWorkspaceId)?.role ?? 'viewer';
+  const canEdit = ['owner', 'admin', 'editor'].includes(myRole);
+
+  useEffect(() => {
+    if (workspaces.length > 0 && !canEdit) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [canEdit, workspaces.length]);
 
   const createMutation = useMutation({
     mutationFn: async ({ template }) => {
@@ -27,7 +37,11 @@ export default function TemplatesPage() {
         title: template ? template.title : 'Untitled form',
       });
       if (template) {
-        const questions = template.questions.map(({ _isNew, ...q }) => q);
+        const questions = template.questions.map(({ _isNew, ...q }, i) => ({
+          ...q,
+          id: q.id ?? nanoid(),
+          position: i,
+        }));
         await api.forms.saveQuestions(form.id, questions);
       }
       return form;

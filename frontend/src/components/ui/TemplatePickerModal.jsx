@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { X, Search, Loader } from 'lucide-react';
+import { nanoid } from 'nanoid';
 import { api } from '@/lib/api';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { TEMPLATES, CATEGORIES, getTemplatesByCategory } from '@/lib/templates';
@@ -25,7 +26,11 @@ export default function TemplatePickerModal({ onClose }) {
         title: template ? template.title : 'Untitled form',
       });
       if (template) {
-        const questions = template.questions.map(({ _isNew, ...q }) => q);
+        const questions = template.questions.map(({ _isNew, ...q }, i) => ({
+          ...q,
+          id: q.id ?? nanoid(),
+          position: i,
+        }));
         await api.forms.saveQuestions(form.id, questions);
       }
       return form;

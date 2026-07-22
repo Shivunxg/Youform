@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 
 const TABS = [
   { id: 'builder',   label: 'Build',     path: 'builder' },
+  { id: 'logic',     label: 'Logic',     path: 'logic' },
   { id: 'integrate', label: 'Integrate', path: 'integrate' },
   { id: 'settings',  label: 'Settings',  path: 'settings' },
   { id: 'share',     label: 'Share',     path: 'share' },

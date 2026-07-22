@@ -7,7 +7,7 @@ import { nanoid } from 'nanoid';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { requireAuth, optionalAuth } from '../lib/auth.js';
 import { createError } from '../lib/errorHandler.js';
-import { canAcceptResponse } from '../lib/plans.js';
+import { canAcceptResponse, hasFeature, getPlan } from '../lib/plans.js';
 import { responseQueue } from '../lib/queues.js';
 
 const router = Router();
@@ -118,8 +118,14 @@ router.post('/public/forms/:formId/upload', publicWriteLimit, upload.single('fil
     if (!ALLOWED_MIME_TYPES.has(req.file.mimetype)) throw createError(415, `File type "${req.file.mimetype}" is not allowed`);
 
     const { data: form } = await supabaseAdmin.from('forms')
-      .select('id, status').eq('id', formId).single();
+      .select('id, status, workspaces(plan)').eq('id', formId).single();
     if (!form || form.status !== 'published') throw createError(404, 'Form not found');
+
+    const planCfg = getPlan(form.workspaces?.plan);
+    const limitMb = planCfg.file_upload_limit_mb;
+    if (limitMb !== null && req.file.size > limitMb * 1024 * 1024) {
+      throw createError(413, `File exceeds your plan's ${limitMb} MB upload limit`);
+    }
 
     const ext = (req.file.originalname.split('.').pop() ?? 'bin').toLowerCase().replace(/[^a-z0-9]/g, '');
     const path = `${formId}/${nanoid()}.${ext}`;
@@ -244,8 +250,12 @@ router.post('/public/forms/:formId/responses/partial', publicWriteLimit, async (
     const { formId } = req.params;
     const { answers = {}, respondent_id, started_at } = req.body;
 
-    const { data: form } = await supabaseAdmin.from('forms').select('workspace_id').eq('id', formId).single();
+    const { data: form } = await supabaseAdmin.from('forms')
+      .select('workspace_id, workspaces(plan)').eq('id', formId).single();
     if (!form) throw createError(404, 'Form not found');
+    if (!hasFeature(form.workspaces?.plan, 'partial_submissions')) {
+      return res.status(403).json({ error: 'Partial submissions require a Pro plan or higher.' });
+    }
 
     const { data, error } = await supabaseAdmin.from('responses').insert({
       form_id: formId,
