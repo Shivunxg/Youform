@@ -12,7 +12,8 @@ import AnalyticsPage    from '@/pages/AnalyticsPage';
 import IntegratePage    from '@/pages/IntegratePage';
 import SharePage        from '@/pages/SharePage';
 import FormSettingsPage from '@/pages/FormSettingsPage';
-import TemplatesPage   from '@/pages/TemplatesPage';
+import TemplatesPage        from '@/pages/TemplatesPage';
+import TypeformImportPage   from '@/pages/TypeformImportPage';
 import PublicFormPage  from '@/pages/PublicFormPage';
 import AccountSettings from '@/pages/AccountSettings';
 
@@ -58,6 +59,7 @@ export default function App() {
       <Route path="/" element={<RequireAuth><Navigate to="/dashboard" replace /></RequireAuth>} />
       <Route path="/dashboard" element={<RequireAuth><DashboardPage /></RequireAuth>} />
       <Route path="/templates" element={<RequireAuth><TemplatesPage /></RequireAuth>} />
+      <Route path="/import/typeform" element={<RequireAuth><TypeformImportPage /></RequireAuth>} />
       <Route path="/settings/account" element={<RequireAuth><AccountSettings /></RequireAuth>} />
 
       <Route path="/forms/:formId/builder"   element={<RequireAuth><BuilderPage /></RequireAuth>} />

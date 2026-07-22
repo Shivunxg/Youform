@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, NavLink } from 'react-router-dom';
-import { Bell, ChevronDown, Settings, LogOut, User, LayoutDashboard, FileText } from 'lucide-react';
+import { Bell, ChevronDown, Settings, LogOut, User, LayoutDashboard, FileText, Import } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { clsx } from 'clsx';
@@ -95,6 +95,16 @@ export default function AppShell({ children }) {
             )}
             style={{ fontWeight: 700, ...SG }}>
             <FileText className="w-4 h-4" /> Templates
+          </NavLink>
+          <NavLink to="/import/typeform"
+            className={({ isActive }) => clsx(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-all border-2',
+              isActive
+                ? 'bg-[#111] text-white border-[#111]'
+                : 'text-[#111] border-transparent hover:border-[#111] hover:bg-[#FFFBF2]'
+            )}
+            style={{ fontWeight: 700, ...SG }}>
+            <Import className="w-4 h-4" /> Import
           </NavLink>
         </nav>
 

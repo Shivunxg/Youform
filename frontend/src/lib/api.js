@@ -107,6 +107,11 @@ export const api = {
     },
   },
 
+  // ── Typeform import ────────────────────────────────────────
+  typeform: {
+    import: (body) => post('/typeform/import', body),
+  },
+
   // ── Billing ────────────────────────────────────────────────
   billing: {
     get: (wsId)            => get(`/billing/${wsId}`),
