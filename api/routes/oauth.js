@@ -10,13 +10,15 @@ const router = Router();
 
 const FRONTEND = () => process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000';
 
-// ── GET /api/oauth/google/start?formId=xxx  (authenticated) ──────
-router.get('/google/start', requireAuth, (req, res) => {
-  const { formId, integrationId } = req.query;
+// ── POST /api/oauth/google/start  (authenticated — returns {url}) ──
+// Browser window.location.href can't send auth headers, so we use a
+// POST from the JS client first to get the URL, then redirect client-side.
+router.post('/google/start', requireAuth, (req, res) => {
+  const { formId, integrationId } = req.body;
   if (!formId) return res.status(400).json({ error: 'formId required' });
 
   const state = createOAuthState({ formId, integrationId: integrationId || null, userId: req.user.id });
-  res.redirect(getGoogleAuthUrl(state));
+  res.json({ url: getGoogleAuthUrl(state) });
 });
 
 // ── GET /api/oauth/google/callback  (Google redirects here) ──────

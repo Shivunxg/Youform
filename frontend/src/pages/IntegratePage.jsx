@@ -151,8 +151,13 @@ function IntegrationCard({ item, integration, formId, formTitle, isExpanded, onT
     statusBg    = integration.enabled ? 'bg-green-300' : 'bg-gray-200';
   }
 
-  const handleGsConnect = () => {
-    window.location.href = `/api/oauth/google/start?formId=${formId}`;
+  const handleGsConnect = async () => {
+    try {
+      const { url } = await api.integrations.googleOAuthStart(formId);
+      window.location.href = url;
+    } catch {
+      toast.error('Could not start Google connection. Try again.');
+    }
   };
 
   return (
@@ -317,7 +322,14 @@ function GoogleSheetsManage({ integration, formId, onRefetch, onClose }) {
 
       <div className="flex gap-2 pt-1">
         <button
-          onClick={() => { window.location.href = `/api/oauth/google/start?formId=${formId}&integrationId=${integration.id}`; }}
+          onClick={async () => {
+            try {
+              const { url } = await api.integrations.googleOAuthStart(formId, integration.id);
+              window.location.href = url;
+            } catch {
+              toast.error('Could not reconnect Google. Try again.');
+            }
+          }}
           className="btn btn-secondary text-xs"
         >
           <RefreshCw className="w-3 h-3" /> Change sheet
@@ -379,7 +391,14 @@ function GoogleSheetsPicker({ integration, formId, formTitle, onRefetch, onClose
           Could not load your sheets. Your Google session may have expired.
         </p>
         <button
-          onClick={() => { window.location.href = `/api/oauth/google/start?formId=${formId}&integrationId=${integration?.id ?? ''}`; }}
+          onClick={async () => {
+            try {
+              const { url } = await api.integrations.googleOAuthStart(formId, integration?.id);
+              window.location.href = url;
+            } catch {
+              toast.error('Could not reconnect Google. Try again.');
+            }
+          }}
           className="btn btn-primary text-xs"
         >
           Reconnect Google account
