@@ -12,6 +12,7 @@ import oauthRouter from './routes/oauth.js';
 import billingRouter from './routes/billing.js';
 import templatesRouter from './routes/templates.js';
 import typeformRouter from './routes/typeform.js';
+import adminRouter from './routes/admin.js';
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use('/api/oauth', oauthRouter);
 app.use('/api/billing', billingRouter);
 app.use('/api/templates', templatesRouter);
 app.use('/api', typeformRouter);
+app.use('/api/admin', adminRouter);
 app.use((req, res) => res.status(404).json({ error: `${req.method} ${req.path} not found` }));
 app.use(errorHandler);
 

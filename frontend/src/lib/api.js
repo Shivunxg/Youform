@@ -133,4 +133,21 @@ export const api = {
     checkout: (wsId, body) => post(`/billing/${wsId}/checkout`, body),
     portal: (wsId)         => post(`/billing/${wsId}/portal`),
   },
+
+  // ── Platform admin ─────────────────────────────────────────
+  admin: {
+    stats: () => get('/admin/stats'),
+    users: (params = {}) => {
+      const q = new URLSearchParams(params).toString();
+      return get(`/admin/users${q ? `?${q}` : ''}`);
+    },
+    toggleAdmin: (userId, is_platform_admin) =>
+      patch(`/admin/users/${userId}/admin`, { is_platform_admin }),
+    workspaces: (params = {}) => {
+      const q = new URLSearchParams(params).toString();
+      return get(`/admin/workspaces${q ? `?${q}` : ''}`);
+    },
+    workspace: (id) => get(`/admin/workspaces/${id}`),
+    overridePlan: (id, plan) => patch(`/admin/workspaces/${id}/plan`, { plan }),
+  },
 };

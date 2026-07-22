@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { supabase } from '@/lib/supabase';
 
 import LoginPage    from '@/pages/LoginPage';
 import SignupPage   from '@/pages/SignupPage';
@@ -26,6 +27,13 @@ import StripeSettings       from '@/pages/settings/StripeSettings';
 import ActivityLog          from '@/pages/settings/ActivityLog';
 import BillingSettings      from '@/pages/settings/BillingSettings';
 
+import AdminLoginPage        from '@/pages/admin/AdminLoginPage';
+import AdminLayout           from '@/pages/admin/AdminLayout';
+import AdminDashboard        from '@/pages/admin/AdminDashboard';
+import AdminUsers            from '@/pages/admin/AdminUsers';
+import AdminWorkspaces       from '@/pages/admin/AdminWorkspaces';
+import AdminWorkspaceDetail  from '@/pages/admin/AdminWorkspaceDetail';
+
 function Spinner() {
   return (
     <div className="h-screen flex items-center justify-center">
@@ -40,6 +48,29 @@ function RequireAuth({ children }) {
   return user ? children : <Navigate to="/login" replace />;
 }
 
+// Checks Supabase profile for is_platform_admin flag.
+// The backend also enforces this on every /api/admin/* call.
+function RequireAdmin({ children }) {
+  const { user, loading: authLoading } = useAuthStore();
+  const [isAdmin, setIsAdmin] = useState(null); // null = still checking
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) { setIsAdmin(false); return; }
+    supabase
+      .from('profiles')
+      .select('is_platform_admin')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => setIsAdmin(!!data?.is_platform_admin))
+      .catch(() => setIsAdmin(false));
+  }, [user, authLoading]);
+
+  if (authLoading || isAdmin === null) return <Spinner />;
+  if (!user || !isAdmin) return <Navigate to="/admin/login" replace />;
+  return children;
+}
+
 export default function App() {
   const { init, user } = useAuthStore();
   const { fetchWorkspaces } = useWorkspaceStore();
@@ -52,10 +83,12 @@ export default function App() {
 
   return (
     <Routes>
+      {/* Public */}
       <Route path="/login"   element={<LoginPage />} />
       <Route path="/signup"  element={<SignupPage />} />
       <Route path="/f/:slug" element={<PublicFormPage />} />
 
+      {/* App */}
       <Route path="/" element={<RequireAuth><Navigate to="/dashboard" replace /></RequireAuth>} />
       <Route path="/dashboard" element={<RequireAuth><DashboardPage /></RequireAuth>} />
       <Route path="/templates" element={<RequireAuth><TemplatesPage /></RequireAuth>} />
@@ -78,6 +111,16 @@ export default function App() {
         <Route path="stripe"       element={<StripeSettings />} />
         <Route path="activity"     element={<ActivityLog />} />
         <Route path="billing"      element={<BillingSettings />} />
+      </Route>
+
+      {/* Admin portal — separate auth check, separate layout */}
+      <Route path="/admin/login" element={<AdminLoginPage />} />
+      <Route path="/admin" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
+        <Route index element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="dashboard"              element={<AdminDashboard />} />
+        <Route path="users"                  element={<AdminUsers />} />
+        <Route path="workspaces"             element={<AdminWorkspaces />} />
+        <Route path="workspaces/:workspaceId" element={<AdminWorkspaceDetail />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
