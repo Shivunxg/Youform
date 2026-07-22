@@ -5,8 +5,14 @@ const SHEETS_API  = 'https://sheets.googleapis.com/v4/spreadsheets';
 const DRIVE_API   = 'https://www.googleapis.com/drive/v3/files';
 
 // ── OAuth state helpers (stateless HMAC-signed) ──────────────────
+function getOAuthSecret() {
+  const secret = process.env.OAUTH_STATE_SECRET;
+  if (!secret) throw new Error('OAUTH_STATE_SECRET env var is required — set it in your Vercel environment variables');
+  return secret;
+}
+
 export function createOAuthState(payload) {
-  const secret = process.env.OAUTH_STATE_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || 'dev';
+  const secret = getOAuthSecret();
   const data = Buffer.from(JSON.stringify({ ...payload, iat: Date.now() })).toString('base64url');
   const sig  = crypto.createHmac('sha256', secret).update(data).digest('base64url');
   return `${data}.${sig}`;
@@ -14,7 +20,7 @@ export function createOAuthState(payload) {
 
 export function verifyOAuthState(state) {
   try {
-    const secret = process.env.OAUTH_STATE_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || 'dev';
+    const secret = getOAuthSecret();
     const [data, sig] = (state || '').split('.');
     if (!data || !sig) return null;
     const expected = crypto.createHmac('sha256', secret).update(data).digest('base64url');

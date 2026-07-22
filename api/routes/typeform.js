@@ -31,7 +31,7 @@ function mapField(field) {
   const q = {
     id: nanoid(),
     type,
-    label: field.title || 'Untitled question',
+    title: field.title || 'Untitled question',
     required: field.validations?.required ?? false,
     config: {},
   };
@@ -108,7 +108,7 @@ router.post('/typeform/import', requireAuth, async (req, res, next) => {
       questions.push({
         id: nanoid(),
         type: 'welcome_screen',
-        label: ws.title || 'Welcome',
+        title: ws.title || 'Welcome',
         config: { buttonText: ws.properties?.button_text || 'Start' },
         required: false,
       });
@@ -132,7 +132,7 @@ router.post('/typeform/import', requireAuth, async (req, res, next) => {
       questions.push({
         id: nanoid(),
         type: 'thank_you_screen',
-        label: ty.title || 'Thank you!',
+        title: ty.title || 'Thank you!',
         config: {},
         required: false,
       });
@@ -157,9 +157,9 @@ router.post('/typeform/import', requireAuth, async (req, res, next) => {
     if (questions.length) {
       const rows = questions.map((q, i) => ({
         form_id: form.id,
-        order_index: i,
+        position: i,
         type: q.type,
-        label: q.label,
+        title: q.title,
         required: q.required,
         config: q.config,
         description: q.description || null,

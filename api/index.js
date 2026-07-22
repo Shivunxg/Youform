@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import { errorHandler } from './lib/errorHandler.js';
 import formsRouter from './routes/forms.js';
@@ -23,9 +24,12 @@ app.use(cors({
   methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
   allowedHeaders: ['Content-Type','Authorization'],
 }));
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use('/api/billing/webhooks', express.raw({ type: 'application/json' }));
 app.use(express.json({ limit: '10mb' }));
-app.use(rateLimit({ windowMs: 60000, max: 300, standardHeaders: true, legacyHeaders: false }));
+
+// Global rate limit (authenticated dashboard traffic)
+app.use(rateLimit({ windowMs: 60_000, max: 300, standardHeaders: true, legacyHeaders: false }));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 app.use('/api', formsRouter);

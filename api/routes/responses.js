@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { body, validationResult } from 'express-validator';
 import multer from 'multer';
 import bcrypt from 'bcryptjs';
+import rateLimit from 'express-rate-limit';
 import { nanoid } from 'nanoid';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { requireAuth, optionalAuth } from '../lib/auth.js';
@@ -11,6 +12,15 @@ import { responseQueue } from '../lib/queues.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+
+// Tighter per-IP limit on public write endpoints (submit + upload)
+const publicWriteLimit = rateLimit({
+  windowMs: 60_000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many submissions from this IP, please try again later.' },
+});
 
 // ============================================================
 // PUBLIC: GET /public/forms/:slug
@@ -79,7 +89,7 @@ router.post('/public/forms/:slug/verify-password', async (req, res, next) => {
 // PUBLIC: POST /public/forms/:formId/upload
 // Upload a file for a file_upload question answer
 // ============================================================
-router.post('/public/forms/:formId/upload', upload.single('file'), async (req, res, next) => {
+router.post('/public/forms/:formId/upload', publicWriteLimit, upload.single('file'), async (req, res, next) => {
   try {
     const { formId } = req.params;
     if (!req.file) throw createError(400, 'No file provided');
@@ -109,6 +119,7 @@ router.post('/public/forms/:formId/upload', upload.single('file'), async (req, r
 // ============================================================
 router.post(
   '/public/forms/:formId/responses',
+  publicWriteLimit,
   optionalAuth,
   [
     body('answers').isObject(),
@@ -185,8 +196,8 @@ router.post(
 
       if (error) throw error;
 
-      // Enqueue async jobs (notifications, integrations)
-      await responseQueue.add('process-response', {
+      // Fire-and-forget: notifications + integrations run after response is sent
+      responseQueue.add('process-response', {
         responseId: response.id,
         formId,
         workspaceId: form.workspace_id,

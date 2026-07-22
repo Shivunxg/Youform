@@ -3,11 +3,14 @@ import { emailService } from './email.js';
 import { logger } from './logger.js';
 import { getValidToken, ensureHeaders, appendRow } from './googleSheets.js';
 
+// Fire-and-forget: processResponse runs after the HTTP response is sent.
+// This prevents Vercel's 30s function timeout from blocking form submissions.
 export const responseQueue = {
-  add: async (name, data) => {
-    try { await processResponse(data); }
-    catch (err) { logger.error('Job failed', { err: err.message }); }
-  }
+  add: (name, data) => {
+    setImmediate(() => {
+      processResponse(data).catch(err => logger.error('processResponse failed', { name, err: err.message }));
+    });
+  },
 };
 
 async function processResponse({ responseId, formId, workspaceId }) {

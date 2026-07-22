@@ -211,43 +211,6 @@ router.post('/forms/:formId/integrations/google-sheets/create-sheet', async (req
 });
 
 // ============================================================
-// GET /workspaces/:workspaceId/notification-settings
-// ============================================================
-router.get('/forms/:formId/notifications', async (req, res, next) => {
-  try {
-    await getFormAndCheckAccess(req.params.formId, req.user.id);
-
-    const { data, error } = await supabaseAdmin.from('notification_settings')
-      .select('*').eq('form_id', req.params.formId).eq('user_id', req.user.id);
-    if (error) throw error;
-
-    res.json({ notifications: data });
-  } catch (err) { next(err); }
-});
-
-router.put('/forms/:formId/notifications', async (req, res, next) => {
-  try {
-    await getFormAndCheckAccess(req.params.formId, req.user.id);
-    const { enabled, send_confirmation, confirmation_subject, confirmation_body } = req.body;
-
-    const { data, error } = await supabaseAdmin.from('notification_settings')
-      .upsert({
-        form_id: req.params.formId,
-        user_id: req.user.id,
-        event: 'new_response',
-        enabled: enabled ?? true,
-        send_confirmation: send_confirmation ?? false,
-        confirmation_subject,
-        confirmation_body,
-      }, { onConflict: 'form_id,user_id,event' })
-      .select().single();
-    if (error) throw error;
-
-    res.json({ notification: data });
-  } catch (err) { next(err); }
-});
-
-// ============================================================
 // Helpers
 // ============================================================
 

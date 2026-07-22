@@ -1,3 +1,5 @@
+import { logger } from './logger.js';
+
 export async function logActivity(supabase, { workspace_id, user_id, action, description, resource_type, resource_id, metadata } = {}) {
   try {
     await supabase.from('workspace_activity').insert({
@@ -9,5 +11,7 @@ export async function logActivity(supabase, { workspace_id, user_id, action, des
       resource_id: resource_id ?? null,
       metadata: metadata ?? {},
     });
-  } catch {} // Non-critical — never fail the main request
+  } catch (err) {
+    logger.warn('Activity log failed (non-critical)', { action, workspace_id, err: err.message });
+  }
 }

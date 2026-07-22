@@ -444,34 +444,36 @@ router.post('/forms/:formId/duplicate', async (req, res, next) => {
 });
 
 // ============================================================
-// POST /forms/:formId/password  — set or clear password
+// POST /forms/:formId/password  — set password (bcrypt-hashed)
 // DELETE /forms/:formId/password — remove password
 // ============================================================
-async function requireFormEditor(formId, userId) {
-  const { data: existing } = await supabaseAdmin.from('forms')
-    .select('workspace_id').eq('id', formId).single();
-  if (!existing) throw createError(404, 'Form not found');
-  const { data: member } = await supabaseAdmin.from('workspace_members')
-    .select('role').eq('workspace_id', existing.workspace_id).eq('user_id', userId).single();
-  if (!member || !['owner', 'admin', 'editor'].includes(member.role)) throw createError(403, 'Access denied');
-  return existing;
-}
-
 router.post('/forms/:formId/password', async (req, res, next) => {
   try {
-    await requireFormEditor(req.params.formId, req.user.id);
+    const { formId } = req.params;
+    const { data: existing } = await supabaseAdmin.from('forms').select('workspace_id').eq('id', formId).single();
+    if (!existing) throw createError(404, 'Form not found');
+    const { data: member } = await supabaseAdmin.from('workspace_members')
+      .select('role').eq('workspace_id', existing.workspace_id).eq('user_id', req.user.id).single();
+    if (!member || !['owner', 'admin', 'editor'].includes(member.role)) throw createError(403, 'Access denied');
+
     const { password } = req.body;
     if (!password || String(password).length < 1) throw createError(400, 'Password required');
     const hash = await bcrypt.hash(String(password), 10);
-    await supabaseAdmin.from('forms').update({ password_hash: hash }).eq('id', req.params.formId);
+    await supabaseAdmin.from('forms').update({ password_hash: hash }).eq('id', formId);
     res.json({ success: true });
   } catch (err) { next(err); }
 });
 
 router.delete('/forms/:formId/password', async (req, res, next) => {
   try {
-    await requireFormEditor(req.params.formId, req.user.id);
-    await supabaseAdmin.from('forms').update({ password_hash: null }).eq('id', req.params.formId);
+    const { formId } = req.params;
+    const { data: existing } = await supabaseAdmin.from('forms').select('workspace_id').eq('id', formId).single();
+    if (!existing) throw createError(404, 'Form not found');
+    const { data: member } = await supabaseAdmin.from('workspace_members')
+      .select('role').eq('workspace_id', existing.workspace_id).eq('user_id', req.user.id).single();
+    if (!member || !['owner', 'admin', 'editor'].includes(member.role)) throw createError(403, 'Access denied');
+
+    await supabaseAdmin.from('forms').update({ password_hash: null }).eq('id', formId);
     res.json({ success: true });
   } catch (err) { next(err); }
 });
