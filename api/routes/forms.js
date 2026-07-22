@@ -265,28 +265,26 @@ router.put(
         .select('role').eq('workspace_id', form.workspace_id).eq('user_id', req.user.id).single();
       if (!member || !['owner', 'admin', 'editor'].includes(member.role)) throw createError(403, 'Access denied');
 
-      // Delete all existing questions and reinsert (simplest approach for builder saves)
-      await supabaseAdmin.from('questions').delete().eq('form_id', formId);
+      // Atomic delete+insert via DB function — prevents partial saves
+      const payload = questions.map((q, i) => ({
+        id: q.id,
+        type: q.type,
+        position: q.position ?? i,
+        title: q.title ?? '',
+        description: q.description ?? null,
+        required: q.required ?? false,
+        config: q.config ?? {},
+        logic: q.logic ?? [],
+      }));
 
-      if (questions.length > 0) {
-        const rows = questions.map((q, i) => ({
-          form_id: formId,
-          type: q.type,
-          position: q.position ?? i,
-          title: q.title ?? '',
-          description: q.description ?? null,
-          required: q.required ?? false,
-          config: q.config ?? {},
-          validation: q.validation ?? {},
-          logic: q.logic ?? [],
-        }));
+      const { error: rpcErr } = await supabaseAdmin.rpc('replace_form_questions', {
+        p_form_id: formId,
+        p_questions: JSON.stringify(payload),
+      });
+      if (rpcErr) throw rpcErr;
 
-        const { data: saved, error } = await supabaseAdmin.from('questions').insert(rows).select();
-        if (error) throw error;
-        return res.json({ questions: saved });
-      }
-
-      res.json({ questions: [] });
+      const { data: saved } = await supabaseAdmin.from('questions').select('*').eq('form_id', formId).order('position');
+      res.json({ questions: saved ?? [] });
     } catch (err) { next(err); }
   }
 );

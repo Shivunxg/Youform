@@ -43,7 +43,13 @@ router.post(
       const { data: workspace, error } = await supabaseAdmin.from('workspaces').insert({ name, slug }).select().single();
       if (error) throw error;
 
-      await supabaseAdmin.from('workspace_members').insert({ workspace_id: workspace.id, user_id: req.user.id, role: 'owner' });
+      const { error: memberError } = await supabaseAdmin.from('workspace_members')
+        .insert({ workspace_id: workspace.id, user_id: req.user.id, role: 'owner' });
+      if (memberError) {
+        // Rollback orphaned workspace so the user can retry cleanly
+        await supabaseAdmin.from('workspaces').delete().eq('id', workspace.id).catch(() => {});
+        throw memberError;
+      }
 
       res.status(201).json({ workspace: { ...workspace, role: 'owner' } });
     } catch (err) { next(err); }

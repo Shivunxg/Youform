@@ -48,8 +48,8 @@ router.get('/public/forms/:slug', async (req, res, next) => {
     if (form.closes_at && new Date(form.closes_at) < now) throw createError(410, 'Form is closed');
     if (form.response_limit && form.responses_count >= form.response_limit) throw createError(410, 'Form has reached its response limit');
 
-    // Increment view count (fire-and-forget)
-    supabaseAdmin.from('forms').update({ views_count: form.views_count + 1 }).eq('id', form.id).then(() => {});
+    // Atomic increment — no read-then-write race (fire-and-forget)
+    supabaseAdmin.rpc('increment_form_counter', { p_form_id: form.id, p_column: 'views_count' }).then(() => {});
 
     // Strip sensitive settings (password_hash etc.)
     const { password_hash, ...safeForm } = form;
@@ -63,10 +63,8 @@ router.get('/public/forms/:slug', async (req, res, next) => {
 // ============================================================
 router.post('/public/forms/:formId/start', async (req, res, next) => {
   try {
-    const { data: form } = await supabaseAdmin.from('forms').select('starts_count').eq('id', req.params.formId).single();
-    if (!form) throw createError(404, 'Form not found');
-
-    await supabaseAdmin.from('forms').update({ starts_count: form.starts_count + 1 }).eq('id', req.params.formId);
+    const { error: incErr } = await supabaseAdmin.rpc('increment_form_counter', { p_form_id: req.params.formId, p_column: 'starts_count' });
+    if (incErr) throw incErr;
     res.json({ success: true });
   } catch (err) { next(err); }
 });
