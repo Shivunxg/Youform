@@ -182,78 +182,79 @@ export default function AdminUsers() {
       )}
 
       {/* Table */}
-      <div className="bg-white rounded-xl border-2 border-[#111] overflow-hidden" style={{ boxShadow: '4px 4px 0 #111' }}>
-        <table className="w-full text-sm" style={SG}>
-          <thead>
-            <tr className="border-b-2 border-[#111] bg-[#FFFBF2]">
-              <th className="text-left px-5 py-3 font-bold text-[#111]">User</th>
-              <th className="text-left px-5 py-3 font-bold text-[#111]">Workspaces &amp; Plans</th>
-              <th className="text-left px-5 py-3 font-bold text-[#111]">Joined</th>
-              <th className="text-center px-5 py-3 font-bold text-[#111]">Admin</th>
-              <th className="px-5 py-3" />
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              [...Array(8)].map((_, i) => (
-                <tr key={i} className="border-b border-gray-100">
-                  <td colSpan={5} className="px-5 py-4">
-                    <div className="h-4 bg-gray-100 rounded animate-pulse w-3/4" />
-                  </td>
-                </tr>
-              ))
-            ) : data?.users?.length === 0 ? (
-              <tr><td colSpan={5} className="px-5 py-12 text-center text-gray-400 font-bold">No users found</td></tr>
-            ) : (
-              data?.users?.map(user => (
-                <tr key={user.id} className="border-b border-gray-100 hover:bg-[#FFFBF2] transition-colors">
-                  <td className="px-5 py-3.5">
-                    <p className="font-bold text-[#111]">{user.email}</p>
-                    {user.full_name && <p className="text-xs text-gray-500 mt-0.5">{user.full_name}</p>}
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <WorkspaceChips memberships={user.workspace_members} />
-                  </td>
-                  <td className="px-5 py-3.5 text-gray-500">{formatDate(user.created_at)}</td>
-                  <td className="px-5 py-3.5 text-center">
+      <div className="rounded-xl border-2 border-[#111]" style={{ boxShadow: '4px 4px 0 #111' }}>
+        {/* Header */}
+        <div className="grid grid-cols-[2fr_2fr_1fr_auto] gap-0 bg-[#FFFBF2] border-b-2 border-[#111] rounded-t-xl px-5 py-3">
+          <span className="text-xs font-bold text-[#111] uppercase tracking-wide" style={SG}>User</span>
+          <span className="text-xs font-bold text-[#111] uppercase tracking-wide" style={SG}>Workspaces &amp; Plans</span>
+          <span className="text-xs font-bold text-[#111] uppercase tracking-wide" style={SG}>Joined</span>
+          <span className="text-xs font-bold text-[#111] uppercase tracking-wide w-48 text-right" style={SG}>Actions</span>
+        </div>
+
+        {/* Rows */}
+        <div className="divide-y divide-gray-100 bg-white rounded-b-xl overflow-hidden">
+          {isLoading ? (
+            [...Array(5)].map((_, i) => (
+              <div key={i} className="px-5 py-4">
+                <div className="h-4 bg-gray-100 rounded animate-pulse w-2/3" />
+              </div>
+            ))
+          ) : data?.users?.length === 0 ? (
+            <div className="px-5 py-12 text-center text-gray-400 font-bold text-sm" style={SG}>No users found</div>
+          ) : (
+            data?.users?.map(user => (
+              <div key={user.id} className="grid grid-cols-[2fr_2fr_1fr_auto] gap-0 px-5 py-3.5 items-center hover:bg-[#FFFBF2] transition-colors">
+                {/* User */}
+                <div className="min-w-0 pr-4">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-bold text-[#111] text-sm truncate" style={SG}>{user.email}</p>
                     {user.is_platform_admin && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full text-xs font-bold">
-                        <Shield className="w-3 h-3" /> Admin
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full text-[10px] font-bold shrink-0">
+                        <Shield className="w-2.5 h-2.5" /> Admin
                       </span>
                     )}
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2 justify-end">
-                      <PlanOverrideMenu
-                        workspaces={user.workspace_members}
-                        onApply={(wsId, plan) => overridePlan.mutate({ workspaceId: wsId, plan })}
-                        isPending={overridePlan.isPending}
-                      />
-                      <button
-                        onClick={() => toggleAdmin.mutate({ userId: user.id, current: user.is_platform_admin })}
-                        disabled={toggleAdmin.isPending}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-[#111] text-xs font-bold transition-all hover:-translate-y-px disabled:opacity-50 ${
-                          user.is_platform_admin
-                            ? 'bg-red-50 text-red-700 hover:bg-red-100'
-                            : 'bg-white text-[#111] hover:bg-[#FFFBF2]'
-                        }`}
-                        style={{ boxShadow: '2px 2px 0 #111' }}
-                      >
-                        {user.is_platform_admin
-                          ? <><ShieldOff className="w-3 h-3" /> Revoke</>
-                          : <><Shield className="w-3 h-3" /> Make admin</>}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                  </div>
+                  {user.full_name && <p className="text-xs text-gray-400 mt-0.5" style={SG}>{user.full_name}</p>}
+                </div>
+
+                {/* Workspaces */}
+                <div className="pr-4">
+                  <WorkspaceChips memberships={user.workspace_members} />
+                </div>
+
+                {/* Joined */}
+                <div className="text-sm text-gray-500" style={SG}>{formatDate(user.created_at)}</div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2 justify-end w-48 relative">
+                  <PlanOverrideMenu
+                    workspaces={user.workspace_members}
+                    onApply={(wsId, plan) => overridePlan.mutate({ workspaceId: wsId, plan })}
+                    isPending={overridePlan.isPending}
+                  />
+                  <button
+                    onClick={() => toggleAdmin.mutate({ userId: user.id, current: user.is_platform_admin })}
+                    disabled={toggleAdmin.isPending}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-[#111] text-xs font-bold whitespace-nowrap transition-all hover:-translate-y-px disabled:opacity-50 ${
+                      user.is_platform_admin
+                        ? 'bg-red-50 text-red-700 hover:bg-red-100'
+                        : 'bg-white text-[#111] hover:bg-[#FFFBF2]'
+                    }`}
+                    style={{ boxShadow: '2px 2px 0 #111', ...SG }}
+                  >
+                    {user.is_platform_admin
+                      ? <><ShieldOff className="w-3 h-3" /> Revoke</>
+                      : <><Shield className="w-3 h-3" /> Make admin</>}
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-5 py-3 border-t-2 border-[#111] bg-[#FFFBF2]">
+          <div className="flex items-center justify-between px-5 py-3 border-t-2 border-[#111] bg-[#FFFBF2] rounded-b-xl">
             <span className="text-xs font-bold text-gray-500" style={SG}>
               Page {page} of {totalPages}
             </span>
