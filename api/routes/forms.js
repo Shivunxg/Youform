@@ -178,7 +178,7 @@ router.patch(
 
       if (!member || !['owner', 'admin', 'editor'].includes(member.role)) throw createError(403, 'Access denied');
 
-      const allowed = ['title', 'description', 'status', 'layout', 'theme', 'settings', 'response_limit', 'opens_at', 'closes_at', 'password_hash'];
+      const allowed = ['title', 'description', 'status', 'layout', 'theme', 'settings', 'response_limit', 'opens_at', 'closes_at'];
       const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
 
       // Set published_at when publishing

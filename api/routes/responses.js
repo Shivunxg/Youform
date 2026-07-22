@@ -22,6 +22,30 @@ const publicWriteLimit = rateLimit({
   message: { error: 'Too many submissions from this IP, please try again later.' },
 });
 
+// Strict limit for password verification to prevent brute-force
+const passwordVerifyLimit = rateLimit({
+  windowMs: 60_000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many password attempts, please try again later.' },
+});
+
+// MIME types accepted for file uploads — stored as-is in Supabase Storage,
+// so we must exclude types browsers render (html, svg, xml) to prevent XSS.
+const ALLOWED_MIME_TYPES = new Set([
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain', 'text/csv',
+  'video/mp4', 'video/webm', 'video/quicktime',
+  'audio/mpeg', 'audio/wav', 'audio/ogg',
+  'application/zip',
+]);
+
 // ============================================================
 // PUBLIC: GET /public/forms/:slug
 // Fetch published form for public rendering (no auth)
@@ -61,7 +85,7 @@ router.get('/public/forms/:slug', async (req, res, next) => {
 // PUBLIC: POST /public/forms/:formId/start
 // Record a form start (for analytics)
 // ============================================================
-router.post('/public/forms/:formId/start', async (req, res, next) => {
+router.post('/public/forms/:formId/start', publicWriteLimit, async (req, res, next) => {
   try {
     const { error: incErr } = await supabaseAdmin.rpc('increment_form_counter', { p_form_id: req.params.formId, p_column: 'starts_count' });
     if (incErr) throw incErr;
@@ -72,7 +96,7 @@ router.post('/public/forms/:formId/start', async (req, res, next) => {
 // ============================================================
 // PUBLIC: POST /public/forms/:slug/verify-password
 // ============================================================
-router.post('/public/forms/:slug/verify-password', async (req, res, next) => {
+router.post('/public/forms/:slug/verify-password', passwordVerifyLimit, async (req, res, next) => {
   try {
     const { data: form } = await supabaseAdmin.from('forms')
       .select('password_hash').eq('slug', req.params.slug).single();
@@ -91,6 +115,7 @@ router.post('/public/forms/:formId/upload', publicWriteLimit, upload.single('fil
   try {
     const { formId } = req.params;
     if (!req.file) throw createError(400, 'No file provided');
+    if (!ALLOWED_MIME_TYPES.has(req.file.mimetype)) throw createError(415, `File type "${req.file.mimetype}" is not allowed`);
 
     const { data: form } = await supabaseAdmin.from('forms')
       .select('id, status').eq('id', formId).single();
@@ -214,7 +239,7 @@ router.post(
 // PUBLIC: POST /public/forms/:formId/responses/partial
 // Save partial response (for drop-off analytics)
 // ============================================================
-router.post('/public/forms/:formId/responses/partial', async (req, res, next) => {
+router.post('/public/forms/:formId/responses/partial', publicWriteLimit, async (req, res, next) => {
   try {
     const { formId } = req.params;
     const { answers = {}, respondent_id, started_at } = req.body;
