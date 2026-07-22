@@ -40,16 +40,14 @@ router.post(
       const { name } = req.body;
       const slug = `${slugify(name, { lower: true, strict: true })}-${nanoid(6)}`;
 
-      const { data: workspace, error } = await supabaseAdmin.from('workspaces').insert({ name, slug }).select().single();
+      // Atomic: workspace + owner membership in a single DB transaction
+      const { data: workspace, error } = await supabaseAdmin.rpc('create_workspace_with_owner', {
+        p_name: name,
+        p_logo_url: null,
+        p_slug: slug,
+        p_user_id: req.user.id,
+      });
       if (error) throw error;
-
-      const { error: memberError } = await supabaseAdmin.from('workspace_members')
-        .insert({ workspace_id: workspace.id, user_id: req.user.id, role: 'owner' });
-      if (memberError) {
-        // Rollback orphaned workspace so the user can retry cleanly
-        await supabaseAdmin.from('workspaces').delete().eq('id', workspace.id).catch(() => {});
-        throw memberError;
-      }
 
       res.status(201).json({ workspace: { ...workspace, role: 'owner' } });
     } catch (err) { next(err); }
