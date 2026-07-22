@@ -155,9 +155,9 @@ router.patch(
     body('layout').optional().isIn(['conversational', 'classic', 'single_scroll']),
     body('theme').optional().isObject(),
     body('settings').optional().isObject(),
-    body('response_limit').optional().isInt({ min: 1 }),
-    body('opens_at').optional().isISO8601(),
-    body('closes_at').optional().isISO8601(),
+    body('response_limit').optional({ nullable: true }).isInt({ min: 1 }),
+    body('opens_at').optional({ nullable: true }).isISO8601(),
+    body('closes_at').optional({ nullable: true }).isISO8601(),
   ],
   async (req, res, next) => {
     try {

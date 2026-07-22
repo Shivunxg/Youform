@@ -164,9 +164,9 @@ export const useBuilderStore = create((set, get) => ({
         layout: form.layout,
         theme: form.theme,
         settings: form.settings,
-        opens_at: form.opens_at ?? null,
-        closes_at: form.closes_at ?? null,
-        response_limit: form.response_limit ?? null,
+        ...(form.opens_at    ? { opens_at:       form.opens_at }    : {}),
+        ...(form.closes_at   ? { closes_at:      form.closes_at }   : {}),
+        ...(form.response_limit ? { response_limit: form.response_limit } : {}),
       });
 
       // Save questions (full replace)
