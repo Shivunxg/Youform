@@ -397,61 +397,69 @@ router.get('/forms/:formId/analytics', requireAuth, async (req, res, next) => {
   try {
     const { formId } = req.params;
 
-    const { data: form } = await supabaseAdmin.from('forms')
-      .select('workspace_id, views_count, starts_count, responses_count, questions(id, title, type)')
-      .eq('id', formId).order('position', { referencedTable: 'questions' }).single();
+    // Run form fetch + SQL aggregation in parallel
+    const [{ data: form }, { data: agg, error: aggErr }] = await Promise.all([
+      supabaseAdmin.from('forms')
+        .select('workspace_id, views_count, starts_count, questions(id, title, type)')
+        .eq('id', formId).order('position', { referencedTable: 'questions' }).single(),
+      supabaseAdmin.rpc('get_form_analytics', { p_form_id: formId }),
+    ]);
     if (!form) throw createError(404, 'Form not found');
+    if (aggErr) throw aggErr;
 
     const { data: member } = await supabaseAdmin.from('workspace_members')
       .select('role').eq('workspace_id', form.workspace_id).eq('user_id', req.user.id).single();
     if (!member) throw createError(403, 'Access denied');
 
-    // Fetch responses for drop-off analysis — capped at 10k to prevent OOM.
-    // For high-volume forms, replace with server-side SQL aggregation.
-    const { data: responses } = await supabaseAdmin.from('responses')
-      .select('answers, completion_time_ms, is_partial')
-      .eq('form_id', formId).eq('is_test', false)
-      .limit(10000);
+    const stats = agg ?? {};
+    const total     = Number(stats.total     ?? 0);
+    const completed = Number(stats.completed ?? 0);
+    const partial   = Number(stats.partial   ?? 0);
+    const avgMs     = stats.avg_ms ? Number(stats.avg_ms) : null;
 
-    const total = responses?.length ?? 0;
-    const completed = responses?.filter(r => !r.is_partial).length ?? 0;
+    // Build a lookup of question_id → answered count from SQL result
+    const answeredByQ = {};
+    for (const qs of (stats.q_stats ?? [])) answeredByQ[qs.question_id] = Number(qs.answered ?? 0);
 
+    // Choice distributions: fetch only the answers column for completed responses,
+    // capped at 10k — this is far smaller than loading full response rows.
     const CHOICE_TYPES = new Set(['multiple_choice', 'dropdown', 'yes_no', 'rating', 'nps']);
+    const hasChoiceQ = form.questions.some(q => CHOICE_TYPES.has(q.type));
+    const distributionByQ = {};
 
-    // Per-question response count + per-choice distribution
-    const questionStats = form.questions.map(q => {
-      const distribution = {};
-      let answered = 0;
-      for (const r of (responses ?? [])) {
-        const a = r.answers?.[q.id];
-        if (a === undefined || a === null || a === '') continue;
-        answered++;
-        if (CHOICE_TYPES.has(q.type)) {
+    if (hasChoiceQ) {
+      const { data: choiceRows } = await supabaseAdmin.from('responses')
+        .select('answers').eq('form_id', formId).eq('is_test', false).eq('is_partial', false)
+        .limit(10000);
+
+      for (const q of form.questions.filter(q => CHOICE_TYPES.has(q.type))) {
+        const dist = {};
+        for (const r of (choiceRows ?? [])) {
+          const a = r.answers?.[q.id];
+          if (a == null || a === '') continue;
           const ids = Array.isArray(a) ? a : [String(a)];
-          ids.forEach(id => { distribution[id] = (distribution[id] ?? 0) + 1; });
+          ids.forEach(id => { dist[id] = (dist[id] ?? 0) + 1; });
         }
+        distributionByQ[q.id] = dist;
       }
-      return {
-        question_id: q.id,
-        title: q.title,
-        type: q.type,
-        answered,
-        drop_off: total - answered,
-        ...(CHOICE_TYPES.has(q.type) ? { distribution } : {}),
-      };
-    });
+    }
 
-    const avgCompletionMs = completed > 0
-      ? Math.round((responses ?? []).filter(r => !r.is_partial && r.completion_time_ms).reduce((acc, r) => acc + r.completion_time_ms, 0) / completed)
-      : null;
+    const questionStats = form.questions.map(q => ({
+      question_id: q.id,
+      title: q.title,
+      type: q.type,
+      answered: answeredByQ[q.id] ?? 0,
+      drop_off: total - (answeredByQ[q.id] ?? 0),
+      ...(CHOICE_TYPES.has(q.type) ? { distribution: distributionByQ[q.id] ?? {} } : {}),
+    }));
 
     res.json({
       views: form.views_count,
       starts: form.starts_count,
       completions: completed,
-      partial: total - completed,
+      partial,
       completion_rate: form.starts_count > 0 ? Math.round((completed / form.starts_count) * 100) : 0,
-      avg_completion_seconds: avgCompletionMs ? Math.round(avgCompletionMs / 1000) : null,
+      avg_completion_seconds: avgMs ? Math.round(avgMs / 1000) : null,
       question_stats: questionStats,
     });
   } catch (err) { next(err); }
