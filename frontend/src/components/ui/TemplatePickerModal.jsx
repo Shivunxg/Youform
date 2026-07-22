@@ -12,6 +12,32 @@ import { clsx } from 'clsx';
 
 const SG = { fontFamily: 'Space Grotesk, system-ui, sans-serif' };
 
+const PALETTE = [
+  '#FDE68A', '#DDD6FE', '#BBF7D0', '#FCE7F3',
+  '#DBEAFE', '#FED7AA', '#F0FDF4', '#EDE9FE',
+  '#FEF3C7', '#F3F4F6',
+];
+
+function buildTheme(color, textColor, backgroundImage) {
+  return {
+    backgroundColor: color,
+    backgroundImage: backgroundImage ?? null,
+    questionColor:   textColor,
+    answerColor:     textColor,
+    buttonColor:     textColor,
+    primaryColor:    textColor,
+    buttonTextColor: '#ffffff',
+    starColor:       '#f97316',
+    alignment:       'left',
+    fontFamily:      'Inter, system-ui, sans-serif',
+  };
+}
+
+function getSwatches(templateColor) {
+  const others = PALETTE.filter(c => c !== templateColor);
+  return [templateColor, ...others].slice(0, 6);
+}
+
 export default function TemplatePickerModal({ onClose }) {
   const navigate = useNavigate();
   const { activeWorkspaceId } = useWorkspaceStore();
@@ -20,11 +46,18 @@ export default function TemplatePickerModal({ onClose }) {
   const [creating, setCreating] = useState(null);
 
   const createMutation = useMutation({
-    mutationFn: async ({ template }) => {
+    mutationFn: async ({ template, selectedColor }) => {
       if (!activeWorkspaceId) throw new Error('No workspace found.');
+
+      const theme = template
+        ? buildTheme(selectedColor ?? template.color, template.textColor, template.backgroundImage)
+        : null;
+
       const { form } = await api.forms.create(activeWorkspaceId, {
         title: template ? template.title : 'Untitled form',
+        ...(theme ? { theme } : {}),
       });
+
       if (template) {
         const questions = template.questions.map(({ _isNew, ...q }, i) => ({
           ...q,
@@ -46,9 +79,9 @@ export default function TemplatePickerModal({ onClose }) {
     },
   });
 
-  function handleUse(template) {
+  function handleUse(template, selectedColor) {
     setCreating(template?.id ?? 'blank');
-    createMutation.mutate({ template: template ?? null });
+    createMutation.mutate({ template: template ?? null, selectedColor });
   }
 
   const templates = getTemplatesByCategory(category).filter(t =>
@@ -60,10 +93,7 @@ export default function TemplatePickerModal({ onClose }) {
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-[#111]/50 z-40"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 bg-[#111]/50 z-40" onClick={onClose} />
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -76,7 +106,7 @@ export default function TemplatePickerModal({ onClose }) {
             <div className="flex-1">
               <h2 className="text-lg font-bold text-[#111]" style={SG}>Start from a template</h2>
               <p className="text-xs text-gray-500 mt-0.5">
-                Pick a template or start from scratch — everything is editable.
+                Pick a color, then click to use — everything is editable.
               </p>
             </div>
             <button
@@ -130,12 +160,12 @@ export default function TemplatePickerModal({ onClose }) {
                 templateId="blank"
                 title="Start blank"
                 description="Build your form from scratch"
-                color="#F3F4F6"
+                defaultColor="#F3F4F6"
                 textColor="#374151"
                 isBlank
                 loading={creating === 'blank'}
                 disabled={!!creating}
-                onClick={() => handleUse(null)}
+                onClick={(color) => handleUse(null, color)}
               />
 
               {templates.map(tpl => (
@@ -144,12 +174,12 @@ export default function TemplatePickerModal({ onClose }) {
                   templateId={tpl.id}
                   title={tpl.title}
                   description={tpl.description}
-                  color={tpl.color}
+                  defaultColor={tpl.color}
                   textColor={tpl.textColor}
                   questionCount={tpl.questions.length}
                   loading={creating === tpl.id}
                   disabled={!!creating}
-                  onClick={() => handleUse(tpl)}
+                  onClick={(color) => handleUse(tpl, color)}
                 />
               ))}
             </div>
@@ -166,33 +196,39 @@ export default function TemplatePickerModal({ onClose }) {
   );
 }
 
-function MiniTemplateCard({ templateId, title, description, color, textColor, questionCount, isBlank, loading, disabled, onClick }) {
+function MiniTemplateCard({ templateId, title, description, defaultColor, textColor, questionCount, isBlank, loading, disabled, onClick }) {
+  const [activeColor, setActiveColor] = useState(defaultColor);
   const Theme = getTemplateTheme(templateId);
+  const swatches = isBlank ? [] : getSwatches(defaultColor);
+
+  function handleSwatchClick(e, color) {
+    e.stopPropagation();
+    setActiveColor(color);
+  }
 
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
+    <div
+      onClick={disabled ? undefined : () => onClick(activeColor)}
       className={clsx(
-        'group text-left rounded-xl border-2 border-[#111] overflow-hidden bg-white transition-all duration-150',
-        'disabled:cursor-not-allowed disabled:opacity-60',
-        !disabled && 'hover:-translate-y-1'
+        'group text-left rounded-xl border-2 border-[#111] overflow-visible bg-white transition-all duration-150 flex flex-col',
+        disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:-translate-y-1',
+        loading ? 'ring-2 ring-[#f97316]' : ''
       )}
       style={{ boxShadow: loading ? '4px 4px 0 #f97316' : '3px 3px 0 #111' }}
     >
       {/* Illustration */}
-      <div className="h-28 relative overflow-hidden">
+      <div className="h-28 relative overflow-hidden rounded-t-[10px]">
         {loading ? (
-          <div className="w-full h-full flex items-center justify-center" style={{ background: color }}>
+          <div className="w-full h-full flex items-center justify-center" style={{ background: activeColor }}>
             <Loader className="w-5 h-5 animate-spin text-[#111]" />
           </div>
         ) : (
           <>
-            <Theme color={color} textColor={textColor} />
+            <Theme color={activeColor} textColor={textColor} />
             {!isBlank && (
               <div
                 className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150"
-                style={{ background: `${color}dd` }}
+                style={{ background: `${activeColor}dd` }}
               >
                 <span
                   className="px-4 py-1.5 rounded-lg text-xs font-bold border-2 border-[#111]"
@@ -207,9 +243,29 @@ function MiniTemplateCard({ templateId, title, description, color, textColor, qu
       </div>
 
       {/* Info */}
-      <div className="p-3 border-t-2 border-[#111]">
+      <div className="p-3 border-t-2 border-[#111] flex-1 flex flex-col">
         <p className="text-sm font-bold text-[#111] leading-snug line-clamp-1" style={SG}>{title}</p>
-        <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 leading-relaxed">{description}</p>
+        <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 leading-relaxed flex-1">{description}</p>
+
+        {/* Color swatches */}
+        {!isBlank && (
+          <div className="flex items-center gap-1 mt-2 pt-2 border-t border-gray-100">
+            {swatches.map(c => (
+              <button
+                key={c}
+                onClick={(e) => handleSwatchClick(e, c)}
+                title={c}
+                className="w-3.5 h-3.5 rounded-full shrink-0 transition-all hover:scale-125"
+                style={{
+                  background: c,
+                  border: activeColor === c ? '2px solid #111' : '1.5px solid #d1d5db',
+                  boxShadow: activeColor === c ? '0 0 0 1px #fff inset' : 'none',
+                }}
+              />
+            ))}
+          </div>
+        )}
+
         {questionCount != null && (
           <p className="text-[10px] text-gray-400 mt-1.5 font-medium">{questionCount} questions</p>
         )}
@@ -217,6 +273,6 @@ function MiniTemplateCard({ templateId, title, description, color, textColor, qu
           <p className="text-[10px] text-[#f97316] mt-1.5 font-bold" style={SG}>Start from scratch →</p>
         )}
       </div>
-    </button>
+    </div>
   );
 }

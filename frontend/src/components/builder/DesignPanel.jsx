@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
+import { X, AlignLeft, AlignCenter, AlignRight, ImageOff } from 'lucide-react';
 import { useBuilderStore } from '@/stores/builderStore';
 import ThemeGalleryModal from './ThemeGalleryModal';
 import { useQuery } from '@tanstack/react-query';
@@ -104,6 +104,81 @@ function ColorSwatch({ label, value, onChange }) {
   );
 }
 
+const PICSUM = (seed) => `https://picsum.photos/seed/${seed}/1600/900`;
+
+const STOCK_PHOTOS = [
+  { seed: 'nature-landscape', label: 'Nature' },
+  { seed: 'city-architecture', label: 'City' },
+  { seed: 'abstract-pattern', label: 'Abstract' },
+  { seed: 'office-workspace', label: 'Office' },
+  { seed: 'technology-minimal', label: 'Tech' },
+  { seed: 'gradient-pastel', label: 'Soft' },
+  { seed: 'mountains-aerial', label: 'Aerial' },
+  { seed: 'ocean-waves', label: 'Ocean' },
+  { seed: 'forest-morning', label: 'Forest' },
+  { seed: 'dark-moody', label: 'Dark' },
+  { seed: 'minimal-white', label: 'Minimal' },
+  { seed: 'people-community', label: 'People' },
+];
+
+function BackgroundImagePicker({ theme, updateTheme }) {
+  const current = theme.backgroundImage ?? null;
+
+  return (
+    <div className="px-4 py-3 border-b border-gray-100">
+      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2" style={SG}>Background Image</p>
+
+      {/* Current image or placeholder */}
+      <div className="relative w-full h-20 rounded-xl border-2 border-[#111] overflow-hidden mb-2"
+        style={{ boxShadow: '2px 2px 0 #111', background: current ? undefined : '#f1f5f9' }}
+      >
+        {current ? (
+          <>
+            <img src={current} alt="" className="w-full h-full object-cover" />
+            <button
+              onClick={() => updateTheme({ backgroundImage: null })}
+              title="Remove image"
+              className="absolute top-1.5 right-1.5 w-6 h-6 rounded-md bg-white border border-gray-300 flex items-center justify-center hover:bg-red-50 hover:border-red-300 transition-colors shadow-sm"
+            >
+              <ImageOff className="w-3 h-3 text-gray-600" />
+            </button>
+          </>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <p className="text-xs text-gray-400">No image — solid color used</p>
+          </div>
+        )}
+      </div>
+
+      {/* Photo grid */}
+      <div className="grid grid-cols-4 gap-1.5">
+        {STOCK_PHOTOS.map(({ seed, label }) => {
+          const url = PICSUM(seed);
+          const isActive = current === url;
+          return (
+            <button
+              key={seed}
+              onClick={() => updateTheme({ backgroundImage: isActive ? null : url })}
+              title={label}
+              className="relative rounded-lg overflow-hidden border-2 transition-all"
+              style={{
+                border: isActive ? '2px solid #f97316' : '2px solid #d1d5db',
+                boxShadow: isActive ? '0 0 0 2px #f97316' : 'none',
+                aspectRatio: '16/9',
+              }}
+            >
+              <img src={url} alt={label} className="w-full h-full object-cover" loading="lazy" />
+              <div className="absolute inset-0 flex items-end justify-center pb-0.5">
+                <span className="text-[8px] font-bold text-white drop-shadow" style={SG}>{label}</span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function DesignPanel({ onClose }) {
   const { form, updateTheme, toggleDesignPanel, save } = useBuilderStore();
   const { activeWorkspaceId } = useWorkspaceStore();
@@ -161,6 +236,9 @@ export default function DesignPanel({ onClose }) {
             Open Theme Gallery
           </button>
         </div>
+
+        {/* Background Image */}
+        <BackgroundImagePicker theme={theme} updateTheme={updateTheme} />
 
         {/* Colors */}
         <div className="px-4 pt-3 pb-1">

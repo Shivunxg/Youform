@@ -473,8 +473,33 @@ function buildQuestions(rawQuestions) {
   }));
 }
 
+// Curated background photos (picsum.photos — same seed = same photo)
+const PICSUM = (seed) => `https://picsum.photos/seed/${seed}/1600/900`;
+
+const TEMPLATE_IMAGES = {
+  'testimonial':          PICSUM('testimonial'),
+  'client-intake':        PICSUM('client-intake'),
+  'lead-capture':         PICSUM('lead-capture'),
+  'contact':              PICSUM('contact-form'),
+  'job-application':      PICSUM('job-application'),
+  'order-form':           PICSUM('order-form'),
+  'market-research':      PICSUM('market-research'),
+  'saas-onboarding':      PICSUM('saas-onboarding'),
+  'cancellation':         PICSUM('cancellation'),
+  'nps':                  PICSUM('nps-survey'),
+  'employee-satisfaction':PICSUM('employee-satisfaction'),
+  'post-event':           PICSUM('post-event'),
+  'digital-marketing-quiz':PICSUM('digital-marketing'),
+  'personality-quiz':     PICSUM('personality-quiz'),
+  'lead-gen-quiz':        PICSUM('lead-gen-quiz'),
+  'product-recommender':  PICSUM('product-recommender'),
+  'trivia':               PICSUM('trivia-challenge'),
+  'skills-assessment':    PICSUM('skills-assessment'),
+};
+
 export const TEMPLATES = RAW.map(t => ({
   ...t,
+  backgroundImage: TEMPLATE_IMAGES[t.id] ?? null,
   questions: buildQuestions(t.questions),
 }));
 

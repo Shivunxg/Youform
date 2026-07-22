@@ -56,6 +56,7 @@ router.post(
     body('title').optional().trim().isLength({ max: 200 }),
     body('layout').optional().isIn(['conversational', 'classic', 'single_scroll']),
     body('templateId').optional().isUUID(),
+    body('theme').optional().isObject(),
   ],
   async (req, res, next) => {
     try {
@@ -63,13 +64,14 @@ router.post(
       if (!errors.isEmpty()) throw Object.assign(new Error('Validation failed'), { type: 'validation', errors: errors.array() });
 
       const { workspaceId } = req.params;
-      const { title = 'Untitled form', layout = 'conversational', templateId } = req.body;
+      const { title = 'Untitled form', layout = 'conversational', templateId, theme } = req.body;
 
       // Generate unique slug
       const baseSlug = slugify(title, { lower: true, strict: true }) || 'form';
       const slug = `${baseSlug}-${nanoid(6)}`;
 
       let formData = { workspace_id: workspaceId, created_by: req.user.id, title, layout, slug };
+      if (theme) formData.theme = theme;
       let questionsData = [];
 
       // If cloning from template, copy questions
@@ -149,12 +151,12 @@ router.get('/forms/:formId', async (req, res, next) => {
 router.patch(
   '/forms/:formId',
   [
-    body('title').optional().trim().isLength({ max: 200 }),
-    body('description').optional().trim(),
-    body('status').optional().isIn(['draft', 'published', 'closed', 'archived']),
-    body('layout').optional().isIn(['conversational', 'classic', 'single_scroll']),
-    body('theme').optional().isObject(),
-    body('settings').optional().isObject(),
+    body('title').optional({ nullable: true }).trim().isLength({ max: 200 }),
+    body('description').optional({ nullable: true }).trim(),
+    body('status').optional({ nullable: true }).isIn(['draft', 'published', 'closed', 'archived']),
+    body('layout').optional({ nullable: true }).isIn(['conversational', 'classic', 'single_scroll']),
+    body('theme').optional({ nullable: true }).isObject(),
+    body('settings').optional({ nullable: true }).isObject(),
     body('response_limit').optional({ nullable: true }).isInt({ min: 1 }),
     body('opens_at').optional({ nullable: true }).isISO8601(),
     body('closes_at').optional({ nullable: true }).isISO8601(),

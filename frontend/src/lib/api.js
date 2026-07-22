@@ -127,6 +127,16 @@ export const api = {
     import: (body) => post('/typeform/import', body),
   },
 
+  // ── Google Forms import ────────────────────────────────────
+  googleForms: {
+    import: (body) => post('/google-forms/import', body),
+  },
+
+  // ── AI form generation ─────────────────────────────────────
+  ai: {
+    generateForm: (body) => post('/ai/generate-form', body),
+  },
+
   // ── Billing ────────────────────────────────────────────────
   billing: {
     get: (wsId)            => get(`/billing/${wsId}`),

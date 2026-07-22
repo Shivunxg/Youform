@@ -158,16 +158,14 @@ export const useBuilderStore = create((set, get) => ({
     set({ isSaving: true });
     try {
       // Save form metadata
-      await api.forms.update(form.id, {
-        title: form.title,
-        description: form.description,
-        layout: form.layout,
-        theme: form.theme,
-        settings: form.settings,
-        ...(form.opens_at    ? { opens_at:       form.opens_at }    : {}),
-        ...(form.closes_at   ? { closes_at:      form.closes_at }   : {}),
-        ...(form.response_limit ? { response_limit: form.response_limit } : {}),
-      });
+      const meta = { title: form.title, layout: form.layout };
+      if (form.description != null) meta.description = form.description;
+      if (form.theme       != null) meta.theme       = form.theme;
+      if (form.settings    != null) meta.settings    = form.settings;
+      if (form.opens_at)            meta.opens_at    = form.opens_at;
+      if (form.closes_at)           meta.closes_at   = form.closes_at;
+      if (form.response_limit)      meta.response_limit = form.response_limit;
+      await api.forms.update(form.id, meta);
 
       // Save questions (full replace)
       await api.forms.saveQuestions(form.id, questions.map(({ _isNew, ...q }) => q));

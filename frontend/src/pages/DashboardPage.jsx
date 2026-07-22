@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useAuthStore } from '@/stores/authStore';
 import AppShell from '@/components/ui/AppShell';
+import CreateFormModal from '@/components/ui/CreateFormModal';
 import TemplatePickerModal from '@/components/ui/TemplatePickerModal';
 import toast from 'react-hot-toast';
 import { clsx } from 'clsx';
@@ -19,7 +20,7 @@ const STATUS_COLORS = {
 
 export default function DashboardPage() {
   const [menuOpen, setMenuOpen] = useState(null);
-  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [modal, setModal] = useState(null); // null | 'create' | 'templates'
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { user } = useAuthStore();
@@ -53,8 +54,14 @@ export default function DashboardPage() {
 
   return (
     <AppShell>
-      {showTemplatePicker && (
-        <TemplatePickerModal onClose={() => setShowTemplatePicker(false)} />
+      {modal === 'create' && (
+        <CreateFormModal
+          onClose={() => setModal(null)}
+          onOpenTemplates={() => setModal('templates')}
+        />
+      )}
+      {modal === 'templates' && (
+        <TemplatePickerModal onClose={() => setModal(null)} />
       )}
       <div className="max-w-6xl mx-auto px-4 py-6">
         {/* Workspace header */}
@@ -76,7 +83,7 @@ export default function DashboardPage() {
           </div>
           {canEdit && (
             <button
-              onClick={() => setShowTemplatePicker(true)}
+              onClick={() => setModal('create')}
               className="btn btn-primary"
             >
               + New Form
@@ -101,7 +108,7 @@ export default function DashboardPage() {
           ) : forms.length === 0 ? (
             <EmptyState
               canEdit={canEdit}
-              onCreate={() => setShowTemplatePicker(true)}
+              onCreate={() => setModal('create')}
               onInvite={() => navigate('/settings/members')}
             />
           ) : (

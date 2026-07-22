@@ -114,14 +114,23 @@ export default function PublicFormPage() {
 
   const setAnswer = (id, value) => setAnswers(a => ({ ...a, [id]: value }));
 
+  const hasImage = !!theme.backgroundImage;
+
   const bgStyle = {
     backgroundColor: theme.backgroundColor ?? '#ffffff',
     fontFamily: theme.fontFamily ? `'${theme.fontFamily}', sans-serif` : undefined,
     minHeight: '100vh',
+    ...(hasImage && {
+      backgroundImage: `url(${theme.backgroundImage})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundAttachment: 'fixed',
+    }),
   };
 
   return (
-    <div style={bgStyle} className="flex flex-col">
+    <div style={bgStyle} className="relative flex flex-col">
+      {hasImage && <div className="fixed inset-0 bg-black/30 -z-0" />}
       {/* Progress */}
       {!submitted && questions.length > 0 && (
         <div className="h-1 w-full bg-black/10 fixed top-0 z-10">
@@ -132,8 +141,8 @@ export default function PublicFormPage() {
         </div>
       )}
 
-      <div className="flex-1 flex flex-col items-center justify-center px-4 py-16">
-        <div className="w-full max-w-xl">
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-16">
+        <div className={clsx('w-full max-w-xl', hasImage && 'bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl p-8')}>
           {submitted ? (
             <ThankYouScreen question={thankYouQ} primary={primary} formTitle={form.title} quizScore={quizScore} quizMode={form.settings?.quizMode} />
           ) : current ? (

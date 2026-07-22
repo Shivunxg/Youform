@@ -23,14 +23,35 @@ export default function FormPreview() {
   };
   const goPrev = () => setCurrentIndex(i => Math.max(i - 1, 0));
 
-  const containerClass = clsx(
-    'mx-auto bg-white rounded-2xl shadow-lg overflow-hidden',
-    previewDevice === 'mobile' ? 'w-80 min-h-[600px]' : 'w-full max-w-xl min-h-[500px]'
+  const hasImage = !!theme.backgroundImage;
+
+  const outerStyle = {
+    backgroundColor: theme.backgroundColor ?? '#f1f5f9',
+    ...(hasImage && {
+      backgroundImage: `url(${theme.backgroundImage})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+    }),
+  };
+
+  const cardClass = clsx(
+    'mx-auto rounded-2xl overflow-hidden relative z-10',
+    previewDevice === 'mobile' ? 'w-80 min-h-[600px]' : 'w-full max-w-xl min-h-[500px]',
+    hasImage ? 'shadow-2xl' : 'shadow-lg bg-white'
   );
 
+  const cardStyle = {
+    fontFamily: theme.fontFamily ?? 'Inter',
+    ...(hasImage && { backgroundColor: 'rgba(255,255,255,0.93)', backdropFilter: 'blur(2px)' }),
+  };
+
   return (
-    <div className="flex-1 flex items-center justify-center bg-gray-100 p-8 overflow-auto">
-      <div className={containerClass} style={{ fontFamily: theme.fontFamily ?? 'Inter' }}>
+    <div className="flex-1 relative overflow-hidden" style={outerStyle}>
+      {/* Darkening overlay when image is present */}
+      {hasImage && <div className="absolute inset-0 bg-black/25 z-0" />}
+
+      <div className="absolute inset-0 flex items-center justify-center p-8 overflow-auto">
+        <div className={cardClass} style={cardStyle}>
         {/* Progress bar */}
         {!submitted && (
           <div className="h-1 bg-gray-100">
@@ -75,6 +96,7 @@ export default function FormPreview() {
               No questions yet
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>
