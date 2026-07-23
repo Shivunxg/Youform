@@ -338,106 +338,108 @@ function FormCard({
     }
   }, [isRenaming]);
 
-  const thumbnailBg   = form.theme?.backgroundColor ?? '#f1f5f9';
-  const thumbnailText = form.theme?.questionColor   ?? '#111111';
-  const thumbnailFont = form.theme?.fontFamily      ?? 'Playfair Display, Georgia, serif';
-  const responseCount = form.responses_count ?? 0;
+  const accent = form.theme?.primaryColor ?? '#f97316';
 
   return (
     <div
-      className="bg-white rounded-2xl border border-gray-200 group cursor-pointer overflow-hidden transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md flex flex-col"
-      style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}
+      className="bg-white rounded-xl border-2 border-[#111] group cursor-pointer overflow-visible transition-all duration-100 hover:-translate-y-0.5 flex flex-col"
+      style={{ boxShadow: '4px 4px 0 #111' }}
       onClick={isRenaming ? undefined : onEdit}
     >
-      {/* ── Thumbnail ── */}
-      <div
-        className="h-40 flex items-center justify-center px-6 overflow-hidden shrink-0"
-        style={{ backgroundColor: thumbnailBg }}
-      >
-        {isRenaming ? (
-          <input
-            ref={inputRef}
-            value={renameValue}
-            onChange={e => onRenameChange(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter') onRenameCommit();
-              if (e.key === 'Escape') onRenameCancel();
-            }}
-            onBlur={onRenameCommit}
-            onClick={e => e.stopPropagation()}
-            className="w-full text-center text-lg font-bold border-2 border-[#f97316] rounded-lg px-3 py-1.5 outline-none bg-white/90"
-            style={{ fontFamily: thumbnailFont, color: thumbnailText }}
-            maxLength={200}
-          />
-        ) : (
-          <p
-            className="text-xl font-bold text-center leading-snug line-clamp-3 select-none"
-            style={{ color: thumbnailText, fontFamily: thumbnailFont }}
-          >
-            {form.title || 'Untitled'}
-          </p>
-        )}
-      </div>
+      {/* Colour stripe */}
+      <div className="h-2 rounded-t-[10px] border-b-2 border-[#111] shrink-0" style={{ backgroundColor: accent }} />
 
-      {/* ── Footer ── */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-        <span className="text-xs text-gray-400 font-medium" style={SG}>
-          {responseCount === 0
-            ? 'No responses'
-            : `${responseCount} response${responseCount !== 1 ? 's' : ''}`}
+      <div className="p-5 flex-1 flex flex-col">
+        {/* Title row */}
+        <div className="flex items-start justify-between gap-2 mb-3">
+          {isRenaming ? (
+            <input
+              ref={inputRef}
+              value={renameValue}
+              onChange={e => onRenameChange(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') onRenameCommit();
+                if (e.key === 'Escape') onRenameCancel();
+              }}
+              onBlur={onRenameCommit}
+              onClick={e => e.stopPropagation()}
+              className="flex-1 text-sm font-bold text-[#111] border-2 border-[#f97316] rounded-lg px-2 py-0.5 outline-none bg-[#FFFBF2]"
+              style={SG}
+              maxLength={200}
+            />
+          ) : (
+            <h3 className="font-bold text-[#111] text-sm leading-tight line-clamp-2 flex-1" style={SG}>{form.title || 'Untitled'}</h3>
+          )}
+
+          {/* ··· button */}
+          <div className="relative shrink-0" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={onMenuToggle}
+              className={clsx(
+                'p-1.5 rounded-lg border-2 text-[#111] transition-all',
+                menuOpen
+                  ? 'border-[#f97316] bg-[#FFFBF2] opacity-100'
+                  : 'border-transparent opacity-0 group-hover:opacity-100 hover:border-[#111] hover:bg-[#FFFBF2]'
+              )}
+              aria-label="Form actions"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+
+            {menuOpen && (
+              <div
+                className="absolute right-0 top-9 w-52 bg-white rounded-xl border-2 border-[#111] py-1 z-30"
+                style={{ boxShadow: '4px 4px 0 #111' }}
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Open / Copy / Share */}
+                <MenuItem icon={ExternalLink} label="Open Form Page"  onClick={onOpenForm} />
+                <MenuItem icon={Link2}        label="Copy Form Link"  onClick={onCopyLink} />
+                <MenuItem icon={Share2}       label="Share"           onClick={onShare} />
+                <Divider />
+
+                {/* Navigate */}
+                {canEdit && <MenuItem icon={Settings}  label="Settings"    onClick={onSettings} />}
+                <MenuItem icon={FileText}     label="Submissions"    onClick={onSubmissions} />
+                <Divider />
+
+                {/* Edit actions */}
+                {canEdit && (
+                  <>
+                    <MenuItem icon={Pencil}          label="Rename"               onClick={onRename} />
+                    <MenuItem icon={Copy}             label="Duplicate"            onClick={onDuplicate} />
+                    <MenuItem
+                      icon={ArrowRightLeft}
+                      label="Move to workspace"
+                      onClick={hasOtherWorkspaces ? onMove : undefined}
+                      disabled={!hasOtherWorkspaces}
+                      title={!hasOtherWorkspaces ? "You don't have any other workspaces" : undefined}
+                    />
+                    <Divider />
+                    <MenuItem
+                      icon={form.status === 'closed' ? RefreshCw : EyeOff}
+                      label={form.status === 'closed' ? 'Reopen this form' : 'Close this form'}
+                      onClick={onToggleClose}
+                      amber
+                    />
+                    <MenuItem icon={Trash2} label="Delete" onClick={onDeleteRequest} danger />
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Status badge */}
+        <span className={clsx('badge text-xs capitalize mb-4 inline-block', STATUS_COLORS[form.status] ?? STATUS_COLORS.draft)}>
+          {form.status}
         </span>
 
-        {/* ··· menu */}
-        <div className="relative" onClick={e => e.stopPropagation()}>
-          <button
-            onClick={onMenuToggle}
-            className={clsx(
-              'p-1.5 rounded-lg border-2 text-[#111] transition-all',
-              menuOpen
-                ? 'border-[#f97316] bg-[#FFFBF2] opacity-100'
-                : 'border-transparent opacity-0 group-hover:opacity-100 hover:border-[#111] hover:bg-[#FFFBF2]'
-            )}
-            aria-label="Form actions"
-          >
-            <MoreHorizontal className="w-4 h-4" />
-          </button>
-
-          {menuOpen && (
-            <div
-              className="absolute right-0 bottom-9 w-52 bg-white rounded-xl border-2 border-[#111] py-1 z-30"
-              style={{ boxShadow: '4px 4px 0 #111' }}
-              onClick={e => e.stopPropagation()}
-            >
-              <MenuItem icon={ExternalLink} label="Open Form Page" onClick={onOpenForm} />
-              <MenuItem icon={Link2}        label="Copy Form Link" onClick={onCopyLink} />
-              <MenuItem icon={Share2}       label="Share"          onClick={onShare} />
-              <Divider />
-              {canEdit && <MenuItem icon={Settings}  label="Settings"    onClick={onSettings} />}
-              <MenuItem   icon={FileText}   label="Submissions"    onClick={onSubmissions} />
-              <Divider />
-              {canEdit && (
-                <>
-                  <MenuItem icon={Pencil}        label="Rename"             onClick={onRename} />
-                  <MenuItem icon={Copy}           label="Duplicate"          onClick={onDuplicate} />
-                  <MenuItem
-                    icon={ArrowRightLeft}
-                    label="Move to workspace"
-                    onClick={hasOtherWorkspaces ? onMove : undefined}
-                    disabled={!hasOtherWorkspaces}
-                    title={!hasOtherWorkspaces ? "You don't have any other workspaces" : undefined}
-                  />
-                  <Divider />
-                  <MenuItem
-                    icon={form.status === 'closed' ? RefreshCw : EyeOff}
-                    label={form.status === 'closed' ? 'Reopen this form' : 'Close this form'}
-                    onClick={onToggleClose}
-                    amber
-                  />
-                  <MenuItem icon={Trash2} label="Delete" onClick={onDeleteRequest} danger />
-                </>
-              )}
-            </div>
-          )}
+        {/* Stats */}
+        <div className="flex items-center gap-4 pt-3 border-t-2 border-[#111] mt-auto">
+          <Stat label="Responses" value={form.responses_count ?? 0} />
+          <Stat label="Views"     value={form.views_count ?? 0} />
+          <Stat label="Rate"      value={form.starts_count > 0 ? `${Math.round((form.responses_count / form.starts_count) * 100)}%` : '—'} />
         </div>
       </div>
     </div>
@@ -606,11 +608,14 @@ function EmptyState({ canEdit, onCreate, onInvite }) {
 
 function FormCardSkeleton() {
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden animate-pulse" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-      <div className="h-40 bg-gray-100" />
-      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-        <div className="h-3 bg-gray-200 rounded w-24" />
-        <div className="h-6 w-6 bg-gray-100 rounded-lg" />
+    <div className="bg-white rounded-xl border-2 border-[#111] overflow-hidden animate-pulse" style={{ boxShadow: '4px 4px 0 #111' }}>
+      <div className="h-2 bg-gray-200 border-b-2 border-[#111]" />
+      <div className="p-5">
+        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+        <div className="h-3 bg-gray-100 rounded w-1/4 mb-4" />
+        <div className="flex gap-4 pt-3 border-t-2 border-[#111]">
+          {[1, 2, 3].map(i => <div key={i} className="flex-1 h-8 bg-gray-100 rounded" />)}
+        </div>
       </div>
     </div>
   );
