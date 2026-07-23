@@ -20,7 +20,6 @@ export default function Canvas({ onToggleDesign }) {
   const bgColor     = form?.theme?.backgroundColor;
   const questionColor = form?.theme?.questionColor;
   const globalAlign = form?.theme?.alignment ?? 'left';
-  const pageImage   = form?.theme?.backgroundImage ?? null;
   const mainBlocks  = questions.filter(q => q.type !== 'thank_you_screen');
   const selected    = questions.find(q => q.id === selectedQuestionId);
   const textAlign   = selected?.config?.alignment ?? globalAlign;
@@ -139,16 +138,11 @@ export default function Canvas({ onToggleDesign }) {
         )}
       </div>
 
-      {/* Canvas area — shows page background image/color */}
+      {/* Canvas area */}
       <div
         className="flex-1 overflow-auto flex items-center justify-center p-8 relative"
-        style={pageImage ? {
-          backgroundImage: `url(${pageImage})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        } : { backgroundColor: '#f3f4f6' }}
+        style={{ backgroundColor: '#f3f4f6' }}
       >
-        {pageImage && <div className="absolute inset-0 bg-black/20 pointer-events-none" />}
 
         {selected ? (
           <div

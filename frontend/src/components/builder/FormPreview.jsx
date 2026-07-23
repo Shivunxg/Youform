@@ -61,14 +61,8 @@ export default function FormPreview() {
     return () => window.removeEventListener('keydown', handler);
   }, [goNext, setPreviewMode]);
 
-  const hasImage = !!theme.backgroundImage;
   const outerStyle = {
     backgroundColor: theme.backgroundColor ?? '#f1f5f9',
-    ...(hasImage && {
-      backgroundImage: `url(${theme.backgroundImage})`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-    }),
   };
 
   return (
@@ -142,20 +136,16 @@ export default function FormPreview() {
 
       {/* ── Preview area ── */}
       <div className="flex-1 relative overflow-hidden" style={outerStyle}>
-        {hasImage && <div className="absolute inset-0 bg-black/25 z-0" />}
-
         <div className="absolute inset-0 flex items-center justify-center p-8 overflow-auto">
           <div
             className={clsx(
-              'rounded-2xl overflow-hidden relative z-10 flex flex-col',
-              device === 'mobile' ? 'w-80 min-h-[600px]' : 'w-full max-w-xl min-h-[500px]',
-              hasImage ? 'shadow-2xl' : 'shadow-lg bg-white'
+              'rounded-2xl overflow-hidden relative z-10 flex flex-col shadow-lg',
+              device === 'mobile' ? 'w-80 min-h-[600px]' : 'w-full max-w-xl min-h-[500px]'
             )}
             style={{
               fontFamily: theme.fontFamily ?? 'Playfair Display, Georgia, serif',
               color: theme.questionColor ?? '#111111',
-              ...(hasImage && { backgroundColor: 'rgba(255,255,255,0.93)', backdropFilter: 'blur(2px)' }),
-              ...(!hasImage && theme.backgroundColor && { backgroundColor: theme.backgroundColor }),
+              backgroundColor: theme.backgroundColor ?? '#ffffff',
             }}
           >
             {/* Progress bar */}
