@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { X, Monitor, Smartphone, RefreshCw, ChevronRight, ChevronLeft } from 'lucide-react';
+import { X, Monitor, Smartphone, RefreshCw, ChevronRight, ChevronLeft, ChevronUp, ChevronDown } from 'lucide-react';
 import { useBuilderStore } from '@/stores/builderStore';
 import { clsx } from 'clsx';
 
@@ -19,6 +19,7 @@ export default function FormPreview() {
   const isLast          = currentIndex === visibleBlocks.length - 1;
   const theme           = form?.theme ?? {};
   const primary         = theme.buttonColor ?? theme.primaryColor ?? '#6366f1';
+  const showBranding    = !form?.settings?.removeBranding;
 
   const reset = useCallback(() => {
     setCurrentIndex(0);
@@ -217,6 +218,53 @@ export default function FormPreview() {
                 )}
               </div>
             )}
+
+            {/* ── Wave divider ── */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 400 14"
+              preserveAspectRatio="none"
+              className="w-full shrink-0 block"
+              style={{ height: 14 }}
+            >
+              <path
+                d="M0,14 C60,0 140,12 220,5 S320,0 400,10 L400,14 Z"
+                style={{ fill: `${primary}1a` }}
+              />
+            </svg>
+
+            {/* ── Card footer: branding badge + chevron nav ── */}
+            <div
+              className="flex items-center justify-between px-4 pb-3 pt-1 shrink-0"
+              style={{ backgroundColor: theme.backgroundColor ?? '#ffffff' }}
+            >
+              {showBranding ? (
+                <span className="text-[10px] text-gray-400 leading-none select-none">
+                  Powered by <span className="font-semibold text-gray-500">FormFlow</span>
+                </span>
+              ) : <span />}
+
+              <div className="flex flex-col items-center gap-0.5">
+                <button
+                  onClick={goPrev}
+                  disabled={!submitted && isFirst}
+                  title="Previous block"
+                  className="p-1 rounded transition-opacity hover:opacity-80 disabled:opacity-20"
+                  style={{ color: primary }}
+                >
+                  <ChevronUp className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={goNext}
+                  disabled={submitted || !canAdvance()}
+                  title="Next block"
+                  className="p-1 rounded transition-opacity hover:opacity-80 disabled:opacity-20"
+                  style={{ color: primary }}
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

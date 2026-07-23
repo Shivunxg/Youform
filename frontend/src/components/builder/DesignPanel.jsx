@@ -9,6 +9,22 @@ import { clsx } from 'clsx';
 import toast from 'react-hot-toast';
 
 const SG = { fontFamily: 'Space Grotesk, system-ui, sans-serif' };
+
+// ── WCAG contrast utilities ───────────────────────────────────────────────────
+function hexToRgb(hex) {
+  const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return r ? [parseInt(r[1], 16), parseInt(r[2], 16), parseInt(r[3], 16)] : null;
+}
+function relativeLuminance(hex) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return 0;
+  return rgb.map(c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); })
+    .reduce((s, c, i) => s + c * [0.2126, 0.7152, 0.0722][i], 0);
+}
+function contrastRatio(a, b) {
+  const [l1, l2] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
+  return (l1 + 0.05) / (l2 + 0.05);
+}
 const PICSUM_BLK = (seed) => `https://picsum.photos/seed/${seed}/800/600`;
 
 // ── Colour swatch ─────────────────────────────────────────────────────────────
@@ -88,28 +104,28 @@ function ColorSwatch({ label, value, onChange }) {
 // ── Block image library ───────────────────────────────────────────────────────
 const BLOCK_IMAGE_LIBRARY = [
   { label: 'People', images: [
-    { seed: 'people-work-team',       label: 'Team'      },
-    { seed: 'woman-laptop-remote',    label: 'Remote'    },
-    { seed: 'business-handshake',     label: 'Partners'  },
-    { seed: 'diverse-group-smiling',  label: 'Diversity' },
-    { seed: 'professional-portrait',  label: 'Portrait'  },
+    { seed: 'people-work-team',       label: 'Team',      description: 'Collaborative team working together'   },
+    { seed: 'woman-laptop-remote',    label: 'Remote',    description: 'Person working remotely on a laptop'  },
+    { seed: 'business-handshake',     label: 'Partners',  description: 'Business partners shaking hands'      },
+    { seed: 'diverse-group-smiling',  label: 'Diversity', description: 'Diverse group of smiling colleagues'  },
+    { seed: 'professional-portrait',  label: 'Portrait',  description: 'Professional business headshot'       },
   ]},
   { label: 'Workspace', images: [
-    { seed: 'minimal-desk-setup',  label: 'Desk'   },
-    { seed: 'open-plan-office',    label: 'Office' },
-    { seed: 'coffee-shop-laptop',  label: 'Café'   },
-    { seed: 'creative-studio-room',label: 'Studio' },
+    { seed: 'minimal-desk-setup',   label: 'Desk',   description: 'Clean, minimal desk setup'          },
+    { seed: 'open-plan-office',     label: 'Office', description: 'Modern open-plan office space'      },
+    { seed: 'coffee-shop-laptop',   label: 'Café',   description: 'Working from a coffee shop'         },
+    { seed: 'creative-studio-room', label: 'Studio', description: 'Creative studio workspace'          },
   ]},
   { label: 'Lifestyle', images: [
-    { seed: 'morning-coffee-cup',    label: 'Morning'  },
-    { seed: 'reading-book-cozy',     label: 'Reading'  },
-    { seed: 'wellness-yoga-mat',     label: 'Wellness' },
-    { seed: 'city-street-lifestyle', label: 'Urban'    },
+    { seed: 'morning-coffee-cup',    label: 'Morning',  description: 'Morning coffee and slow start'    },
+    { seed: 'reading-book-cozy',     label: 'Reading',  description: 'Cozy reading atmosphere'          },
+    { seed: 'wellness-yoga-mat',     label: 'Wellness', description: 'Wellness and yoga practice'       },
+    { seed: 'city-street-lifestyle', label: 'Urban',    description: 'Urban city street lifestyle'      },
   ]},
   { label: 'Product', images: [
-    { seed: 'tech-gadgets-flat',      label: 'Tech'    },
-    { seed: 'fashion-clothing-rack',  label: 'Fashion' },
-    { seed: 'food-restaurant-dish',   label: 'Food'    },
+    { seed: 'tech-gadgets-flat',     label: 'Tech',    description: 'Tech gadgets flat lay'             },
+    { seed: 'fashion-clothing-rack', label: 'Fashion', description: 'Fashion clothing rack'             },
+    { seed: 'food-restaurant-dish',  label: 'Food',    description: 'Restaurant-quality food dish'      },
   ]},
 ];
 
@@ -127,7 +143,7 @@ function BlockImagePicker({ selectedQuestion, onUpdateConfig }) {
 
   return (
     <div className="px-4 py-3 space-y-3">
-      {/* Current image + position controls */}
+      {/* Current image preview */}
       {current && (
         <div
           className="relative w-full h-16 rounded-xl border-2 border-[#111] overflow-hidden"
@@ -141,23 +157,42 @@ function BlockImagePicker({ selectedQuestion, onUpdateConfig }) {
           >
             <ImageOff className="w-3 h-3 text-gray-600" />
           </button>
-          {/* Position toggle */}
-          <div className="absolute bottom-1.5 left-1.5 flex gap-1">
+        </div>
+      )}
+
+      {/* None chip + position controls — always visible */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => onUpdateConfig({ blockImage: null, blockImagePosition: undefined })}
+          className={clsx(
+            'text-[10px] font-bold px-2.5 py-1 rounded-lg border-2 transition-all shrink-0',
+            !current
+              ? 'border-[#111] bg-[#111] text-white'
+              : 'border-gray-300 text-gray-500 hover:border-gray-400 hover:bg-gray-50'
+          )}
+          style={!current ? { boxShadow: '1.5px 1.5px 0 #f97316' } : {}}
+        >
+          None
+        </button>
+        {current && (
+          <div className="flex gap-1 ml-auto">
             {['left', 'right'].map(pos => (
               <button
                 key={pos}
                 onClick={() => onUpdateConfig({ blockImagePosition: pos })}
                 className={clsx(
-                  'text-[9px] font-bold px-1.5 py-0.5 rounded transition-colors',
-                  position === pos ? 'bg-[#f97316] text-white' : 'bg-white/90 text-gray-600 hover:bg-white'
+                  'text-[10px] font-bold px-2 py-1 rounded-lg border-2 transition-colors',
+                  position === pos
+                    ? 'bg-[#f97316] text-white border-[#f97316]'
+                    : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
                 )}
               >
                 {pos === 'left' ? '← Left' : 'Right →'}
               </button>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Curated library */}
       {BLOCK_IMAGE_LIBRARY.map(category => (
@@ -166,7 +201,7 @@ function BlockImagePicker({ selectedQuestion, onUpdateConfig }) {
             {category.label}
           </p>
           <div className="grid grid-cols-4 gap-1.5">
-            {category.images.map(({ seed, label }) => {
+            {category.images.map(({ seed, label, description }) => {
               const url = PICSUM_BLK(seed);
               const isActive = current === url;
               return (
@@ -176,17 +211,25 @@ function BlockImagePicker({ selectedQuestion, onUpdateConfig }) {
                     blockImage: isActive ? null : url,
                     blockImagePosition: position,
                   })}
-                  title={label}
-                  className="relative rounded-lg overflow-hidden transition-all"
+                  title={description ?? label}
+                  className="relative rounded-lg overflow-hidden transition-all group"
                   style={{
                     border: isActive ? '2px solid #f97316' : '2px solid #d1d5db',
                     boxShadow: isActive ? '0 0 0 2px #f97316' : 'none',
                     aspectRatio: '4/3',
                   }}
                 >
-                  <img src={url} alt={label} className="w-full h-full object-cover" loading="lazy" />
-                  <div className="absolute inset-0 flex items-end justify-center pb-0.5">
-                    <span className="text-[7px] font-bold text-white drop-shadow" style={SG}>{label}</span>
+                  <img
+                    src={url} alt={label} loading="lazy"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                  />
+                  <div className="absolute inset-0 flex items-end bg-transparent group-hover:bg-black/30 transition-colors duration-150">
+                    <span
+                      className="w-full px-1 py-0.5 text-[8px] font-bold text-white text-center leading-tight opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+                      style={SG}
+                    >
+                      {label}
+                    </span>
                   </div>
                 </button>
               );
@@ -320,6 +363,22 @@ export default function DesignPanel({ onClose }) {
             onChange={v => updateTheme({ starColor: v })}
           />
         </div>
+
+        {/* Contrast warning */}
+        {(() => {
+          const bg = theme.backgroundColor ?? '#FFFFFF';
+          const qc = theme.questionColor   ?? '#111111';
+          const ratio = contrastRatio(bg, qc);
+          if (ratio >= 4.5) return null;
+          return (
+            <div className="mx-4 mb-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-xs font-semibold text-amber-700">⚠ Low contrast ({ratio.toFixed(1)}:1)</p>
+              <p className="text-[10px] text-amber-600 mt-0.5 leading-snug">
+                Block color vs. question text may be hard to read — WCAG AA requires 4.5:1.
+              </p>
+            </div>
+          );
+        })()}
 
         {/* ── SECTION 3: Block Image ── */}
         <SectionHeader label="Block Image" />
