@@ -413,7 +413,7 @@ export default function DesignPanel({ onClose }) {
         <div className="px-4 py-3 border-t border-gray-100">
           <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2" style={SG}>Font</p>
           <select
-            value={theme.fontFamily ?? 'Inter, system-ui, sans-serif'}
+            value={theme.fontFamily ?? 'Playfair Display, Georgia, serif'}
             onChange={e => updateTheme({ fontFamily: e.target.value })}
             className="w-full border-2 border-[#111] rounded-xl px-3 py-2 text-sm font-medium text-[#111] bg-white outline-none focus:border-[#f97316]"
             style={SG}

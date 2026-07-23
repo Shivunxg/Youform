@@ -152,7 +152,7 @@ export default function FormPreview() {
               hasImage ? 'shadow-2xl' : 'shadow-lg bg-white'
             )}
             style={{
-              fontFamily: theme.fontFamily ?? 'Inter, system-ui, sans-serif',
+              fontFamily: theme.fontFamily ?? 'Playfair Display, Georgia, serif',
               color: theme.questionColor ?? '#111111',
               ...(hasImage && { backgroundColor: 'rgba(255,255,255,0.93)', backdropFilter: 'blur(2px)' }),
               ...(!hasImage && theme.backgroundColor && { backgroundColor: theme.backgroundColor }),

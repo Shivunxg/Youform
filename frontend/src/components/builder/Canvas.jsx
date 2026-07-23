@@ -157,7 +157,7 @@ export default function Canvas({ onToggleDesign }) {
               previewDevice === 'mobile' ? 'w-80' : 'w-full max-w-xl'
             )}
             style={{
-              fontFamily: form?.theme?.fontFamily ?? 'Inter, system-ui, sans-serif',
+              fontFamily: form?.theme?.fontFamily ?? 'Playfair Display, Georgia, serif',
               backgroundColor: bgColor ?? '#FFFFFF',
               textAlign,
             }}

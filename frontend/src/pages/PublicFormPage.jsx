@@ -144,7 +144,7 @@ export default function PublicFormPage() {
 
   const bgStyle = {
     backgroundColor: theme.backgroundColor ?? '#ffffff',
-    fontFamily: theme.fontFamily ? `'${theme.fontFamily}', sans-serif` : undefined,
+    fontFamily: theme.fontFamily ?? 'Playfair Display, Georgia, serif',
     minHeight: '100vh',
     ...(hasImage && {
       backgroundImage: `url(${theme.backgroundImage})`,
