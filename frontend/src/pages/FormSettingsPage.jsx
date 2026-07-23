@@ -19,14 +19,8 @@ export default function FormSettingsPage() {
     staleTime: 30_000,
   });
 
-  const { data: usageData } = useQuery({
-    queryKey: ['usage'],
-    queryFn: () => api.workspaces?.getUsage ? api.workspaces.getUsage() : Promise.resolve({ plan: 'free' }),
-    staleTime: 300_000,
-  });
-
-  const plan = usageData?.plan ?? 'free';
   const form = data?.form;
+  const plan = form?.workspaces?.plan ?? 'free';
 
   const updateMutation = useMutation({
     mutationFn: (updates) => api.forms.update(formId, updates),
