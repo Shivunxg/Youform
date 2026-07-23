@@ -138,6 +138,7 @@ export const api = {
   // ── AI form generation ─────────────────────────────────────
   ai: {
     generateForm: (body) => post('/ai/generate-form', body),
+    rewriteBlock: (body)  => post('/ai/rewrite-block', body),
   },
 
   // ── Billing ────────────────────────────────────────────────

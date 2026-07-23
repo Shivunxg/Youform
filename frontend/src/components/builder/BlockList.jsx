@@ -169,10 +169,10 @@ function BlockItem({ question, index, isTerminal }) {
           : 'hover:bg-gray-50'
       )}
     >
-      {/* Color bar */}
+      {/* Color bar — always visible, full opacity when selected */}
       <div
-        className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full transition-colors"
-        style={{ backgroundColor: isSelected ? meta.color : '#E5E7EB' }}
+        className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full transition-opacity"
+        style={{ backgroundColor: meta.color, opacity: isSelected ? 1 : 0.35 }}
       />
 
       {/* Number badge (main blocks only) */}

@@ -2,20 +2,7 @@ import { create } from 'zustand';
 import { nanoid } from 'nanoid';
 import { api } from '@/lib/api';
 
-const DEFAULT_QUESTION = (type) => ({
-  id: crypto.randomUUID(),
-  type,
-  title: '',
-  description: '',
-  required: false,
-  config: defaultConfig(type),
-  validation: {},
-  logic: [],
-  position: 0,
-  _isNew: true,
-});
-
-function defaultConfig(type) {
+export function defaultConfig(type) {
   switch (type) {
     case 'multiple_choice': return { choices: [{ id: nanoid(), label: 'Option 1' }, { id: nanoid(), label: 'Option 2' }], allowMultiple: false, allowOther: false };
     case 'rating':          return { steps: 5, shape: 'star' };
@@ -33,6 +20,19 @@ function defaultConfig(type) {
     default:                return {};
   }
 }
+
+const DEFAULT_QUESTION = (type) => ({
+  id: crypto.randomUUID(),
+  type,
+  title: '',
+  description: '',
+  required: false,
+  config: defaultConfig(type),
+  validation: {},
+  logic: [],
+  position: 0,
+  _isNew: true,
+});
 
 export const useBuilderStore = create((set, get) => ({
   // Form metadata
@@ -114,12 +114,26 @@ export const useBuilderStore = create((set, get) => ({
     });
   },
 
+  // ── Change question type (preserves title, description, alignment, embed) ─
+  changeQuestionType: (id, newType) => {
+    set(s => ({
+      questions: s.questions.map(q => {
+        if (q.id !== id) return q;
+        const newConfig = defaultConfig(newType);
+        if (q.config?.alignment) newConfig.alignment = q.config.alignment;
+        if (q.config?.embed)     newConfig.embed = q.config.embed;
+        return { ...q, type: newType, config: newConfig };
+      }),
+      isDirty: true,
+    }));
+  },
+
   // ── Duplicate question ─────────────────────────────────────
   duplicateQuestion: (id) => {
     const { questions } = get();
     const idx = questions.findIndex(q => q.id === id);
     if (idx === -1) return;
-    const copy = { ...questions[idx], id: nanoid(), title: questions[idx].title + ' (copy)', _isNew: true };
+    const copy = { ...questions[idx], id: crypto.randomUUID(), title: questions[idx].title + ' (copy)', _isNew: true };
     const reordered = [
       ...questions.slice(0, idx + 1),
       copy,

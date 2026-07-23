@@ -137,4 +137,74 @@ router.post('/ai/generate-form', requireAuth, [
   }
 });
 
+const REWRITE_SYSTEM = `You are a form block copywriter. Given a block type, optional existing content, and a user instruction, output ONLY a JSON object — no prose, no markdown fences — with exactly this shape:
+{"title":"<block title or question, max 120 chars>","description":"<supporting copy, 1-2 sentences max, or empty string>"}
+
+Rules:
+- For question types (short_text, multiple_choice, rating, etc.): write a clear, specific, conversational question.
+- For statement / welcome_screen: write an engaging, friendly announcement or instruction.
+- description should provide context, instructions, or motivation; keep under 80 words; leave empty string if not needed.
+- Never truncate mid-sentence.
+- Return raw JSON only — no markdown, no explanation.`;
+
+async function rewriteBlock(prompt) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error('AI is not configured on this server. Add ANTHROPIC_API_KEY to enable it.');
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 512,
+      system: REWRITE_SYSTEM,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+    signal: AbortSignal.timeout(15_000),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message ?? `AI API error ${res.status}`);
+  }
+
+  const data = await res.json();
+  const text = data.content?.[0]?.text ?? '';
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error('AI returned an unexpected response — please try again.');
+  try {
+    return JSON.parse(match[0]);
+  } catch {
+    throw new Error('AI returned malformed JSON — please try again.');
+  }
+}
+
+// POST /api/ai/rewrite-block
+router.post('/ai/rewrite-block', requireAuth, [
+  body('blockType').notEmpty().withMessage('blockType is required'),
+  body('hint').optional({ nullable: true }).trim().isLength({ max: 500 }),
+], async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(422).json({ error: errors.array()[0].msg });
+
+    const { blockType, currentTitle, currentDescription, formTitle, hint } = req.body;
+
+    const prompt = `Form: "${formTitle || 'Untitled form'}"
+Block type: ${blockType}
+Current title: ${currentTitle || '(empty)'}
+Current description: ${currentDescription || '(empty)'}
+Instruction: ${hint?.trim() || 'Improve clarity and engagement, keep it concise and conversational'}`;
+
+    const result = await rewriteBlock(prompt);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
