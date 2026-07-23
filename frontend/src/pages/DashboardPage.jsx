@@ -210,7 +210,7 @@ export default function DashboardPage() {
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
-  const forms        = data?.forms ?? [];
+  const forms        = (data?.forms ?? []).filter(f => f.status !== 'archived');
   const activeWs     = workspaces.find(w => w.id === activeWorkspaceId);
   const myRole       = activeWs?.role ?? 'viewer';
   const canEdit      = ['owner', 'admin', 'editor'].includes(myRole);

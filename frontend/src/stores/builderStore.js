@@ -67,7 +67,7 @@ export const useBuilderStore = create((set, get) => ({
     const { questions, selectedQuestionId } = get();
     const answerable = questions.find(q => !['welcome_screen', 'thank_you_screen', 'statement'].includes(q.type));
     const targetId = selectedQuestionId ?? answerable?.id ?? null;
-    set({ logicPanelOpen: true, selectedQuestionId: targetId, showFormSettings: false });
+    set({ logicPanelOpen: true, selectedQuestionId: targetId, showFormSettings: false, designPanelOpen: false });
   },
   closeLogicPanel: () => set({ logicPanelOpen: false }),
 
