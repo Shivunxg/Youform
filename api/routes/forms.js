@@ -267,9 +267,9 @@ router.put(
         .select('role').eq('workspace_id', form.workspace_id).eq('user_id', req.user.id).single();
       if (!member || !['owner', 'admin', 'editor'].includes(member.role)) throw createError(403, 'Access denied');
 
-      // Atomic delete+insert via DB function — prevents partial saves
       const payload = questions.map((q, i) => ({
         id: q.id ?? nanoid(),
+        form_id: formId,
         type: q.type,
         position: q.position ?? i,
         title: q.title ?? '',
@@ -279,11 +279,19 @@ router.put(
         logic: q.logic ?? [],
       }));
 
-      const { error: rpcErr } = await supabaseAdmin.rpc('replace_form_questions', {
-        p_form_id: formId,
-        p_questions: JSON.stringify(payload),
-      });
-      if (rpcErr) throw rpcErr;
+      // Delete existing questions then insert the new set
+      const { error: delErr } = await supabaseAdmin
+        .from('questions')
+        .delete()
+        .eq('form_id', formId);
+      if (delErr) throw delErr;
+
+      if (payload.length > 0) {
+        const { error: insErr } = await supabaseAdmin
+          .from('questions')
+          .insert(payload);
+        if (insErr) throw insErr;
+      }
 
       const { data: saved } = await supabaseAdmin.from('questions').select('*').eq('form_id', formId).order('position');
       res.json({ questions: saved ?? [] });
