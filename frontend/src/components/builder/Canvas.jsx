@@ -15,6 +15,7 @@ export default function Canvas({ onToggleDesign }) {
   const [showAddPicker, setShowAddPicker] = useState(false);
   const pickerRef = useRef(null);
 
+  const plan = form?.workspaces?.plan ?? 'free';
   const primary = form?.theme?.buttonColor ?? form?.theme?.primaryColor ?? '#6366f1';
   const bgColor = form?.theme?.backgroundColor;
   const questionColor = form?.theme?.questionColor;
@@ -126,13 +127,15 @@ export default function Canvas({ onToggleDesign }) {
           </button>
         </div>
 
-        {/* Buy PRO */}
-        <button
-          onClick={() => toast('Upgrade to PRO for custom domains, branding removal & more!', { icon: '⚡' })}
-          className="text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white px-2.5 py-1 rounded-lg transition-colors ml-1"
-        >
-          ⚡ PRO
-        </button>
+        {/* PRO badge — only for free plan */}
+        {plan === 'free' && (
+          <button
+            onClick={() => toast('Upgrade to PRO for custom domains, branding removal & more!', { icon: '⚡' })}
+            className="text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white px-2.5 py-1 rounded-lg transition-colors ml-1"
+          >
+            ⚡ PRO
+          </button>
+        )}
       </div>
 
       {/* Canvas area */}

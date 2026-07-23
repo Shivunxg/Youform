@@ -86,38 +86,36 @@ export default function BuilderPage() {
       {/* Shared form header with tabs */}
       <FormHeader isBuilder />
 
-      {previewMode ? (
-        // Full-form preview mode
-        <FormPreview />
-      ) : (
-        // Builder: BlockList | Canvas | QuestionPanel
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
+      {/* Builder: always rendered */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={questions.map(q => q.id)}
+          strategy={verticalListSortingStrategy}
         >
-          <SortableContext
-            items={questions.map(q => q.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            <div className="flex-1 flex overflow-hidden">
-              {/* Left: ordered block list */}
-              <BlockList />
+          <div className="flex-1 flex overflow-hidden">
+            {/* Left: ordered block list */}
+            <BlockList />
 
-              {/* Center: live canvas */}
-              <Canvas onToggleDesign={toggleFormSettings} />
+            {/* Center: live canvas */}
+            <Canvas onToggleDesign={toggleFormSettings} />
 
-              {/* Right: property panel */}
-              {designPanelOpen
-                ? <DesignPanel onClose={toggleDesignPanel} />
-                : showFormSettings
-                  ? <FormSettingsPanel onClose={toggleFormSettings} />
-                  : <QuestionPanel />
-              }
-            </div>
-          </SortableContext>
-        </DndContext>
-      )}
+            {/* Right: property panel */}
+            {designPanelOpen
+              ? <DesignPanel onClose={toggleDesignPanel} />
+              : showFormSettings
+                ? <FormSettingsPanel onClose={toggleFormSettings} />
+                : <QuestionPanel />
+            }
+          </div>
+        </SortableContext>
+      </DndContext>
+
+      {/* Preview modal overlay — rendered on top of builder */}
+      {previewMode && <FormPreview />}
     </div>
   );
 }
