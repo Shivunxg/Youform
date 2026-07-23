@@ -19,9 +19,9 @@ export default function Canvas({ onToggleDesign }) {
   const bgColor = form?.theme?.backgroundColor;
   const questionColor = form?.theme?.questionColor;
   const globalAlign = form?.theme?.alignment ?? 'left';
-  const textAlign = selected?.config?.alignment ?? globalAlign;
   const mainBlocks = questions.filter(q => q.type !== 'thank_you_screen');
   const selected = questions.find(q => q.id === selectedQuestionId);
+  const textAlign = selected?.config?.alignment ?? globalAlign;
   const currentIndex = mainBlocks.findIndex(q => q.id === selectedQuestionId);
 
   useEffect(() => {
