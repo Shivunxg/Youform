@@ -22,6 +22,28 @@ export default function PublicFormPage() {
   const [quizScore, setQuizScore] = useState(null);
   const startedAt = useRef(Date.now());
   const respondentId = useRef(nanoid());
+  const answersRef = useRef({});
+  const submittedRef = useRef(false);
+  useEffect(() => { answersRef.current = answers; }, [answers]);
+  useEffect(() => { submittedRef.current = submitted; }, [submitted]);
+
+  // Partial submission: fire-and-forget on page unload if form allows it
+  useEffect(() => {
+    if (!form?.settings?.allowPartialSubmissions) return;
+    const handleBeforeUnload = () => {
+      if (submittedRef.current || Object.keys(answersRef.current).length === 0) return;
+      navigator.sendBeacon(
+        `/api/public/forms/${form.id}/responses/partial`,
+        new Blob([JSON.stringify({
+          answers: answersRef.current,
+          respondent_id: respondentId.current,
+          started_at: new Date(startedAt.current).toISOString(),
+        })], { type: 'application/json' })
+      );
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [form]);
 
   useEffect(() => {
     api.public.getForm(slug)
@@ -86,7 +108,7 @@ export default function PublicFormPage() {
       setSubmitting(true);
       setSubmitError(null);
       try {
-        await api.public.submit(form.id, {
+        const result = await api.public.submit(form.id, {
           answers,
           respondent_id: respondentId.current,
           started_at: new Date(startedAt.current).toISOString(),
@@ -98,6 +120,10 @@ export default function PublicFormPage() {
         });
         if (form.settings?.quizMode) {
           setQuizScore(computeScore(questions, answers));
+        }
+        if (result.redirect_url) {
+          window.location.href = result.redirect_url;
+          return;
         }
         setSubmitted(true);
       } catch (err) {
@@ -168,7 +194,7 @@ export default function PublicFormPage() {
       </div>
 
       {/* Branding */}
-      {!form.workspaces?.remove_branding && (
+      {!form.settings?.removeBranding && (
         <div className="text-center py-3">
           <a href="/" className="text-xs text-gray-400 hover:text-gray-600">
             Powered by <span className="font-semibold">FormFlow</span>
