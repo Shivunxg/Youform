@@ -15,14 +15,15 @@ export default function Canvas({ onToggleDesign }) {
   const [showAddPicker, setShowAddPicker] = useState(false);
   const pickerRef = useRef(null);
 
-  const plan = form?.workspaces?.plan ?? 'free';
-  const primary = form?.theme?.buttonColor ?? form?.theme?.primaryColor ?? '#6366f1';
-  const bgColor = form?.theme?.backgroundColor;
+  const plan        = form?.workspaces?.plan ?? 'free';
+  const primary     = form?.theme?.buttonColor ?? form?.theme?.primaryColor ?? '#6366f1';
+  const bgColor     = form?.theme?.backgroundColor;
   const questionColor = form?.theme?.questionColor;
   const globalAlign = form?.theme?.alignment ?? 'left';
-  const mainBlocks = questions.filter(q => q.type !== 'thank_you_screen');
-  const selected = questions.find(q => q.id === selectedQuestionId);
-  const textAlign = selected?.config?.alignment ?? globalAlign;
+  const pageImage   = form?.theme?.backgroundImage ?? null;
+  const mainBlocks  = questions.filter(q => q.type !== 'thank_you_screen');
+  const selected    = questions.find(q => q.id === selectedQuestionId);
+  const textAlign   = selected?.config?.alignment ?? globalAlign;
   const currentIndex = mainBlocks.findIndex(q => q.id === selectedQuestionId);
 
   useEffect(() => {
@@ -138,12 +139,21 @@ export default function Canvas({ onToggleDesign }) {
         )}
       </div>
 
-      {/* Canvas area */}
-      <div className="flex-1 overflow-auto flex items-center justify-center p-8">
+      {/* Canvas area — shows page background image/color */}
+      <div
+        className="flex-1 overflow-auto flex items-center justify-center p-8 relative"
+        style={pageImage ? {
+          backgroundImage: `url(${pageImage})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        } : { backgroundColor: '#f3f4f6' }}
+      >
+        {pageImage && <div className="absolute inset-0 bg-black/20 pointer-events-none" />}
+
         {selected ? (
           <div
             className={clsx(
-              'rounded-2xl shadow-lg overflow-hidden border border-gray-100 transition-all duration-200',
+              'relative z-10 rounded-2xl shadow-lg overflow-hidden border border-gray-100 transition-all duration-200',
               previewDevice === 'mobile' ? 'w-80' : 'w-full max-w-xl'
             )}
             style={{
@@ -152,7 +162,7 @@ export default function Canvas({ onToggleDesign }) {
               textAlign,
             }}
           >
-            {/* Progress bar */}
+            {/* Progress bar — always full width */}
             {selected.type !== 'thank_you_screen' && mainBlocks.length > 0 && (
               <div className="h-1" style={{ backgroundColor: `${primary}33` }}>
                 <div
@@ -165,18 +175,33 @@ export default function Canvas({ onToggleDesign }) {
               </div>
             )}
 
-            <div className="p-8 min-h-[320px] flex flex-col">
-              <BlockPreview
-                question={selected}
-                primary={primary}
-                questionColor={questionColor}
-                index={currentIndex}
-                total={mainBlocks.length}
-              />
-            </div>
+            {/* Split layout when block has an image */}
+            {selected.config?.blockImage && !['welcome_screen', 'thank_you_screen'].includes(selected.type) ? (
+              <div className="flex min-h-[320px]">
+                {selected.config.blockImagePosition === 'left' && (
+                  <div
+                    className="w-2/5 shrink-0"
+                    style={{ backgroundImage: `url(${selected.config.blockImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+                  />
+                )}
+                <div className="flex-1 p-8 flex flex-col">
+                  <BlockPreview question={selected} primary={primary} questionColor={questionColor} index={currentIndex} total={mainBlocks.length} />
+                </div>
+                {selected.config.blockImagePosition !== 'left' && (
+                  <div
+                    className="w-2/5 shrink-0"
+                    style={{ backgroundImage: `url(${selected.config.blockImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="p-8 min-h-[320px] flex flex-col">
+                <BlockPreview question={selected} primary={primary} questionColor={questionColor} index={currentIndex} total={mainBlocks.length} />
+              </div>
+            )}
           </div>
         ) : (
-          <div className="text-center select-none">
+          <div className="relative z-10 text-center select-none">
             <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-gray-200 flex items-center justify-center mx-auto mb-4 text-2xl">
               👆
             </div>

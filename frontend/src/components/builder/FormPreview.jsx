@@ -171,29 +171,62 @@ export default function FormPreview() {
               </div>
             )}
 
-            <div className="flex-1 p-8 flex flex-col min-h-[460px]">
-              {submitted ? (
-                <ThankYouView thankYou={thankYou} onReset={reset} primary={primary} />
-              ) : current ? (
-                <QuestionView
-                  question={current}
-                  answer={answers[current.id]}
-                  onAnswer={v => setAnswers(a => ({ ...a, [current.id]: v }))}
-                  primary={primary}
-                  index={currentIndex}
-                  total={visibleBlocks.length}
-                  onNext={goNext}
-                  onPrev={goPrev}
-                  isFirst={isFirst}
-                  isLast={isLast}
-                  canAdvance={canAdvance()}
-                />
-              ) : (
-                <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
-                  No questions yet — add blocks in the builder.
+            {/* Split layout when block has a blockImage */}
+            {!submitted && current?.config?.blockImage && !['welcome_screen', 'thank_you_screen'].includes(current.type) ? (
+              <div className="flex flex-1 min-h-[460px]">
+                {current.config.blockImagePosition === 'left' && (
+                  <div
+                    className="w-2/5 shrink-0"
+                    style={{ backgroundImage: `url(${current.config.blockImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+                  />
+                )}
+                <div className="flex-1 p-8 flex flex-col">
+                  <QuestionView
+                    question={current}
+                    answer={answers[current.id]}
+                    onAnswer={v => setAnswers(a => ({ ...a, [current.id]: v }))}
+                    primary={primary}
+                    index={currentIndex}
+                    total={visibleBlocks.length}
+                    onNext={goNext}
+                    onPrev={goPrev}
+                    isFirst={isFirst}
+                    isLast={isLast}
+                    canAdvance={canAdvance()}
+                  />
                 </div>
-              )}
-            </div>
+                {current.config.blockImagePosition !== 'left' && (
+                  <div
+                    className="w-2/5 shrink-0"
+                    style={{ backgroundImage: `url(${current.config.blockImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="flex-1 p-8 flex flex-col min-h-[460px]">
+                {submitted ? (
+                  <ThankYouView thankYou={thankYou} onReset={reset} primary={primary} />
+                ) : current ? (
+                  <QuestionView
+                    question={current}
+                    answer={answers[current.id]}
+                    onAnswer={v => setAnswers(a => ({ ...a, [current.id]: v }))}
+                    primary={primary}
+                    index={currentIndex}
+                    total={visibleBlocks.length}
+                    onNext={goNext}
+                    onPrev={goPrev}
+                    isFirst={isFirst}
+                    isLast={isLast}
+                    canAdvance={canAdvance()}
+                  />
+                ) : (
+                  <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
+                    No questions yet — add blocks in the builder.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

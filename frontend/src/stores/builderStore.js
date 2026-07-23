@@ -120,8 +120,10 @@ export const useBuilderStore = create((set, get) => ({
       questions: s.questions.map(q => {
         if (q.id !== id) return q;
         const newConfig = defaultConfig(newType);
-        if (q.config?.alignment) newConfig.alignment = q.config.alignment;
-        if (q.config?.embed)     newConfig.embed = q.config.embed;
+        if (q.config?.alignment)          newConfig.alignment          = q.config.alignment;
+        if (q.config?.embed)              newConfig.embed              = q.config.embed;
+        if (q.config?.blockImage)         newConfig.blockImage         = q.config.blockImage;
+        if (q.config?.blockImagePosition) newConfig.blockImagePosition = q.config.blockImagePosition;
         return { ...q, type: newType, config: newConfig };
       }),
       isDirty: true,
