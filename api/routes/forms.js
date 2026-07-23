@@ -2,6 +2,10 @@ import { Router } from 'express';
 import { body, param, query, validationResult } from 'express-validator';
 import slugify from 'slugify';
 import { nanoid } from 'nanoid';
+import { randomUUID } from 'crypto';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const toUUID = (id) => (id && UUID_RE.test(id) ? id : randomUUID());
 import bcrypt from 'bcryptjs';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { requireAuth, requireWorkspaceMember, requireEditor, requireAdmin } from '../lib/auth.js';
@@ -268,7 +272,7 @@ router.put(
       if (!member || !['owner', 'admin', 'editor'].includes(member.role)) throw createError(403, 'Access denied');
 
       const payload = questions.map((q, i) => ({
-        id: q.id ?? nanoid(),
+        id: toUUID(q.id),
         form_id: formId,
         type: q.type,
         position: q.position ?? i,

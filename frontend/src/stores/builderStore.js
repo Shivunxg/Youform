@@ -3,7 +3,7 @@ import { nanoid } from 'nanoid';
 import { api } from '@/lib/api';
 
 const DEFAULT_QUESTION = (type) => ({
-  id: nanoid(),
+  id: crypto.randomUUID(),
   type,
   title: '',
   description: '',

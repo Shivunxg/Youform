@@ -460,7 +460,7 @@ const RAW = [
 // Build question objects matching the builderStore format
 function buildQuestions(rawQuestions) {
   return rawQuestions.map((rq, position) => ({
-    id: nanoid(),
+    id: crypto.randomUUID(),
     type: rq.type,
     title: rq.title,
     description: rq.description ?? '',
