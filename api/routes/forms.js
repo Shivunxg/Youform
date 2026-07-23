@@ -416,6 +416,37 @@ router.put('/forms/:formId/notifications', async (req, res, next) => {
 });
 
 // ============================================================
+// MOVE form to another workspace
+// PATCH /forms/:formId/workspace
+// ============================================================
+router.patch('/forms/:formId/workspace', async (req, res, next) => {
+  try {
+    const { formId } = req.params;
+    const { workspaceId: targetWsId } = req.body;
+    if (!targetWsId) throw createError(400, 'workspaceId is required');
+
+    const { data: existing } = await supabaseAdmin.from('forms').select('workspace_id, title').eq('id', formId).single();
+    if (!existing) throw createError(404, 'Form not found');
+
+    // Must be editor+ in source workspace
+    const { data: srcMember } = await supabaseAdmin.from('workspace_members')
+      .select('role').eq('workspace_id', existing.workspace_id).eq('user_id', req.user.id).single();
+    if (!srcMember || !['owner', 'admin', 'editor'].includes(srcMember.role)) throw createError(403, 'Access denied');
+
+    // Must be editor+ in target workspace
+    const { data: tgtMember } = await supabaseAdmin.from('workspace_members')
+      .select('role').eq('workspace_id', targetWsId).eq('user_id', req.user.id).single();
+    if (!tgtMember || !['owner', 'admin', 'editor'].includes(tgtMember.role)) throw createError(403, 'You do not have access to the target workspace');
+
+    const { data: form, error } = await supabaseAdmin.from('forms')
+      .update({ workspace_id: targetWsId }).eq('id', formId).select().single();
+    if (error) throw error;
+
+    res.json({ form });
+  } catch (err) { next(err); }
+});
+
+// ============================================================
 // DUPLICATE form
 // POST /forms/:formId/duplicate
 // ============================================================
