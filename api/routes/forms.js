@@ -187,6 +187,11 @@ router.patch(
       const allowed = ['title', 'description', 'status', 'layout', 'theme', 'settings', 'response_limit', 'opens_at', 'closes_at'];
       const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
 
+      // Archiving is a destructive action — only admins and owners may do it
+      if (updates.status === 'archived' && !['owner', 'admin'].includes(member.role)) {
+        throw createError(403, 'Admin access required to archive a form');
+      }
+
       // Set published_at when publishing
       const isPublishing = updates.status === 'published';
       if (isPublishing) {

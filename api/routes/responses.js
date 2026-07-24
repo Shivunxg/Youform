@@ -134,7 +134,7 @@ router.post('/public/forms/:formId/upload', publicWriteLimit, upload.single('fil
       .from('form-uploads')
       .upload(path, req.file.buffer, { contentType: req.file.mimetype, upsert: false });
 
-    if (error) throw createError(500, `Storage error: ${error.message}`);
+    if (error) throw createError(500, 'File could not be stored. Please try again.');
 
     const { data: { publicUrl } } = supabaseAdmin.storage.from('form-uploads').getPublicUrl(data.path);
 
@@ -251,8 +251,9 @@ router.post('/public/forms/:formId/responses/partial', publicWriteLimit, async (
     const { answers = {}, respondent_id, started_at } = req.body;
 
     const { data: form } = await supabaseAdmin.from('forms')
-      .select('workspace_id, workspaces(plan)').eq('id', formId).single();
+      .select('workspace_id, status, workspaces(plan)').eq('id', formId).single();
     if (!form) throw createError(404, 'Form not found');
+    if (form.status !== 'published') throw createError(403, 'Form is not accepting responses');
     if (!hasFeature(form.workspaces?.plan, 'partial_submissions')) {
       return res.status(403).json({ error: 'Partial submissions require a Pro plan or higher.' });
     }

@@ -1,6 +1,7 @@
 import express from 'express';
 import { requireAuth } from '../lib/auth.js';
 import { supabaseAdmin } from '../lib/supabase.js';
+import { hasFeature, getPlan } from '../lib/plans.js';
 import { nanoid } from 'nanoid';
 
 const router = express.Router();
@@ -81,6 +82,20 @@ router.post('/typeform/import', requireAuth, async (req, res, next) => {
     const { url, token, workspaceId } = req.body;
     if (!url || !token || !workspaceId) {
       return res.status(400).json({ error: 'url, token, and workspaceId are required.' });
+    }
+
+    // Check workspace membership and plan gate
+    const { data: member } = await supabaseAdmin
+      .from('workspace_members')
+      .select('role, workspaces(plan)')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', req.user.id)
+      .single();
+    if (!member) return res.status(403).json({ error: 'No access to this workspace.' });
+
+    const plan = member.workspaces?.plan ?? 'free';
+    if (!hasFeature(plan, 'imports')) {
+      return res.status(403).json({ error: 'Importing from Typeform requires a Pro plan or higher.', upgrade: true });
     }
 
     const formId = extractFormId(url);

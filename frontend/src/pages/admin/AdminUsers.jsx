@@ -89,9 +89,8 @@ function PlanOverrideDropdown({ anchor, workspaces, onApply, isPending, onClose 
         style={SG}
       >
         <option value="free">Free</option>
-        <option value="pro">Pro — $29/mo</option>
-        <option value="business">Business — $79/mo</option>
-        <option value="enterprise">Enterprise — $199/mo</option>
+        <option value="pro">Pro — $25/mo</option>
+        <option value="business">Business — $89/mo</option>
       </select>
 
       <div className="flex gap-2">

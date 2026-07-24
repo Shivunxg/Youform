@@ -158,8 +158,7 @@ export default function AdminWorkspaceDetail() {
             >
               <option value="free">Free — 100 responses/mo, 1 seat</option>
               <option value="pro">Pro — 5,000 responses/mo, 3 seats</option>
-              <option value="business">Business — 25,000 responses/mo, 5 seats</option>
-              <option value="enterprise">Enterprise — Unlimited</option>
+              <option value="business">Business — 25,000 responses/mo, 10 seats</option>
             </select>
             <button
               onClick={() => overridePlan.mutate(selectedPlan || ws.plan)}

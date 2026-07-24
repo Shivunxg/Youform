@@ -2,6 +2,7 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { requireAuth } from '../lib/auth.js';
 import { supabaseAdmin } from '../lib/supabase.js';
+import { hasFeature } from '../lib/plans.js';
 import { nanoid } from 'nanoid';
 
 const router = express.Router();
@@ -187,14 +188,19 @@ router.post('/google-forms/import', requireAuth, [
       return res.status(400).json({ error: err.message });
     }
 
-    // Verify workspace access
+    // Verify workspace access and plan gate
     const { data: member } = await supabaseAdmin
       .from('workspace_members')
-      .select('role')
+      .select('role, workspaces(plan)')
       .eq('workspace_id', workspaceId)
       .eq('user_id', req.user.id)
       .single();
     if (!member) return res.status(403).json({ error: 'No access to this workspace.' });
+
+    const plan = member.workspaces?.plan ?? 'free';
+    if (!hasFeature(plan, 'imports')) {
+      return res.status(403).json({ error: 'Importing from Google Forms requires a Pro plan or higher.', upgrade: true });
+    }
 
     // Create form
     const { data: form, error: formErr } = await supabaseAdmin

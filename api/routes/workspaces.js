@@ -91,6 +91,16 @@ router.patch(
       const allowed = ['name', 'logo_url'];
       const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
 
+      // Reject non-HTTP(S) logo_url values to prevent javascript: / data: injection
+      if (updates.logo_url != null) {
+        try {
+          const { protocol } = new URL(updates.logo_url);
+          if (!['http:', 'https:'].includes(protocol)) throw new Error();
+        } catch {
+          throw createError(400, 'logo_url must be a valid https:// URL');
+        }
+      }
+
       const { data: workspace, error } = await supabaseAdmin.from('workspaces')
         .update(updates).eq('id', workspaceId).select().single();
       if (error) throw error;

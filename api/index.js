@@ -4,6 +4,8 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import { errorHandler } from './lib/errorHandler.js';
+import healthRouter from './routes/health.js';
+import errorsRouter from './routes/errors.js';
 import formsRouter from './routes/forms.js';
 import responsesRouter from './routes/responses.js';
 import workspacesRouter from './routes/workspaces.js';
@@ -34,7 +36,8 @@ app.use(express.json({ limit: '10mb' }));
 // Global rate limit (authenticated dashboard traffic)
 app.use(rateLimit({ windowMs: 60_000, max: 300, standardHeaders: true, legacyHeaders: false }));
 
-app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+app.use('/api', healthRouter);
+app.use('/api', errorsRouter);
 app.use('/api', formsRouter);
 app.use('/api', responsesRouter);
 app.use('/api/workspaces', workspacesRouter);

@@ -10,7 +10,7 @@ const PLAN_BADGE = {
   free:       'bg-gray-100 text-gray-700',
   pro:        'bg-blue-100 text-blue-700',
   business:   'bg-purple-100 text-purple-700',
-  enterprise: 'bg-orange-100 text-orange-700',
+  enterprise: 'bg-orange-100 text-orange-700', // legacy — display only
 };
 
 function formatDate(iso) {
@@ -77,7 +77,6 @@ export default function AdminWorkspaces() {
           <option value="free">Free</option>
           <option value="pro">Pro</option>
           <option value="business">Business</option>
-          <option value="enterprise">Enterprise</option>
         </select>
       </div>
 

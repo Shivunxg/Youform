@@ -1,8 +1,20 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
+import rateLimit from 'express-rate-limit';
 import { requireAuth } from '../lib/auth.js';
 import { supabaseAdmin } from '../lib/supabase.js';
+import { hasFeature } from '../lib/plans.js';
 import { nanoid } from 'nanoid';
+
+// AI endpoints are expensive — cap at 15 calls per user per minute
+const aiRateLimit = rateLimit({
+  windowMs: 60_000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many AI requests. Please wait a moment before trying again.' },
+  keyGenerator: (req) => req.user?.id ?? req.ip,
+});
 
 const router = express.Router();
 
@@ -83,7 +95,7 @@ async function generateWithClaude(prompt) {
 }
 
 // POST /api/ai/generate-form
-router.post('/ai/generate-form', requireAuth, [
+router.post('/ai/generate-form', requireAuth, aiRateLimit, [
   body('prompt').trim().isLength({ min: 5, max: 500 }).withMessage('Describe your form in 5–500 characters.'),
   body('workspaceId').isUUID().withMessage('Invalid workspace.'),
 ], async (req, res, next) => {
@@ -93,14 +105,19 @@ router.post('/ai/generate-form', requireAuth, [
 
     const { prompt, workspaceId } = req.body;
 
-    // Verify workspace membership
+    // Verify workspace membership + plan
     const { data: member } = await supabaseAdmin
       .from('workspace_members')
-      .select('role')
+      .select('role, workspaces(plan)')
       .eq('workspace_id', workspaceId)
       .eq('user_id', req.user.id)
       .single();
     if (!member) return res.status(403).json({ error: 'No access to this workspace.' });
+
+    const plan = member.workspaces?.plan ?? 'free';
+    if (!hasFeature(plan, 'ai_features')) {
+      return res.status(403).json({ error: 'AI form generation requires a Pro plan or higher.', upgrade: true });
+    }
 
     const generated = await generateWithClaude(prompt);
 
@@ -184,7 +201,7 @@ async function rewriteBlock(prompt) {
 }
 
 // POST /api/ai/rewrite-block
-router.post('/ai/rewrite-block', requireAuth, [
+router.post('/ai/rewrite-block', requireAuth, aiRateLimit, [
   body('blockType').notEmpty().withMessage('blockType is required'),
   body('hint').optional({ nullable: true }).trim().isLength({ max: 500 }),
 ], async (req, res, next) => {

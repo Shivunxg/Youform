@@ -17,6 +17,7 @@ import FormSettingsPage from '@/pages/FormSettingsPage';
 import TemplatesPage        from '@/pages/TemplatesPage';
 import TypeformImportPage   from '@/pages/TypeformImportPage';
 import PublicFormPage  from '@/pages/PublicFormPage';
+import PricingPage     from '@/pages/PricingPage';
 import AccountSettings from '@/pages/AccountSettings';
 
 import SettingsLayout       from '@/pages/settings/SettingsLayout';
@@ -87,6 +88,7 @@ export default function App() {
       {/* Public */}
       <Route path="/login"   element={<LoginPage />} />
       <Route path="/signup"  element={<SignupPage />} />
+      <Route path="/pricing" element={<PricingPage />} />
       <Route path="/f/:slug" element={<PublicFormPage />} />
 
       {/* App */}

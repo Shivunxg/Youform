@@ -4,7 +4,7 @@ import { requirePlatformAdmin } from '../lib/auth.js';
 import { createError } from '../lib/errorHandler.js';
 import { PLANS } from '../lib/plans.js';
 
-const PLAN_PRICES = { free: 0, pro: 29, business: 79, enterprise: 199 };
+const PLAN_PRICES = { free: 0, pro: 25, business: 89 };
 
 const router = Router();
 router.use(requirePlatformAdmin);
@@ -34,10 +34,12 @@ router.get('/stats', async (req, res, next) => {
         .gt('responses_used', 0),
     ]);
 
-    const plans = { free: 0, pro: 0, business: 0, enterprise: 0 };
+    const plans = { free: 0, pro: 0, business: 0 };
     for (const w of planRows ?? []) {
       const tier = w.plan ?? 'free';
-      plans[tier] = (plans[tier] ?? 0) + 1;
+      // Treat any legacy enterprise workspaces as business for stats purposes
+      const normalized = tier === 'enterprise' ? 'business' : tier;
+      plans[normalized] = (plans[normalized] ?? 0) + 1;
     }
 
     const mrr = Object.entries(plans).reduce(
@@ -49,7 +51,7 @@ router.get('/stats', async (req, res, next) => {
       plans,
       mrr,
       arr: mrr * 12,
-      paidWorkspaces: (plans.pro ?? 0) + (plans.business ?? 0) + (plans.enterprise ?? 0),
+      paidWorkspaces: (plans.pro ?? 0) + (plans.business ?? 0),
       freeWorkspaces: plans.free ?? 0,
       activeWorkspaces: activeWorkspaces ?? 0,
     });
@@ -130,7 +132,7 @@ router.get('/workspaces/:workspaceId', async (req, res, next) => {
 router.patch('/workspaces/:workspaceId/plan', async (req, res, next) => {
   try {
     const { plan } = req.body;
-    if (!['free', 'pro', 'business', 'enterprise'].includes(plan)) throw createError(400, 'Invalid plan');
+    if (!['free', 'pro', 'business'].includes(plan)) throw createError(400, 'Invalid plan');
     const config = PLANS[plan];
     const { error } = await supabaseAdmin.from('workspaces').update({
       plan,

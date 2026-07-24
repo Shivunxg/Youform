@@ -92,6 +92,14 @@ router.patch('/forms/:formId/integrations/:integrationId', async (req, res, next
     const allowed = ['enabled', 'config'];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
 
+    // Re-validate config if being updated (same rules that POST enforces)
+    if (updates.config) {
+      const { data: existing } = await supabaseAdmin.from('integrations')
+        .select('type').eq('id', integrationId).eq('form_id', formId).single();
+      if (!existing) throw createError(404, 'Integration not found');
+      validateIntegrationConfig(existing.type, updates.config);
+    }
+
     const { data, error } = await supabaseAdmin.from('integrations')
       .update(updates).eq('id', integrationId).eq('form_id', formId).select().single();
     if (error) throw error;
@@ -214,13 +222,34 @@ router.post('/forms/:formId/integrations/google-sheets/create-sheet', async (req
 // Helpers
 // ============================================================
 
+// Block requests to private/loopback IP ranges to prevent SSRF
+function isPrivateUrl(urlStr) {
+  try {
+    const { hostname, protocol } = new URL(urlStr);
+    if (!['http:', 'https:'].includes(protocol)) return true;
+    const lower = hostname.toLowerCase();
+    if (['localhost', '0.0.0.0', '::1', '[::]'].includes(lower)) return true;
+    const parts = lower.split('.').map(Number);
+    if (parts.length === 4 && parts.every(n => !isNaN(n))) {
+      if (parts[0] === 127) return true;                                         // loopback
+      if (parts[0] === 10)  return true;                                         // 10.x.x.x
+      if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;    // 172.16-31.x.x
+      if (parts[0] === 192 && parts[1] === 168) return true;                     // 192.168.x.x
+      if (parts[0] === 169 && parts[1] === 254) return true;                     // 169.254 link-local
+      if (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127) return true;   // 100.64 (CGNAT)
+    }
+    return false;
+  } catch { return true; }
+}
+
 function validateIntegrationConfig(type, config) {
   switch (type) {
     case 'webhook':
       if (!config.url || !/^https?:\/\//.test(config.url)) throw createError(400, 'Webhook URL must be a valid HTTP/HTTPS URL');
+      if (isPrivateUrl(config.url)) throw createError(400, 'Webhook URL cannot target private or local network addresses');
       break;
     case 'slack':
-      if (!config.webhookUrl || !config.webhookUrl.includes('hooks.slack.com')) throw createError(400, 'Invalid Slack webhook URL');
+      if (!config.webhookUrl || !config.webhookUrl.startsWith('https://hooks.slack.com/')) throw createError(400, 'Invalid Slack webhook URL');
       break;
     case 'email':
       if (!config.to || !Array.isArray(config.to) || config.to.length === 0) throw createError(400, 'Email integration requires at least one recipient');
