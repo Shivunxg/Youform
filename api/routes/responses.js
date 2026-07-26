@@ -417,10 +417,9 @@ router.get('/forms/:formId/analytics', requireAuth, async (req, res, next) => {
   try {
     const { formId } = req.params;
 
-    // Run form fetch + SQL aggregation in parallel
     const [{ data: form }, { data: agg, error: aggErr }] = await Promise.all([
       supabaseAdmin.from('forms')
-        .select('workspace_id, views_count, starts_count, questions(id, title, type)')
+        .select('workspace_id, views_count, starts_count, questions(id, title, type, config)')
         .eq('id', formId).order('position', { referencedTable: 'questions' }).single(),
       supabaseAdmin.rpc('get_form_analytics', { p_form_id: formId }),
     ]);
@@ -437,33 +436,85 @@ router.get('/forms/:formId/analytics', requireAuth, async (req, res, next) => {
     const partial   = Number(stats.partial   ?? 0);
     const avgMs     = stats.avg_ms ? Number(stats.avg_ms) : null;
 
-    // Build a lookup of question_id → answered count from SQL result
     const answeredByQ = {};
     for (const qs of (stats.q_stats ?? [])) answeredByQ[qs.question_id] = Number(qs.answered ?? 0);
 
-    // Choice distributions: fetch only the answers column for completed responses,
-    // capped at 10k — this is far smaller than loading full response rows.
+    // One fetch covers distributions, avg scores, text answers, sources, and timeline
+    const { data: responseRows } = await supabaseAdmin.from('responses')
+      .select('answers, utm_source, utm_medium, utm_campaign, referrer, submitted_at')
+      .eq('form_id', formId).eq('is_test', false).eq('is_partial', false)
+      .order('submitted_at', { ascending: false })
+      .limit(5000);
+
+    const rows = responseRows ?? [];
+
+    // ── Choice distributions + average scores ──────────────────
     const CHOICE_TYPES = new Set(['multiple_choice', 'dropdown', 'yes_no', 'rating', 'nps']);
-    const hasChoiceQ = form.questions.some(q => CHOICE_TYPES.has(q.type));
     const distributionByQ = {};
+    const avgScoreByQ = {};
 
-    if (hasChoiceQ) {
-      const { data: choiceRows } = await supabaseAdmin.from('responses')
-        .select('answers').eq('form_id', formId).eq('is_test', false).eq('is_partial', false)
-        .limit(10000);
-
-      for (const q of form.questions.filter(q => CHOICE_TYPES.has(q.type))) {
-        const dist = {};
-        for (const r of (choiceRows ?? [])) {
-          const a = r.answers?.[q.id];
-          if (a == null || a === '') continue;
-          const ids = Array.isArray(a) ? a : [String(a)];
-          ids.forEach(id => { dist[id] = (dist[id] ?? 0) + 1; });
+    for (const q of form.questions.filter(q => CHOICE_TYPES.has(q.type))) {
+      const dist = {};
+      const scores = [];
+      for (const r of rows) {
+        const a = r.answers?.[q.id];
+        if (a == null || a === '') continue;
+        const ids = Array.isArray(a) ? a : [String(a)];
+        ids.forEach(id => { dist[id] = (dist[id] ?? 0) + 1; });
+        if (q.type === 'rating' || q.type === 'nps') {
+          const num = Number(a);
+          if (!isNaN(num)) scores.push(num);
         }
-        distributionByQ[q.id] = dist;
+      }
+      distributionByQ[q.id] = dist;
+      if (scores.length > 0) {
+        avgScoreByQ[q.id] = scores.reduce((a, b) => a + b, 0) / scores.length;
       }
     }
 
+    // ── Text answers (short_text, long_text, email, phone, address) ─
+    const TEXT_TYPES = new Set(['short_text', 'long_text', 'email', 'phone', 'address']);
+    const textAnswersByQ = {};
+    for (const q of form.questions.filter(q => TEXT_TYPES.has(q.type))) {
+      textAnswersByQ[q.id] = rows
+        .map(r => r.answers?.[q.id])
+        .filter(a => a !== null && a !== undefined && a !== '')
+        .slice(0, 200);
+    }
+
+    // ── Source breakdown ───────────────────────────────────────
+    const sourceCounts = {};
+    for (const r of rows) {
+      let src = r.utm_source?.trim() || null;
+      if (!src && r.referrer) {
+        try { src = new URL(r.referrer).hostname.replace(/^www\./, ''); } catch {}
+      }
+      src = src || 'Direct';
+      sourceCounts[src] = (sourceCounts[src] ?? 0) + 1;
+    }
+    const sourceBreakdown = Object.entries(sourceCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 10)
+      .map(([source, count]) => ({ source, count }));
+
+    // ── Submission timeline (last 30 days) ─────────────────────
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const dailyCounts = {};
+    for (const r of rows) {
+      if (!r.submitted_at) continue;
+      const d = new Date(r.submitted_at);
+      if (d < thirtyDaysAgo) continue;
+      const key = d.toISOString().split('T')[0];
+      dailyCounts[key] = (dailyCounts[key] ?? 0) + 1;
+    }
+    const timeline = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+      const key = d.toISOString().split('T')[0];
+      timeline.push({ date: key, count: dailyCounts[key] ?? 0 });
+    }
+
+    // ── Question stats ─────────────────────────────────────────
     const questionStats = form.questions.map(q => ({
       question_id: q.id,
       title: q.title,
@@ -481,6 +532,10 @@ router.get('/forms/:formId/analytics', requireAuth, async (req, res, next) => {
       completion_rate: form.starts_count > 0 ? Math.round((completed / form.starts_count) * 100) : 0,
       avg_completion_seconds: avgMs ? Math.round(avgMs / 1000) : null,
       question_stats: questionStats,
+      avg_scores: avgScoreByQ,
+      text_answers: textAnswersByQ,
+      source_breakdown: sourceBreakdown,
+      timeline,
     });
   } catch (err) { next(err); }
 });

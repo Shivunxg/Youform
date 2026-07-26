@@ -39,15 +39,166 @@ function DropoffBar({ title, answered, total, index }) {
   );
 }
 
-function ChoiceBar({ label, count, total }) {
-  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+function TimelineChart({ timeline }) {
+  if (!timeline?.length) return null;
+  const max = Math.max(...timeline.map(d => d.count), 1);
+  const total = timeline.reduce((sum, d) => sum + d.count, 0);
+
+  const fmt = (dateStr) => {
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
   return (
-    <div className="flex items-center gap-3">
-      <p className="text-xs text-[#111] w-32 truncate shrink-0">{label}</p>
-      <div className="flex-1 h-5 bg-gray-100 rounded overflow-hidden border border-gray-200">
-        <div className="h-full bg-[#f97316] rounded" style={{ width: `${pct}%` }} />
+    <div className="bg-white rounded-xl border-2 border-[#111] p-6 mb-6" style={{ boxShadow: '4px 4px 0 #111' }}>
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-sm font-bold text-[#111]" style={SG}>Submissions over time</h2>
+        <span className="text-xs text-gray-400">{total} in last 30 days</span>
       </div>
-      <span className="text-xs font-bold text-gray-600 w-12 text-right shrink-0">{pct}% <span className="text-gray-400 font-normal">({count})</span></span>
+      <div className="flex items-end gap-0.5 h-20">
+        {timeline.map((d) => (
+          <div
+            key={d.date}
+            className="flex-1 rounded-sm transition-all cursor-default"
+            style={{
+              height: `${Math.max((d.count / max) * 80, d.count > 0 ? 4 : 0)}px`,
+              backgroundColor: d.count > 0 ? '#f97316' : '#f3f4f6',
+            }}
+            title={`${fmt(d.date)}: ${d.count} submission${d.count !== 1 ? 's' : ''}`}
+          />
+        ))}
+      </div>
+      <div className="flex justify-between mt-2 text-[10px] text-gray-400">
+        <span>{fmt(timeline[0]?.date)}</span>
+        <span>Today</span>
+      </div>
+    </div>
+  );
+}
+
+function TextAnswersCard({ title, answers }) {
+  if (!answers?.length) return null;
+  return (
+    <div className="bg-white rounded-xl border-2 border-[#111] p-6 mb-4" style={{ boxShadow: '4px 4px 0 #111' }}>
+      <h2 className="text-sm font-bold text-[#111] mb-1" style={SG}>{title || 'Untitled'}</h2>
+      <p className="text-xs text-gray-400 mb-4">{answers.length} answer{answers.length !== 1 ? 's' : ''}</p>
+      <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+        {answers.map((a, i) => (
+          <div key={i} className="text-sm text-[#111] bg-gray-50 rounded-lg px-3 py-2 border border-gray-100 break-words">
+            {String(a)}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SourceBreakdownCard({ sources, totalResponses }) {
+  if (!sources?.length) return null;
+  const max = Math.max(...sources.map(s => s.count), 1);
+  return (
+    <div className="bg-white rounded-xl border-2 border-[#111] p-6 mb-4" style={{ boxShadow: '4px 4px 0 #111' }}>
+      <h2 className="text-sm font-bold text-[#111] mb-5" style={SG}>Traffic sources</h2>
+      <div className="space-y-3">
+        {sources.map(({ source, count }) => {
+          const pct = totalResponses > 0 ? Math.round((count / totalResponses) * 100) : 0;
+          const barPct = Math.round((count / max) * 100);
+          return (
+            <div key={source} className="flex items-center gap-3">
+              <p className="text-xs text-[#111] w-28 truncate shrink-0">{source}</p>
+              <div className="flex-1 h-5 bg-gray-100 rounded overflow-hidden border border-gray-200">
+                <div className="h-full rounded transition-all" style={{ width: `${barPct}%`, backgroundColor: '#6366f1' }} />
+              </div>
+              <span className="text-xs font-bold text-gray-600 w-14 text-right shrink-0">
+                {pct}% <span className="text-gray-400 font-normal">({count})</span>
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ChoiceDistribution({ title, q, stat, choices, avgScore, maxScore, isNps }) {
+  const distribution = stat.distribution ?? {};
+  const maxCount = Math.max(...choices.map(c => distribution[c.id] ?? 0), 1);
+
+  let npsScore = null;
+  let promoters = 0, passives = 0, detractors = 0;
+  if (isNps && stat.answered > 0) {
+    for (const c of choices) {
+      const val = parseInt(c.id);
+      const count = distribution[c.id] ?? 0;
+      if (val >= 9) promoters += count;
+      else if (val >= 7) passives += count;
+      else detractors += count;
+    }
+    npsScore = Math.round(((promoters - detractors) / stat.answered) * 100);
+  }
+
+  return (
+    <div className="bg-white rounded-xl border-2 border-[#111] p-6 mb-4" style={{ boxShadow: '4px 4px 0 #111' }}>
+      <div className="flex items-start justify-between mb-1">
+        <h2 className="text-sm font-bold text-[#111]" style={SG}>{title || 'Untitled'}</h2>
+        {avgScore != null && !isNps && (
+          <div className="text-right shrink-0 ml-4">
+            <span className="text-xl font-bold text-[#111]">{avgScore.toFixed(1)}</span>
+            {maxScore && <span className="text-xs text-gray-400 ml-1">/ {maxScore} avg</span>}
+          </div>
+        )}
+        {isNps && npsScore != null && (
+          <div className="text-right shrink-0 ml-4">
+            <span
+              className="text-xl font-bold"
+              style={{ color: npsScore > 30 ? '#16a34a' : npsScore > 0 ? '#f97316' : '#dc2626' }}
+            >
+              {npsScore > 0 ? '+' : ''}{npsScore}
+            </span>
+            <span className="text-xs text-gray-400 ml-1">NPS</span>
+          </div>
+        )}
+      </div>
+      <p className="text-xs text-gray-400 mb-4">
+        {stat.answered} answer{stat.answered !== 1 ? 's' : ''} · {choices.length} option{choices.length !== 1 ? 's' : ''}
+      </p>
+
+      {isNps && stat.answered > 0 && (
+        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+          <div className="flex gap-1 mb-2" style={{ height: 8 }}>
+            {detractors > 0 && <div style={{ flex: detractors, backgroundColor: '#ef4444', borderRadius: 3 }} />}
+            {passives > 0 && <div style={{ flex: passives, backgroundColor: '#f59e0b', borderRadius: 3 }} />}
+            {promoters > 0 && <div style={{ flex: promoters, backgroundColor: '#22c55e', borderRadius: 3 }} />}
+          </div>
+          <div className="flex gap-4 text-[10px] font-medium">
+            <span style={{ color: '#dc2626' }}>Detractors {detractors}</span>
+            <span style={{ color: '#d97706' }}>Passives {passives}</span>
+            <span style={{ color: '#16a34a' }}>Promoters {promoters}</span>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {choices.slice(0, 10).map(c => {
+          const count = distribution[c.id] ?? 0;
+          const pct = stat.answered > 0 ? Math.round((count / stat.answered) * 100) : 0;
+          const barPct = maxCount > 0 ? Math.round((count / maxCount) * 100) : 0;
+          return (
+            <div key={c.id} className="flex items-center gap-3">
+              <p className="text-xs text-[#111] w-28 truncate shrink-0">{c.label}</p>
+              <div className="flex-1 h-5 bg-gray-100 rounded overflow-hidden border border-gray-200">
+                <div className="h-full bg-[#f97316] rounded transition-all" style={{ width: `${barPct}%` }} />
+              </div>
+              <span className="text-xs font-bold text-gray-600 w-14 text-right shrink-0">
+                {pct}% <span className="text-gray-400 font-normal">({count})</span>
+              </span>
+            </div>
+          );
+        })}
+        {choices.length > 10 && (
+          <p className="text-[10px] text-gray-400">+{choices.length - 10} more options</p>
+        )}
+      </div>
     </div>
   );
 }
@@ -69,9 +220,11 @@ export default function AnalyticsPage() {
 
   const form = formData?.form;
 
-  // Build answer distribution per choice question from question_stats
   const choiceQuestions = (form?.questions ?? []).filter(q =>
     ['multiple_choice', 'dropdown', 'yes_no', 'rating', 'nps'].includes(q.type)
+  );
+  const textQuestions = (form?.questions ?? []).filter(q =>
+    ['short_text', 'long_text', 'email', 'phone', 'address'].includes(q.type)
   );
 
   const avgTime = analytics?.avg_completion_seconds
@@ -79,6 +232,8 @@ export default function AnalyticsPage() {
       ? `${Math.floor(analytics.avg_completion_seconds / 60)}m ${analytics.avg_completion_seconds % 60}s`
       : `${analytics.avg_completion_seconds}s`
     : null;
+
+  const hasData = analytics && (analytics.views > 0 || analytics.starts > 0 || analytics.completions > 0);
 
   return (
     <div className="h-screen flex flex-col bg-[#FFFBF2] overflow-hidden">
@@ -106,11 +261,16 @@ export default function AnalyticsPage() {
                   sub={avgTime ? `Avg time ${avgTime}` : null} />
               </div>
 
+              {/* Submissions over time */}
+              <TimelineChart timeline={analytics?.timeline} />
+
               {analytics?.partial > 0 && (
                 <div className="mb-8 p-4 bg-amber-50 border-2 border-amber-300 rounded-xl flex items-center gap-3">
                   <span className="text-2xl">⚠️</span>
                   <div>
-                    <p className="text-sm font-bold text-amber-800" style={SG}>{analytics.partial} partial submission{analytics.partial !== 1 ? 's' : ''}</p>
+                    <p className="text-sm font-bold text-amber-800" style={SG}>
+                      {analytics.partial} partial submission{analytics.partial !== 1 ? 's' : ''}
+                    </p>
                     <p className="text-xs text-amber-600">Respondents who started but didn't finish.</p>
                   </div>
                 </div>
@@ -122,7 +282,7 @@ export default function AnalyticsPage() {
                   <h2 className="text-sm font-bold text-[#111] mb-5" style={SG}>Question drop-off</h2>
                   <div className="space-y-4">
                     {analytics.question_stats
-                      .filter(s => !['welcome_screen','thank_you_screen','statement'].includes(
+                      .filter(s => !['welcome_screen', 'thank_you_screen', 'statement'].includes(
                         (form?.questions ?? []).find(q => q.id === s.question_id)?.type
                       ))
                       .map((s, i) => (
@@ -138,42 +298,64 @@ export default function AnalyticsPage() {
                 </div>
               )}
 
-              {/* Answer distributions for choice questions */}
+              {/* Choice question distributions + avg scores */}
               {choiceQuestions.map(q => {
                 const stat = (analytics?.question_stats ?? []).find(s => s.question_id === q.id);
                 if (!stat || stat.answered === 0) return null;
+                const avgScore = analytics?.avg_scores?.[q.id];
 
                 if (q.type === 'yes_no') {
                   return (
                     <ChoiceDistribution key={q.id} title={q.title} q={q} stat={stat}
                       choices={[{ id: 'Yes', label: 'Yes' }, { id: 'No', label: 'No' }]}
-                      total={stat.answered} />
+                      total={stat.answered} avgScore={avgScore} />
                   );
                 }
                 if (q.type === 'rating') {
                   const steps = q.config?.steps ?? 5;
                   return (
                     <ChoiceDistribution key={q.id} title={q.title} q={q} stat={stat}
-                      choices={[...Array(steps)].map((_, i) => ({ id: String(i + 1), label: `${i + 1} ${'★'.repeat(i + 1)}` }))}
-                      total={stat.answered} />
+                      choices={[...Array(steps)].map((_, i) => ({ id: String(i + 1), label: String(i + 1) }))}
+                      total={stat.answered} avgScore={avgScore} maxScore={steps} />
                   );
                 }
                 if (q.type === 'nps') {
                   return (
                     <ChoiceDistribution key={q.id} title={q.title} q={q} stat={stat}
                       choices={[...Array(11)].map((_, i) => ({ id: String(i), label: String(i) }))}
-                      total={stat.answered} />
+                      total={stat.answered} avgScore={avgScore} isNps />
                   );
                 }
                 const choices = q.config?.choices ?? [];
                 if (choices.length === 0) return null;
                 return (
                   <ChoiceDistribution key={q.id} title={q.title} q={q} stat={stat}
-                    choices={choices} total={stat.answered} />
+                    choices={choices} total={stat.answered} avgScore={avgScore} />
                 );
               })}
 
-              {!analytics || (analytics.views === 0 && analytics.starts === 0) && (
+              {/* Text / open-ended answers */}
+              {textQuestions.length > 0 && analytics?.text_answers && (
+                <>
+                  <h2 className="text-sm font-bold text-[#111] mb-4 mt-2" style={SG}>Open-ended answers</h2>
+                  {textQuestions.map(q => {
+                    const answers = analytics.text_answers[q.id];
+                    return answers?.length
+                      ? <TextAnswersCard key={q.id} title={q.title} answers={answers} />
+                      : null;
+                  })}
+                </>
+              )}
+
+              {/* Traffic source breakdown */}
+              {analytics?.source_breakdown?.length > 0 && (
+                <SourceBreakdownCard
+                  sources={analytics.source_breakdown}
+                  totalResponses={analytics.completions}
+                />
+              )}
+
+              {!hasData && (
                 <div className="text-center py-12">
                   <p className="text-4xl mb-3">📊</p>
                   <p className="font-bold text-[#111]" style={SG}>No data yet</p>
@@ -183,38 +365,6 @@ export default function AnalyticsPage() {
             </>
           )}
         </div>
-      </div>
-    </div>
-  );
-}
-
-function ChoiceDistribution({ title, q, stat, choices }) {
-  const distribution = stat.distribution ?? {};
-  const maxCount = Math.max(...choices.map(c => distribution[c.id] ?? 0), 1);
-  return (
-    <div className="bg-white rounded-xl border-2 border-[#111] p-6 mb-4" style={{ boxShadow: '4px 4px 0 #111' }}>
-      <h2 className="text-sm font-bold text-[#111] mb-1" style={SG}>{title || 'Untitled'}</h2>
-      <p className="text-xs text-gray-400 mb-4">{stat.answered} answer{stat.answered !== 1 ? 's' : ''} · {choices.length} option{choices.length !== 1 ? 's' : ''}</p>
-      <div className="space-y-2">
-        {choices.slice(0, 10).map(c => {
-          const count = distribution[c.id] ?? 0;
-          const pct = stat.answered > 0 ? Math.round((count / stat.answered) * 100) : 0;
-          const barPct = maxCount > 0 ? Math.round((count / maxCount) * 100) : 0;
-          return (
-            <div key={c.id} className="flex items-center gap-3">
-              <p className="text-xs text-[#111] w-28 truncate shrink-0">{c.label}</p>
-              <div className="flex-1 h-5 bg-gray-100 rounded overflow-hidden border border-gray-200">
-                <div className="h-full bg-[#f97316] rounded transition-all" style={{ width: `${barPct}%` }} />
-              </div>
-              <span className="text-xs font-bold text-gray-600 w-14 text-right shrink-0">
-                {pct}% <span className="text-gray-400 font-normal">({count})</span>
-              </span>
-            </div>
-          );
-        })}
-        {choices.length > 10 && (
-          <p className="text-[10px] text-gray-400">+{choices.length - 10} more options</p>
-        )}
       </div>
     </div>
   );
