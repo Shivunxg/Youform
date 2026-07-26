@@ -22,6 +22,10 @@ export const LIBRARY_THEMES = [
   { id: 'rose-quartz',     name: 'Rose Quartz',      bg: '#fff1f2', questionColor: '#881337', answerColor: '#be123c', buttonColor: '#e11d48', buttonTextColor: '#FFFFFF', starColor: '#f43f5e', alignment: 'center' },
   { id: 'midnight-ink',    name: 'Midnight Ink',     bg: '#020617', questionColor: '#e2e8f0', answerColor: '#94a3b8', buttonColor: '#6366f1', buttonTextColor: '#FFFFFF', starColor: '#818cf8', alignment: 'left' },
   { id: 'spring-fresh',    name: 'Spring Fresh',     bg: '#f0fdf4', questionColor: '#14532d', answerColor: '#166534', buttonColor: '#22c55e', buttonTextColor: '#FFFFFF', starColor: '#16a34a', alignment: 'left' },
+  // Enterprise-grade presets
+  { id: 'corporate-navy',  name: 'Corporate Navy',  bg: '#0B1929', questionColor: '#F0F4F8', answerColor: '#94A3B8', buttonColor: '#2563EB', buttonTextColor: '#FFFFFF', starColor: '#F59E0B', alignment: 'left' },
+  { id: 'executive-sand',  name: 'Executive Sand',  bg: '#F5F0E8', questionColor: '#1A1410', answerColor: '#4B3F30', buttonColor: '#B07C45', buttonTextColor: '#FFFFFF', starColor: '#B07C45', alignment: 'left' },
+  { id: 'modern-graphite', name: 'Modern Graphite', bg: '#F4F5F7', questionColor: '#1B1D21', answerColor: '#4A4D55', buttonColor: '#1B1D21', buttonTextColor: '#FFFFFF', starColor: '#F97316', alignment: 'left' },
 ];
 
 function ThemePreviewCard({ theme, isActive, onClick }) {

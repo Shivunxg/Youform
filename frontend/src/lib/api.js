@@ -164,4 +164,25 @@ export const api = {
     workspace: (id) => get(`/admin/workspaces/${id}`),
     overridePlan: (id, plan) => patch(`/admin/workspaces/${id}/plan`, { plan }),
   },
+
+  // ── Images (design panel) ──────────────────────────────────
+  images: {
+    curated: (category, page = 1) =>
+      get(`/images/unsplash/curated?category=${category}&page=${page}`),
+    search: (q, workspaceId, page = 1) => {
+      const params = new URLSearchParams({ q, workspaceId, page: String(page) }).toString();
+      return get(`/images/unsplash/search?${params}`);
+    },
+    upload: async (workspaceId, file) => {
+      const headers = await getHeaders();
+      delete headers['Content-Type'];
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('workspaceId', workspaceId);
+      const res = await fetch(`${BASE}/images/upload`, { method: 'POST', headers, body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw Object.assign(new Error(data.message || 'Upload failed'), { code: data.error });
+      return data;
+    },
+  },
 };

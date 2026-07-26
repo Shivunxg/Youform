@@ -17,6 +17,7 @@ import typeformRouter from './routes/typeform.js';
 import adminRouter from './routes/admin.js';
 import aiRouter from './routes/ai.js';
 import googleFormsRouter from './routes/google-forms.js';
+import imagesRouter from './routes/images.js';
 
 const app = express();
 
@@ -49,6 +50,7 @@ app.use('/api', typeformRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api', aiRouter);
 app.use('/api', googleFormsRouter);
+app.use('/api', imagesRouter);
 app.use((req, res) => res.status(404).json({ error: `${req.method} ${req.path} not found` }));
 app.use(errorHandler);
 

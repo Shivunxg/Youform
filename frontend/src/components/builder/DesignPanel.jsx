@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, AlignLeft, AlignCenter, AlignRight, ImageOff } from 'lucide-react';
+import { X, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
 import { useBuilderStore } from '@/stores/builderStore';
 import ThemeGalleryModal from './ThemeGalleryModal';
+import ImagePickerPanel from './ImagePickerPanel';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
@@ -9,6 +10,10 @@ import { clsx } from 'clsx';
 import toast from 'react-hot-toast';
 
 const SG = { fontFamily: 'Space Grotesk, system-ui, sans-serif' };
+
+// ── WCAG AA contrast threshold ────────────────────────────────────────────────
+const AA_LARGE = 3.0; // large text / UI components
+const AA_NORMAL = 4.5; // normal text
 
 // ── WCAG contrast utilities ───────────────────────────────────────────────────
 function hexToRgb(hex) {
@@ -25,8 +30,6 @@ function contrastRatio(a, b) {
   const [l1, l2] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
   return (l1 + 0.05) / (l2 + 0.05);
 }
-const PICSUM_BLK = (seed) => `https://picsum.photos/seed/${seed}/800/600`;
-
 // ── Colour swatch ─────────────────────────────────────────────────────────────
 const PRESET_COLORS = [
   '#111111','#1e293b','#0f172a','#134e4a','#14532d','#7c1d1d','#1e1b4b',
@@ -101,146 +104,6 @@ function ColorSwatch({ label, value, onChange }) {
   );
 }
 
-// ── Block image library ───────────────────────────────────────────────────────
-const BLOCK_IMAGE_LIBRARY = [
-  { label: 'People', images: [
-    { seed: 'people-work-team',       label: 'Team',      description: 'Collaborative team working together'   },
-    { seed: 'woman-laptop-remote',    label: 'Remote',    description: 'Person working remotely on a laptop'  },
-    { seed: 'business-handshake',     label: 'Partners',  description: 'Business partners shaking hands'      },
-    { seed: 'diverse-group-smiling',  label: 'Diversity', description: 'Diverse group of smiling colleagues'  },
-    { seed: 'professional-portrait',  label: 'Portrait',  description: 'Professional business headshot'       },
-  ]},
-  { label: 'Workspace', images: [
-    { seed: 'minimal-desk-setup',   label: 'Desk',   description: 'Clean, minimal desk setup'          },
-    { seed: 'open-plan-office',     label: 'Office', description: 'Modern open-plan office space'      },
-    { seed: 'coffee-shop-laptop',   label: 'Café',   description: 'Working from a coffee shop'         },
-    { seed: 'creative-studio-room', label: 'Studio', description: 'Creative studio workspace'          },
-  ]},
-  { label: 'Lifestyle', images: [
-    { seed: 'morning-coffee-cup',    label: 'Morning',  description: 'Morning coffee and slow start'    },
-    { seed: 'reading-book-cozy',     label: 'Reading',  description: 'Cozy reading atmosphere'          },
-    { seed: 'wellness-yoga-mat',     label: 'Wellness', description: 'Wellness and yoga practice'       },
-    { seed: 'city-street-lifestyle', label: 'Urban',    description: 'Urban city street lifestyle'      },
-  ]},
-  { label: 'Product', images: [
-    { seed: 'tech-gadgets-flat',     label: 'Tech',    description: 'Tech gadgets flat lay'             },
-    { seed: 'fashion-clothing-rack', label: 'Fashion', description: 'Fashion clothing rack'             },
-    { seed: 'food-restaurant-dish',  label: 'Food',    description: 'Restaurant-quality food dish'      },
-  ]},
-];
-
-function BlockImagePicker({ selectedQuestion, onUpdateConfig }) {
-  if (!selectedQuestion) {
-    return (
-      <div className="px-4 py-4 text-center">
-        <p className="text-xs text-gray-400 italic">Select a block to add an in-block image</p>
-      </div>
-    );
-  }
-
-  const current  = selectedQuestion.config?.blockImage ?? null;
-  const position = selectedQuestion.config?.blockImagePosition ?? 'right';
-
-  return (
-    <div className="px-4 py-3 space-y-3">
-      {/* Current image preview */}
-      {current && (
-        <div
-          className="relative w-full h-16 rounded-xl border-2 border-[#111] overflow-hidden"
-          style={{ boxShadow: '2px 2px 0 #111' }}
-        >
-          <img src={current} alt="" className="w-full h-full object-cover" />
-          <button
-            onClick={() => onUpdateConfig({ blockImage: null, blockImagePosition: undefined })}
-            title="Remove block image"
-            className="absolute top-1.5 right-1.5 w-6 h-6 rounded-md bg-white border border-gray-300 flex items-center justify-center hover:bg-red-50 hover:border-red-300 transition-colors shadow-sm"
-          >
-            <ImageOff className="w-3 h-3 text-gray-600" />
-          </button>
-        </div>
-      )}
-
-      {/* None chip + position controls — always visible */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => onUpdateConfig({ blockImage: null, blockImagePosition: undefined })}
-          className={clsx(
-            'text-[10px] font-bold px-2.5 py-1 rounded-lg border-2 transition-all shrink-0',
-            !current
-              ? 'border-[#111] bg-[#111] text-white'
-              : 'border-gray-300 text-gray-500 hover:border-gray-400 hover:bg-gray-50'
-          )}
-          style={!current ? { boxShadow: '1.5px 1.5px 0 #f97316' } : {}}
-        >
-          None
-        </button>
-        {current && (
-          <div className="flex gap-1 ml-auto">
-            {['left', 'right'].map(pos => (
-              <button
-                key={pos}
-                onClick={() => onUpdateConfig({ blockImagePosition: pos })}
-                className={clsx(
-                  'text-[10px] font-bold px-2 py-1 rounded-lg border-2 transition-colors',
-                  position === pos
-                    ? 'bg-[#f97316] text-white border-[#f97316]'
-                    : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
-                )}
-              >
-                {pos === 'left' ? '← Left' : 'Right →'}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Curated library */}
-      {BLOCK_IMAGE_LIBRARY.map(category => (
-        <div key={category.label}>
-          <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1.5" style={SG}>
-            {category.label}
-          </p>
-          <div className="grid grid-cols-4 gap-1.5">
-            {category.images.map(({ seed, label, description }) => {
-              const url = PICSUM_BLK(seed);
-              const isActive = current === url;
-              return (
-                <button
-                  key={seed}
-                  onClick={() => onUpdateConfig({
-                    blockImage: isActive ? null : url,
-                    blockImagePosition: position,
-                  })}
-                  title={description ?? label}
-                  className="relative rounded-lg overflow-hidden transition-all group"
-                  style={{
-                    border: isActive ? '2px solid #f97316' : '2px solid #d1d5db',
-                    boxShadow: isActive ? '0 0 0 2px #f97316' : 'none',
-                    aspectRatio: '4/3',
-                  }}
-                >
-                  <img
-                    src={url} alt={label} loading="lazy"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                  />
-                  <div className="absolute inset-0 flex items-end bg-transparent group-hover:bg-black/30 transition-colors duration-150">
-                    <span
-                      className="w-full px-1 py-0.5 text-[8px] font-bold text-white text-center leading-tight opacity-0 group-hover:opacity-100 transition-opacity duration-150"
-                      style={SG}
-                    >
-                      {label}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // ── Section header ────────────────────────────────────────────────────────────
 function SectionHeader({ label }) {
   return (
@@ -277,6 +140,14 @@ export default function DesignPanel({ onClose }) {
     queryFn: () => api.forms.list(activeWorkspaceId),
     enabled: !!activeWorkspaceId,
   });
+
+  const { data: usageData } = useQuery({
+    queryKey: ['usage', activeWorkspaceId],
+    queryFn: () => api.workspaces.usage(activeWorkspaceId),
+    enabled: !!activeWorkspaceId,
+    staleTime: 60_000,
+  });
+  const plan = usageData?.plan ?? 'free';
 
   if (!form) return null;
 
@@ -364,18 +235,27 @@ export default function DesignPanel({ onClose }) {
           />
         </div>
 
-        {/* Contrast warning */}
+        {/* Contrast warnings — WCAG AA */}
         {(() => {
-          const bg = theme.backgroundColor ?? '#FFFFFF';
-          const qc = theme.questionColor   ?? '#111111';
-          const ratio = contrastRatio(bg, qc);
-          if (ratio >= 4.5) return null;
+          const bg  = theme.backgroundColor  ?? '#FFFFFF';
+          const qc  = theme.questionColor    ?? '#111111';
+          const ac  = theme.answerColor      ?? '#374151';
+          const btn = theme.buttonColor      ?? '#6366f1';
+          const btx = theme.buttonTextColor  ?? '#FFFFFF';
+          const warnings = [];
+          const qRatio = contrastRatio(bg, qc);
+          if (qRatio < AA_NORMAL) warnings.push(`Block color ↔ question text: ${qRatio.toFixed(1)}:1`);
+          const aRatio = contrastRatio(bg, ac);
+          if (aRatio < AA_NORMAL) warnings.push(`Block color ↔ answer text: ${aRatio.toFixed(1)}:1`);
+          const bRatio = contrastRatio(btn, btx);
+          if (bRatio < AA_LARGE) warnings.push(`Button ↔ button text: ${bRatio.toFixed(1)}:1`);
+          if (!warnings.length) return null;
           return (
-            <div className="mx-4 mb-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
-              <p className="text-xs font-semibold text-amber-700">⚠ Low contrast ({ratio.toFixed(1)}:1)</p>
-              <p className="text-[10px] text-amber-600 mt-0.5 leading-snug">
-                Block color vs. question text may be hard to read — WCAG AA requires 4.5:1.
-              </p>
+            <div className="mx-4 mb-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg space-y-0.5">
+              <p className="text-xs font-semibold text-amber-700">⚠ Low contrast detected</p>
+              {warnings.map(w => (
+                <p key={w} className="text-[10px] text-amber-600 leading-snug">• {w}</p>
+              ))}
             </div>
           );
         })()}
@@ -385,9 +265,11 @@ export default function DesignPanel({ onClose }) {
         <p className="px-4 text-[10px] text-gray-400 leading-relaxed mb-1">
           Add a photo inside the selected block — it appears in a split layout alongside the question.
         </p>
-        <BlockImagePicker
+        <ImagePickerPanel
           selectedQuestion={selectedQuestion}
           onUpdateConfig={handleBlockImageConfig}
+          workspaceId={activeWorkspaceId}
+          plan={plan}
         />
 
         {/* ── Font ── */}
