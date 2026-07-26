@@ -140,68 +140,76 @@ export default function PublicFormPage() {
 
   const setAnswer = (id, value) => setAnswers(a => ({ ...a, [id]: value }));
 
-  const bgStyle = {
-    backgroundColor: theme.backgroundColor ?? '#ffffff',
-    fontFamily: theme.fontFamily ?? 'Playfair Display, Georgia, serif',
-    minHeight: '100vh',
-  };
+  const qColor = theme.questionColor ?? '#111111';
+  const aColor = theme.answerColor   ?? '#374151';
 
   return (
-    <div style={bgStyle} className="relative flex flex-col">
-      {/* Progress */}
-      {!submitted && questions.length > 0 && (
-        <div className="h-1 w-full bg-black/10 fixed top-0 z-10">
-          <div
-            className="h-full transition-all duration-400"
-            style={{ width: `${((currentIndex + 1) / questions.length) * 100}%`, backgroundColor: primary }}
-          />
-        </div>
-      )}
+    <div
+      className="relative flex flex-col min-h-screen"
+      style={{ backgroundColor: '#f3f4f6', fontFamily: theme.fontFamily ?? 'Playfair Display, Georgia, serif' }}
+    >
+      <div className="flex-1 flex flex-col items-center justify-center px-4 py-10">
+        <div
+          className="w-full max-w-xl rounded-2xl overflow-hidden shadow-lg flex flex-col"
+          style={{ backgroundColor: theme.backgroundColor ?? '#ffffff' }}
+        >
+          {/* Progress bar */}
+          {!submitted && questions.length > 0 && (
+            <div className="h-1 shrink-0" style={{ backgroundColor: `${primary}22` }}>
+              <div
+                className="h-full transition-all duration-300"
+                style={{ width: `${((currentIndex + 1) / questions.length) * 100}%`, backgroundColor: primary }}
+              />
+            </div>
+          )}
 
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-16">
-        <div className="w-full max-w-xl">
-          {submitted ? (
-            <ThankYouScreen question={thankYouQ} primary={primary} formTitle={form.title} quizScore={quizScore} quizMode={form.settings?.quizMode} />
-          ) : current ? (
-            <QuestionSlide
-              question={pipeAnswers(current, questions, answers)}
-              answer={answers[current.id]}
-              onAnswer={(v) => setAnswer(current.id, v)}
-              primary={primary}
-              index={currentIndex}
-              total={questions.length}
-              onNext={handleNext}
-              onPrev={handlePrev}
-              isFirst={currentIndex === 0}
-              isLast={isLast}
-              submitting={submitting}
-              submitError={submitError}
-              formId={form.id}
-            />
-          ) : (
-            <p className="text-gray-400 text-center">This form has no questions.</p>
+          {/* Content */}
+          <div className="flex-1 p-8 flex flex-col min-h-[480px]">
+            {submitted ? (
+              <ThankYouScreen question={thankYouQ} primary={primary} formTitle={form.title} quizScore={quizScore} quizMode={form.settings?.quizMode} qColor={qColor} aColor={aColor} />
+            ) : current ? (
+              <QuestionSlide
+                question={pipeAnswers(current, questions, answers)}
+                answer={answers[current.id]}
+                onAnswer={(v) => setAnswer(current.id, v)}
+                primary={primary}
+                index={currentIndex}
+                total={questions.length}
+                onNext={handleNext}
+                onPrev={handlePrev}
+                isFirst={currentIndex === 0}
+                isLast={isLast}
+                submitting={submitting}
+                submitError={submitError}
+                formId={form.id}
+                qColor={qColor}
+                aColor={aColor}
+              />
+            ) : (
+              <p className="text-center" style={{ color: aColor }}>This form has no questions.</p>
+            )}
+          </div>
+
+          {/* Branding */}
+          {!form.settings?.removeBranding && (
+            <div className="text-center py-3 border-t border-black/5">
+              <a href="/" className="text-xs text-gray-400 hover:text-gray-600">
+                Powered by <span className="font-semibold">FormFlow</span>
+              </a>
+            </div>
           )}
         </div>
       </div>
-
-      {/* Branding */}
-      {!form.settings?.removeBranding && (
-        <div className="text-center py-3">
-          <a href="/" className="text-xs text-gray-400 hover:text-gray-600">
-            Powered by <span className="font-semibold">FormFlow</span>
-          </a>
-        </div>
-      )}
     </div>
   );
 }
 
-function QuestionSlide({ question, answer, onAnswer, primary, index, total, onNext, onPrev, isFirst, isLast, submitting, submitError, formId }) {
+function QuestionSlide({ question, answer, onAnswer, primary, index, total, onNext, onPrev, isFirst, isLast, submitting, submitError, formId, qColor = '#111111', aColor = '#374151' }) {
   if (question.type === 'welcome_screen') {
     return (
-      <div className="text-center animate-fade-in">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">{question.title}</h1>
-        {question.config?.description && <p className="text-lg text-gray-600 mb-10">{question.config.description}</p>}
+      <div className="text-center animate-fade-in flex-1 flex flex-col items-center justify-center">
+        <h1 className="text-4xl font-bold mb-4" style={{ color: qColor }}>{question.title}</h1>
+        {question.config?.description && <p className="text-lg mb-10" style={{ color: aColor }}>{question.config.description}</p>}
         <button
           className="px-10 py-4 rounded-2xl text-white font-semibold text-lg transition-opacity hover:opacity-90"
           style={{ backgroundColor: primary }}
@@ -214,13 +222,13 @@ function QuestionSlide({ question, answer, onAnswer, primary, index, total, onNe
   }
 
   return (
-    <div className="animate-fade-in">
-      <p className="text-sm text-gray-400 mb-3">{index + 1} / {total}</p>
-      <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+    <div className="animate-fade-in flex-1 flex flex-col">
+      <p className="text-sm mb-3" style={{ color: aColor, opacity: 0.6 }}>{index + 1} / {total}</p>
+      <h2 className="text-2xl font-semibold mb-2" style={{ color: qColor }}>
         {question.title}
         {question.required && <span className="text-red-400 ml-1 text-lg">*</span>}
       </h2>
-      {question.description && <p className="text-gray-500 mb-6">{question.description}</p>}
+      {question.description && <p className="mb-6" style={{ color: aColor }}>{question.description}</p>}
 
       <div className="mt-6 mb-8">
         <PublicAnswerInput question={question} answer={answer} onAnswer={onAnswer} primary={primary} formId={formId} />
@@ -546,14 +554,14 @@ function PasswordGate({ slug, formTitle, primaryColor, onUnlocked }) {
   );
 }
 
-function ThankYouScreen({ question, primary, formTitle, quizScore, quizMode }) {
+function ThankYouScreen({ question, primary, formTitle, quizScore, quizMode, qColor = '#111111', aColor = '#374151' }) {
   return (
-    <div className="text-center animate-fade-in">
+    <div className="text-center animate-fade-in flex-1 flex flex-col items-center justify-center">
       <div className="text-6xl mb-6">🎉</div>
-      <h2 className="text-3xl font-bold text-gray-900 mb-3">
+      <h2 className="text-3xl font-bold mb-3" style={{ color: qColor }}>
         {question?.title ?? 'Thank you!'}
       </h2>
-      <p className="text-lg text-gray-500">
+      <p className="text-lg" style={{ color: aColor }}>
         {question?.config?.message ?? 'Your response has been recorded.'}
       </p>
       {quizMode && quizScore !== null && (

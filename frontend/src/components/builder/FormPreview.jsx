@@ -63,7 +63,7 @@ export default function FormPreview() {
   }, [goNext, setPreviewMode]);
 
   const outerStyle = {
-    backgroundColor: theme.backgroundColor ?? '#f1f5f9',
+    backgroundColor: '#f3f4f6',
   };
 
   return (
@@ -108,14 +108,14 @@ export default function FormPreview() {
             aria-checked={skipValidation}
             onClick={() => setSkipValidation(v => !v)}
             className={clsx(
-              'relative w-8 h-4 rounded-full transition-colors flex-shrink-0',
+              'relative w-9 h-5 rounded-full transition-colors flex-shrink-0 overflow-hidden',
               skipValidation ? 'bg-[#f97316]' : 'bg-white/20'
             )}
           >
             <span
               className={clsx(
-                'absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform',
-                skipValidation ? 'translate-x-[18px]' : 'translate-x-0.5'
+                'absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform',
+                skipValidation ? 'translate-x-4' : 'translate-x-0'
               )}
             />
           </button>
