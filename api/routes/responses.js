@@ -134,7 +134,10 @@ router.post('/public/forms/:formId/upload', publicWriteLimit, upload.single('fil
       .from('form-uploads')
       .upload(path, req.file.buffer, { contentType: req.file.mimetype, upsert: false });
 
-    if (error) throw createError(500, 'File could not be stored. Please try again.');
+    if (error) {
+      console.error('[upload] Supabase storage error:', error.message, error);
+      throw createError(500, 'File could not be stored. Please try again.');
+    }
 
     const { data: { publicUrl } } = supabaseAdmin.storage.from('form-uploads').getPublicUrl(data.path);
 
