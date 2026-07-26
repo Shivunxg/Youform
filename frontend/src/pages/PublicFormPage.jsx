@@ -2,7 +2,6 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { api } from '@/lib/api';
-import { nanoid } from 'nanoid';
 import { clsx } from 'clsx';
 import EmbedBlock from '@/components/EmbedBlock';
 
@@ -22,7 +21,7 @@ export default function PublicFormPage() {
   const [submitError, setSubmitError] = useState(null);
   const [quizScore, setQuizScore] = useState(null);
   const startedAt = useRef(Date.now());
-  const respondentId = useRef(nanoid());
+  const respondentId = useRef(crypto.randomUUID());
   const answersRef = useRef({});
   const submittedRef = useRef(false);
   useEffect(() => { answersRef.current = answers; }, [answers]);
