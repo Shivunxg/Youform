@@ -23,9 +23,15 @@ export const LIBRARY_THEMES = [
   { id: 'midnight-ink',    name: 'Midnight Ink',     bg: '#020617', questionColor: '#e2e8f0', answerColor: '#94a3b8', buttonColor: '#6366f1', buttonTextColor: '#FFFFFF', starColor: '#818cf8', alignment: 'left' },
   { id: 'spring-fresh',    name: 'Spring Fresh',     bg: '#f0fdf4', questionColor: '#14532d', answerColor: '#166534', buttonColor: '#22c55e', buttonTextColor: '#FFFFFF', starColor: '#16a34a', alignment: 'left' },
   // Enterprise-grade presets
-  { id: 'corporate-navy',  name: 'Corporate Navy',  bg: '#0B1929', questionColor: '#F0F4F8', answerColor: '#94A3B8', buttonColor: '#2563EB', buttonTextColor: '#FFFFFF', starColor: '#F59E0B', alignment: 'left' },
-  { id: 'executive-sand',  name: 'Executive Sand',  bg: '#F5F0E8', questionColor: '#1A1410', answerColor: '#4B3F30', buttonColor: '#B07C45', buttonTextColor: '#FFFFFF', starColor: '#B07C45', alignment: 'left' },
-  { id: 'modern-graphite', name: 'Modern Graphite', bg: '#F4F5F7', questionColor: '#1B1D21', answerColor: '#4A4D55', buttonColor: '#1B1D21', buttonTextColor: '#FFFFFF', starColor: '#F97316', alignment: 'left' },
+  { id: 'corporate-navy',  name: 'Corporate Navy',  bg: '#0B1929', questionColor: '#F0F4F8', answerColor: '#94A3B8', buttonColor: '#2563EB', buttonTextColor: '#FFFFFF', starColor: '#F59E0B', fontFamily: 'Inter, system-ui, sans-serif', alignment: 'left' },
+  { id: 'executive-sand',  name: 'Executive Sand',  bg: '#F5F0E8', questionColor: '#1A1410', answerColor: '#4B3F30', buttonColor: '#B07C45', buttonTextColor: '#FFFFFF', starColor: '#B07C45', fontFamily: 'Playfair Display, Georgia, serif', alignment: 'left' },
+  { id: 'modern-graphite', name: 'Modern Graphite', bg: '#F4F5F7', questionColor: '#1B1D21', answerColor: '#4A4D55', buttonColor: '#1B1D21', buttonTextColor: '#FFFFFF', starColor: '#F97316', fontFamily: 'Inter, system-ui, sans-serif', alignment: 'left' },
+  // Bold editorial presets — dark bg + vivid accent
+  { id: 'forest-lime',     name: 'Forest Lime',     bg: '#193808', questionColor: '#AAEE14', answerColor: '#7CC214', buttonColor: '#C8F030', buttonTextColor: '#0D1F04', starColor: '#C8F030', fontFamily: 'Space Grotesk, system-ui, sans-serif', alignment: 'left' },
+  { id: 'electric-cobalt', name: 'Electric Cobalt', bg: '#060B1A', questionColor: '#38BEFF', answerColor: '#1E8EC4', buttonColor: '#38BEFF', buttonTextColor: '#060B1A', starColor: '#FFB800', fontFamily: 'Space Grotesk, system-ui, sans-serif', alignment: 'left' },
+  { id: 'raspberry-noir',  name: 'Raspberry Noir',  bg: '#120208', questionColor: '#FF4D82', answerColor: '#CC2255', buttonColor: '#FF4D82', buttonTextColor: '#FFFFFF', starColor: '#FF4D82', fontFamily: 'Inter, system-ui, sans-serif', alignment: 'left' },
+  { id: 'amber-obsidian',  name: 'Amber Obsidian',  bg: '#0C0A04', questionColor: '#FFBB14', answerColor: '#CC8C00', buttonColor: '#FFBB14', buttonTextColor: '#0C0A04', starColor: '#FFBB14', fontFamily: 'Space Grotesk, system-ui, sans-serif', alignment: 'left' },
+  { id: 'aurora-deep',     name: 'Aurora Deep',     bg: '#080C20', questionColor: '#A78BFA', answerColor: '#7C5FCC', buttonColor: '#A78BFA', buttonTextColor: '#080C20', starColor: '#34D399', fontFamily: 'Space Grotesk, system-ui, sans-serif', alignment: 'left' },
 ];
 
 function ThemePreviewCard({ theme, isActive, onClick }) {
