@@ -222,7 +222,10 @@ function BlockPreview({ question, primary, questionColor, index, total }) {
           {question.title || <span className="opacity-30 italic">Welcome title…</span>}
         </h1>
         {question.config?.description && (
-          <p className="mb-8 text-sm leading-relaxed opacity-70" style={{ color: qc }}>{question.config.description}</p>
+          <p className="mb-4 text-sm leading-relaxed opacity-70" style={{ color: qc }}>{question.config.description}</p>
+        )}
+        {question.config?.embed && (
+          <EmbedBlock url={question.config.embed} interactive={false} className="mb-6 w-full" />
         )}
         <button
           className="px-8 py-2.5 rounded-xl font-medium text-sm cursor-default select-none"

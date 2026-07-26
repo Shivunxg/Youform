@@ -307,7 +307,10 @@ function QuestionView({
           {question.title || 'Welcome'}
         </h1>
         {question.config?.description && (
-          <p className="opacity-60 mb-8 text-sm leading-relaxed">{question.config.description}</p>
+          <p className="opacity-60 mb-4 text-sm leading-relaxed">{question.config.description}</p>
+        )}
+        {question.config?.embed && (
+          <EmbedBlock url={question.config.embed} interactive className="mb-6 w-full" />
         )}
         <div className="flex flex-col items-center gap-2">
           <button

@@ -210,7 +210,10 @@ function QuestionSlide({ question, answer, onAnswer, primary, index, total, onNe
     return (
       <div className="text-center animate-fade-in flex-1 flex flex-col items-center justify-center">
         <h1 className="text-4xl font-bold mb-4" style={{ color: qColor }}>{question.title}</h1>
-        {question.config?.description && <p className="text-lg mb-10" style={{ color: aColor }}>{question.config.description}</p>}
+        {question.config?.description && <p className="text-lg mb-6" style={{ color: aColor }}>{question.config.description}</p>}
+        {question.config?.embed && (
+          <EmbedBlock url={question.config.embed} interactive className="mb-8 w-full" />
+        )}
         <button
           className="px-10 py-4 rounded-2xl text-white font-semibold text-lg transition-opacity hover:opacity-90"
           style={{ backgroundColor: primary }}
