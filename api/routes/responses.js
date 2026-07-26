@@ -155,18 +155,21 @@ router.post(
   optionalAuth,
   [
     body('answers').isObject(),
-    body('respondent_email').optional().isEmail(),
-    body('utm_source').optional().isString(),
-    body('utm_medium').optional().isString(),
-    body('utm_campaign').optional().isString(),
-    body('referrer').optional().isURL({ require_tld: false }),
-    body('started_at').optional().isISO8601(),
+    body('respondent_email').optional({ checkFalsy: true }).isEmail(),
+    body('utm_source').optional({ checkFalsy: true }).isString(),
+    body('utm_medium').optional({ checkFalsy: true }).isString(),
+    body('utm_campaign').optional({ checkFalsy: true }).isString(),
+    body('referrer').optional({ checkFalsy: true }).isURL({ require_tld: false }),
+    body('started_at').optional({ checkFalsy: true }).isISO8601(),
     body('is_test').optional().isBoolean(),
   ],
   async (req, res, next) => {
     try {
       const errors = validationResult(req);
-      if (!errors.isEmpty()) throw Object.assign(new Error('Validation failed'), { type: 'validation', errors: errors.array() });
+      if (!errors.isEmpty()) {
+        console.error('[submit] Validation errors:', JSON.stringify(errors.array()));
+        throw Object.assign(new Error('Validation failed'), { type: 'validation', errors: errors.array() });
+      }
 
       const { formId } = req.params;
 
