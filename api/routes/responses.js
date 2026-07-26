@@ -155,12 +155,12 @@ router.post(
   optionalAuth,
   [
     body('answers').isObject(),
-    body('respondent_email').optional({ checkFalsy: true }).isEmail(),
-    body('utm_source').optional({ checkFalsy: true }).isString(),
-    body('utm_medium').optional({ checkFalsy: true }).isString(),
-    body('utm_campaign').optional({ checkFalsy: true }).isString(),
-    body('referrer').optional({ checkFalsy: true }).isURL({ require_tld: false }),
-    body('started_at').optional({ checkFalsy: true }).isISO8601(),
+    body('respondent_email').optional({ values: 'falsy' }).isEmail(),
+    body('utm_source').optional({ values: 'falsy' }).isString(),
+    body('utm_medium').optional({ values: 'falsy' }).isString(),
+    body('utm_campaign').optional({ values: 'falsy' }).isString(),
+    body('referrer').optional({ values: 'falsy' }).isURL({ require_tld: false }),
+    body('started_at').optional({ values: 'falsy' }).isISO8601(),
     body('is_test').optional().isBoolean(),
   ],
   async (req, res, next) => {
@@ -188,7 +188,7 @@ router.post(
 
       // Check plan response quota (skip for test submissions)
       if (!req.body.is_test) {
-        const { allowed, used, limit } = await canAcceptResponse(supabaseAdmin, form.workspace_id, form.workspaces.plan);
+        const { allowed, used, limit } = await canAcceptResponse(supabaseAdmin, form.workspace_id, form.workspaces?.plan);
         if (!allowed) {
           return res.status(429).json({
             error: 'Monthly response limit reached',
@@ -229,7 +229,10 @@ router.post(
         ip_hash: null, // TODO: hash req.ip for GDPR compliance
       }).select().single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[submit] Supabase insert error:', error.message, JSON.stringify(error));
+        throw error;
+      }
 
       // Fire-and-forget: notifications + integrations run after response is sent
       responseQueue.add('process-response', {
