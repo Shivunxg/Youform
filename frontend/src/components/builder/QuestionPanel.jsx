@@ -5,6 +5,7 @@ import { useBuilderStore, defaultConfig } from '@/stores/builderStore';
 import { QUESTION_META } from './questionMeta';
 import { api } from '@/lib/api';
 import { clsx } from 'clsx';
+import { parseEmbed } from '@/lib/embed';
 
 // ── Block type groups for the type-switcher dropdown ──────────────────────────
 const TYPE_GROUPS = [
@@ -201,6 +202,11 @@ function ManualTab({ question, pipable, updateQuestion, updateQuestionConfig, qu
           value={question.config?.embed ?? ''}
           onChange={e => updateQuestionConfig(question.id, { embed: e.target.value || undefined })}
         />
+        {question.config?.embed && !parseEmbed(question.config.embed)?.src && (
+          <p className="mt-1 text-xs text-amber-600">
+            Link not supported — try YouTube, Loom, Vimeo, or a direct PDF URL.
+          </p>
+        )}
       </div>
 
       {/* Alignment */}

@@ -3,6 +3,7 @@ import { Plus, Paintbrush, GitBranch, Monitor, Smartphone, Check, Loader } from 
 import { useBuilderStore } from '@/stores/builderStore';
 import { TypePickerDropdown } from './BlockList';
 import { clsx } from 'clsx';
+import EmbedBlock from '@/components/EmbedBlock';
 import toast from 'react-hot-toast';
 
 export default function Canvas({ onToggleDesign }) {
@@ -256,6 +257,9 @@ function BlockPreview({ question, primary, questionColor, index, total }) {
       </h2>
       {question.description && (
         <p className="text-sm mb-4 leading-relaxed opacity-60" style={{ color: qc }}>{question.description}</p>
+      )}
+      {question.config?.embed && (
+        <EmbedBlock url={question.config.embed} interactive={false} className="mb-4" />
       )}
       <div className="mt-4 pointer-events-none select-none">
         <AnswerPreview question={question} primary={primary} />

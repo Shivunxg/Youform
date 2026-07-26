@@ -4,6 +4,7 @@ import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { api } from '@/lib/api';
 import { nanoid } from 'nanoid';
 import { clsx } from 'clsx';
+import EmbedBlock from '@/components/EmbedBlock';
 
 export default function PublicFormPage() {
   const { slug } = useParams();
@@ -229,6 +230,9 @@ function QuestionSlide({ question, answer, onAnswer, primary, index, total, onNe
         {question.required && <span className="text-red-400 ml-1 text-lg">*</span>}
       </h2>
       {question.description && <p className="mb-6" style={{ color: aColor }}>{question.description}</p>}
+      {question.config?.embed && (
+        <EmbedBlock url={question.config.embed} interactive className="mb-6" />
+      )}
 
       <div className="mt-6 mb-8">
         <PublicAnswerInput question={question} answer={answer} onAnswer={onAnswer} primary={primary} formId={formId} />

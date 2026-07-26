@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { X, Monitor, Smartphone, RefreshCw, ChevronRight, ChevronLeft, ChevronUp, ChevronDown } from 'lucide-react';
 import { useBuilderStore } from '@/stores/builderStore';
 import { clsx } from 'clsx';
+import EmbedBlock from '@/components/EmbedBlock';
 
 export default function FormPreview() {
   const { form, questions, setPreviewMode } = useBuilderStore();
@@ -332,6 +333,9 @@ function QuestionView({
       </h2>
       {question.description && (
         <p className="text-sm opacity-60 mb-4 leading-relaxed">{question.description}</p>
+      )}
+      {question.config?.embed && (
+        <EmbedBlock url={question.config.embed} interactive className="mb-4" />
       )}
 
       <div className="flex-1 mt-4">
