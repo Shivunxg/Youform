@@ -28,13 +28,14 @@ interface EquipmentOption {
 interface Row {
   id: string;
   name: string;
+  sku: string | null;
   equipmentName: string;
   substationName: string;
   minQty: number;
   status: string;
 }
 
-const emptyForm = { name: "", equipmentId: "", minQty: "0" };
+const emptyForm = { name: "", sku: "", description: "", remarks: "", equipmentId: "", minQty: "0" };
 
 export default function AdminComponentsPage() {
   const supabase = React.useMemo(() => createClient(), []);
@@ -52,7 +53,7 @@ export default function AdminComponentsPage() {
     const [{ data: componentRows }, { data: equipmentRows }] = await Promise.all([
       supabase
         .from("components")
-        .select("id, name, min_qty, status, equipment(name, substations(name))")
+        .select("id, name, sku, min_qty, status, equipment(name, substations(name))")
         .order("name"),
       supabase.from("equipment").select("id, name, substations(name)").order("name"),
     ]);
@@ -71,6 +72,7 @@ export default function AdminComponentsPage() {
         return {
           id: c.id,
           name: c.name,
+          sku: c.sku,
           equipmentName: eq?.name ?? "—",
           substationName: eq?.substations?.name ?? "—",
           minQty: c.min_qty,
@@ -95,7 +97,7 @@ export default function AdminComponentsPage() {
   );
 
   function openCreate() {
-    setForm({ name: "", equipmentId: equipmentOptions[0]?.id ?? "", minQty: "0" });
+    setForm({ name: "", sku: "", description: "", remarks: "", equipmentId: equipmentOptions[0]?.id ?? "", minQty: "0" });
     setError(null);
     setDialogOpen(true);
   }
@@ -107,6 +109,9 @@ export default function AdminComponentsPage() {
 
     const { error: insertError } = await supabase.from("components").insert({
       name: form.name,
+      sku: form.sku || null,
+      description: form.description || null,
+      remarks: form.remarks || null,
       equipment_id: form.equipmentId,
       min_qty: Number(form.minQty || 0),
     });
@@ -155,6 +160,7 @@ export default function AdminComponentsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-background-secondary/60">
+                  <th className="text-left font-medium text-foreground-secondary px-5 py-3">SKU</th>
                   <th className="text-left font-medium text-foreground-secondary px-5 py-3">Component</th>
                   <th className="text-left font-medium text-foreground-secondary px-5 py-3">Equipment</th>
                   <th className="text-left font-medium text-foreground-secondary px-5 py-3">Substation</th>
@@ -165,6 +171,7 @@ export default function AdminComponentsPage() {
               <tbody>
                 {filtered.map((c) => (
                   <tr key={c.id} className="border-b border-border last:border-0 hover:bg-hover/50 transition-colors">
+                    <td className="px-5 py-3.5 text-foreground-secondary">{c.sku ?? "—"}</td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-accent">
@@ -218,6 +225,18 @@ export default function AdminComponentsPage() {
                 Component name <span className="text-danger">*</span>
               </Label>
               <Input id="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Cooling Fan" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="sku">SKU</Label>
+              <Input id="sku" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="e.g. TXF-CF-001" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="description">Description</Label>
+              <Input id="description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Specs or details" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="remarks">Remarks</Label>
+              <Input id="remarks" value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })} placeholder="Optional notes" />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="minqty">Minimum quantity</Label>
