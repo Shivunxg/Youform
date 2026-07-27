@@ -16,6 +16,7 @@ interface Row {
   equipmentName: string;
   status: string;
   scheduledDate: string | null;
+  assignedEngineer: string | null;
   createdAt: string;
 }
 
@@ -31,7 +32,7 @@ export default function AdminMaintenancePage() {
       setLoading(true);
       const { data } = await supabase
         .from("service_requests")
-        .select("id, request_number, status, scheduled_date, created_at, substations(name), equipment(name)")
+        .select("id, request_number, status, scheduled_date, assigned_engineer, created_at, substations(name), equipment(name)")
         .eq("type", "preventive")
         .order("created_at", { ascending: false });
 
@@ -43,6 +44,7 @@ export default function AdminMaintenancePage() {
           equipmentName: (sr.equipment as unknown as { name: string } | null)?.name ?? "—",
           status: sr.status,
           scheduledDate: sr.scheduled_date,
+          assignedEngineer: sr.assigned_engineer,
           createdAt: sr.created_at,
         }))
       );
@@ -59,7 +61,7 @@ export default function AdminMaintenancePage() {
     .map((r) => ({
       id: r.id,
       date: r.scheduledDate!,
-      label: `${r.substationName} · ${r.equipmentName}`,
+      label: `${r.substationName}${r.assignedEngineer ? ` · ${r.assignedEngineer}` : ""}`,
       variant: r.status === "completed" ? "success" : "accent",
     }));
 
@@ -123,7 +125,8 @@ export default function AdminMaintenancePage() {
                       <p className="text-sm font-medium text-foreground">{r.requestNumber}</p>
                       <p className="text-xs text-slate-400 mt-1">
                         {r.substationName} · {r.equipmentName}
-                        {r.scheduledDate ? ` · Scheduled ${new Date(r.scheduledDate).toLocaleDateString()}` : ""}
+                        {r.scheduledDate ? ` · Visit ${new Date(r.scheduledDate).toLocaleDateString()}` : ""}
+                        {r.assignedEngineer ? ` · ${r.assignedEngineer}` : ""}
                       </p>
                     </div>
                     <Badge
