@@ -29,6 +29,7 @@ interface Row {
   status: string;
   scheduledDate: string | null;
   notes: string | null;
+  assignedEngineer: string | null;
   createdAt: string;
 }
 
@@ -70,7 +71,7 @@ export default function AEServiceRequestsPage() {
     const [{ data }, { data: equipmentRows }] = await Promise.all([
       supabase
         .from("service_requests")
-        .select("id, request_number, type, status, scheduled_date, notes, created_at, equipment(name)")
+        .select("id, request_number, type, status, scheduled_date, notes, assigned_engineer, created_at, equipment(name)")
         .eq("substation_id", profile.substation_id)
         .order("created_at", { ascending: false }),
       supabase.from("equipment").select("id, name").eq("substation_id", profile.substation_id).order("name"),
@@ -87,6 +88,7 @@ export default function AEServiceRequestsPage() {
           status: sr.status,
           scheduledDate: sr.scheduled_date,
           notes: sr.notes,
+          assignedEngineer: sr.assigned_engineer,
           createdAt: sr.created_at,
         }))
       );
@@ -153,7 +155,7 @@ export default function AEServiceRequestsPage() {
     .map((r) => ({
       id: r.id,
       date: r.scheduledDate!,
-      label: `${r.requestNumber} · ${r.equipmentName}`,
+      label: `${r.requestNumber}${r.assignedEngineer ? ` · ${r.assignedEngineer}` : ""}`,
       variant: typeVariant[r.type as keyof typeof typeVariant],
     }));
 
@@ -222,9 +224,12 @@ export default function AEServiceRequestsPage() {
                       </div>
                       <p className="text-xs text-slate-400 mt-1">
                         {sr.equipmentName}
-                        {sr.scheduledDate ? ` · Scheduled ${new Date(sr.scheduledDate).toLocaleDateString()}` : ""} ·{" "}
+                        {sr.scheduledDate ? ` · Visit ${new Date(sr.scheduledDate).toLocaleDateString()}` : ""} ·{" "}
                         {new Date(sr.createdAt).toLocaleDateString()}
                       </p>
+                      {sr.assignedEngineer && (
+                        <p className="text-xs text-accent mt-1">Assigned to {sr.assignedEngineer}</p>
+                      )}
                       {sr.notes && <p className="text-xs text-foreground-secondary mt-1">{sr.notes}</p>}
                     </div>
                   </div>
