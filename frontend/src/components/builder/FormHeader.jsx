@@ -11,6 +11,7 @@ const TABS = [
   { id: 'settings',  label: 'Settings',  path: 'settings' },
   { id: 'share',     label: 'Share',     path: 'share' },
   { id: 'responses', label: 'Results',   path: 'responses' },
+  { id: 'analytics', label: 'Analytics', path: 'analytics' },
 ];
 
 export default function FormHeader({ staticTitle, isBuilder = false }) {
