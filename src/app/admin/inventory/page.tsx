@@ -36,7 +36,14 @@ interface Row {
   availableQty: number;
   minQty: number;
   unit: string;
+  conditionStatus: "green" | "yellow" | "red";
 }
+
+const conditionConfig = {
+  green: { label: "Good", variant: "success" as const },
+  yellow: { label: "Needs Attention", variant: "warning" as const },
+  red: { label: "Critical", variant: "danger" as const },
+};
 
 export default function AdminInventoryPage() {
   const supabase = React.useMemo(() => createClient(), []);
@@ -57,7 +64,7 @@ export default function AdminInventoryPage() {
     const [{ data: inventoryRows }, { data: substationRows }, { data: componentRows }] = await Promise.all([
       supabase
         .from("inventory")
-        .select("id, available_qty, min_qty, unit, components(name, equipment(name)), substations(name)")
+        .select("id, available_qty, min_qty, unit, condition_status, components(name, equipment(name)), substations(name)")
         .order("updated_at", { ascending: false }),
       supabase.from("substations").select("*").order("name"),
       supabase.from("components").select("id, name, equipment_id, equipment(name, substation_id)"),
@@ -82,6 +89,7 @@ export default function AdminInventoryPage() {
           availableQty: i.available_qty,
           minQty: i.min_qty,
           unit: i.unit,
+          conditionStatus: (i.condition_status as "green" | "yellow" | "red") ?? "green",
         };
       })
     );
@@ -205,6 +213,7 @@ export default function AdminInventoryPage() {
                   <th className="text-left font-medium text-foreground-secondary px-5 py-3">Available</th>
                   <th className="text-left font-medium text-foreground-secondary px-5 py-3">Min Qty</th>
                   <th className="text-left font-medium text-foreground-secondary px-5 py-3">Status</th>
+                  <th className="text-left font-medium text-foreground-secondary px-5 py-3">Condition</th>
                   <th className="px-5 py-3 w-10" />
                 </tr>
               </thead>
@@ -228,6 +237,11 @@ export default function AdminInventoryPage() {
                       <td className="px-5 py-3.5">
                         <Badge variant={low ? "danger" : "success"} dot>
                           {low ? "Low stock" : "In stock"}
+                        </Badge>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <Badge variant={conditionConfig[r.conditionStatus].variant} dot>
+                          {conditionConfig[r.conditionStatus].label}
                         </Badge>
                       </td>
                       <td className="px-5 py-3.5">
