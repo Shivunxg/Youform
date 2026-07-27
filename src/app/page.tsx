@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { LoginForm } from "@/components/auth/login-form";
 
-export default function Home() {
-  redirect("/login");
+export default function AdminLoginPage() {
+  return <LoginForm role="spectrum_admin" />;
 }
