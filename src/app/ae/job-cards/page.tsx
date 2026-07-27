@@ -5,7 +5,6 @@ import { Plus, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -30,15 +29,28 @@ interface Row {
   createdAt: string;
 }
 
+interface EquipmentOption {
+  id: string;
+  name: string;
+}
+
+interface ComponentOption {
+  id: string;
+  name: string;
+  equipmentId: string;
+}
+
 const priorityVariant = { low: "default", medium: "accent", high: "warning", critical: "danger" } as const;
 const statusVariant = { open: "danger", in_progress: "warning", resolved: "success", closed: "default" } as const;
 
-const emptyForm = { equipmentName: "", component: "", issueDescription: "", priority: "medium" };
+const emptyForm = { equipmentId: "", componentId: "", issueDescription: "", priority: "medium" };
 
 export default function AEJobCardsPage() {
   const supabase = React.useMemo(() => createClient(), []);
   const [substationId, setSubstationId] = React.useState<string | null>(null);
   const [rows, setRows] = React.useState<Row[]>([]);
+  const [equipmentOptions, setEquipmentOptions] = React.useState<EquipmentOption[]>([]);
+  const [componentOptions, setComponentOptions] = React.useState<ComponentOption[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [search, setSearch] = React.useState("");
   const [dialogOpen, setDialogOpen] = React.useState(false);
@@ -59,30 +71,33 @@ export default function AEJobCardsPage() {
     }
     setSubstationId(profile.substation_id);
 
-    const { data, error: fetchError } = await supabase
-      .from("job_cards")
-      .select("id, job_card_number, component, issue_description, priority, status, created_at, equipment(name)")
-      .eq("substation_id", profile.substation_id)
-      .order("created_at", { ascending: false });
+    const [{ data }, { data: equipmentRows }, { data: componentRows }] = await Promise.all([
+      supabase
+        .from("job_cards")
+        .select("id, job_card_number, component, issue_description, priority, status, created_at, equipment(name)")
+        .eq("substation_id", profile.substation_id)
+        .order("created_at", { ascending: false }),
+      supabase.from("equipment").select("id, name").eq("substation_id", profile.substation_id).order("name"),
+      supabase.from("components").select("id, name, equipment_id"),
+    ]);
 
-    if (fetchError) {
-      setError(fetchError.message);
-      setLoading(false);
-      return;
+    setEquipmentOptions(equipmentRows ?? []);
+    setComponentOptions((componentRows ?? []).map((c) => ({ id: c.id, name: c.name, equipmentId: c.equipment_id })));
+
+    if (data) {
+      setRows(
+        data.map((jc) => ({
+          id: jc.id,
+          jobCardNumber: jc.job_card_number,
+          equipmentName: (jc.equipment as unknown as { name: string } | null)?.name ?? "—",
+          component: jc.component,
+          issueDescription: jc.issue_description,
+          priority: jc.priority,
+          status: jc.status,
+          createdAt: jc.created_at,
+        }))
+      );
     }
-
-    setRows(
-      (data ?? []).map((jc) => ({
-        id: jc.id,
-        jobCardNumber: jc.job_card_number,
-        equipmentName: (jc.equipment as unknown as { name: string } | null)?.name ?? "—",
-        component: jc.component,
-        issueDescription: jc.issue_description,
-        priority: jc.priority,
-        status: jc.status,
-        createdAt: jc.created_at,
-      }))
-    );
     setLoading(false);
   }, [supabase]);
 
@@ -97,7 +112,7 @@ export default function AEJobCardsPage() {
   );
 
   function openCreate() {
-    setForm(emptyForm);
+    setForm({ ...emptyForm, equipmentId: equipmentOptions[0]?.id ?? "" });
     setError(null);
     setDialogOpen(true);
   }
@@ -111,36 +126,12 @@ export default function AEJobCardsPage() {
       data: { user },
     } = await supabase.auth.getUser();
 
-    let equipmentId: string | null = null;
-    if (form.equipmentName.trim()) {
-      const { data: existingEquipment } = await supabase
-        .from("equipment")
-        .select("id")
-        .eq("substation_id", substationId)
-        .ilike("name", form.equipmentName.trim())
-        .maybeSingle();
-
-      if (existingEquipment) {
-        equipmentId = existingEquipment.id;
-      } else {
-        const { data: newEquipment, error: eqError } = await supabase
-          .from("equipment")
-          .insert({ name: form.equipmentName.trim(), category: "General", substation_id: substationId, status: "healthy" })
-          .select("id")
-          .single();
-        if (eqError) {
-          setError(eqError.message);
-          setSaving(false);
-          return;
-        }
-        equipmentId = newEquipment?.id ?? null;
-      }
-    }
+    const componentName = componentOptions.find((c) => c.id === form.componentId)?.name ?? null;
 
     const { error: insertError } = await supabase.from("job_cards").insert({
       substation_id: substationId,
-      equipment_id: equipmentId,
-      component: form.component || null,
+      equipment_id: form.equipmentId || null,
+      component: componentName,
       issue_description: form.issueDescription,
       priority: form.priority,
       raised_by: user?.id,
@@ -152,10 +143,10 @@ export default function AEJobCardsPage() {
       return;
     }
 
-    // Notify admin
+    const equipmentName = equipmentOptions.find((e) => e.id === form.equipmentId)?.name;
     await supabase.from("notifications").insert({
       title: "New Job Card Raised",
-      description: `${form.priority.toUpperCase()} priority issue reported${form.equipmentName ? ` on ${form.equipmentName}` : ""}`,
+      description: `${form.priority.toUpperCase()} priority issue reported${equipmentName ? ` on ${equipmentName}` : ""}`,
       type: "job_card",
       target_role: "spectrum_admin",
       substation_id: substationId,
@@ -165,6 +156,8 @@ export default function AEJobCardsPage() {
     setDialogOpen(false);
     loadData();
   }
+
+  const relevantComponents = componentOptions.filter((c) => c.equipmentId === form.equipmentId);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -231,12 +224,40 @@ export default function AEJobCardsPage() {
           </DialogHeader>
           <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="equipment">Equipment</Label>
-              <Input id="equipment" value={form.equipmentName} onChange={(e) => setForm({ ...form, equipmentName: e.target.value })} placeholder="e.g. Power Transformer T1" />
+              <Label>Equipment</Label>
+              {equipmentOptions.length === 0 ? (
+                <p className="text-xs text-foreground-secondary py-2">
+                  No equipment registered yet at your substation. Add it from the Inventory page first, or ask your Admin.
+                </p>
+              ) : (
+                <Select value={form.equipmentId} onValueChange={(v) => setForm({ ...form, equipmentId: v, componentId: "" })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select equipment" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {equipmentOptions.map((e) => (
+                      <SelectItem key={e.id} value={e.id}>
+                        {e.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="component">Component</Label>
-              <Input id="component" value={form.component} onChange={(e) => setForm({ ...form, component: e.target.value })} placeholder="e.g. Cooling Fan" />
+              <Label>Component</Label>
+              <Select value={form.componentId} onValueChange={(v) => setForm({ ...form, componentId: v })} disabled={!form.equipmentId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={relevantComponents.length ? "Select component" : "None registered"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {relevantComponents.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="issue">
