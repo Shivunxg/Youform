@@ -16,6 +16,8 @@ interface Row {
   type: string;
   status: string;
   requestedBy: string;
+  scheduledDate: string | null;
+  notes: string | null;
   createdAt: string;
 }
 
@@ -33,7 +35,7 @@ export default function AdminServiceRequestsPage() {
     setLoading(true);
     const { data } = await supabase
       .from("service_requests")
-      .select("id, request_number, type, status, created_at, substations(name), equipment(name), profiles(name)")
+      .select("id, request_number, type, status, scheduled_date, notes, created_at, substations(name), equipment(name), profiles(name)")
       .order("created_at", { ascending: false });
 
     setRows(
@@ -45,6 +47,8 @@ export default function AdminServiceRequestsPage() {
         type: sr.type,
         status: sr.status,
         requestedBy: (sr.profiles as unknown as { name: string } | null)?.name ?? "—",
+        scheduledDate: sr.scheduled_date,
+        notes: sr.notes,
         createdAt: sr.created_at,
       }))
     );
@@ -129,8 +133,11 @@ export default function AdminServiceRequestsPage() {
                     </Badge>
                   </div>
                   <p className="text-xs text-slate-400 mt-1">
-                    {sr.substationName} · {sr.equipmentName} · Requested by {sr.requestedBy} · {new Date(sr.createdAt).toLocaleDateString()}
+                    {sr.substationName} · {sr.equipmentName} · Requested by {sr.requestedBy}
+                    {sr.scheduledDate ? ` · Scheduled ${new Date(sr.scheduledDate).toLocaleDateString()}` : ""} ·{" "}
+                    {new Date(sr.createdAt).toLocaleDateString()}
                   </p>
+                  {sr.notes && <p className="text-xs text-foreground-secondary mt-1">{sr.notes}</p>}
                 </div>
                 <Select value={sr.status} onValueChange={(v) => updateStatus(sr.id, v)}>
                   <SelectTrigger className="w-[150px] shrink-0">
