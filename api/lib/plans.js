@@ -99,5 +99,3 @@ export async function canAcceptResponse(supabaseAdmin, workspaceId, plan) {
   const used = data?.responses_used ?? 0;
   return { allowed: used < limits.responses_limit, used, limit: limits.responses_limit };
 }
-
-export function hasFeature(plan, feature) { return !!getPlan(plan)[feature]; }
