@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { nanoid } from 'nanoid';
-import { Plus, Trash2, X, GitBranch, AtSign, ChevronDown, Loader, Sparkles, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
+import { Plus, Trash2, X, GitBranch, AtSign, ChevronDown, Loader, Sparkles, AlignLeft, AlignCenter, AlignRight, Image } from 'lucide-react';
 import { useBuilderStore, defaultConfig } from '@/stores/builderStore';
 import { QUESTION_META } from './questionMeta';
+import ImagePickerPanel from './ImagePickerPanel';
 import { api } from '@/lib/api';
 import { clsx } from 'clsx';
 import { parseEmbed } from '@/lib/embed';
@@ -718,20 +719,45 @@ function ChoicesConfig({ config, onConfig, allowMultiple, quizMode }) {
 }
 
 function PictureChoicesConfig({ config, onConfig }) {
+  const { form } = useBuilderStore();
+  const [pickerChoiceId, setPickerChoiceId] = useState(null);
+
   const choices = config.choices ?? [];
   const addChoice    = () => onConfig({ choices: [...choices, { id: nanoid(), label: '', imageUrl: '' }] });
   const removeChoice = (id) => onConfig({ choices: choices.filter(c => c.id !== id) });
   const updateField  = (id, field, val) => onConfig({ choices: choices.map(c => c.id === id ? { ...c, [field]: val } : c) });
+
+  const pickerChoice = pickerChoiceId ? choices.find(c => c.id === pickerChoiceId) : null;
+  const fakeQuestion = pickerChoice ? { config: { blockImage: pickerChoice.imageUrl || null } } : null;
 
   return (
     <div className="space-y-3">
       <label className="block text-xs font-medium text-gray-600">Picture choices</label>
       <div className="space-y-3">
         {choices.map(c => (
-          <div key={c.id} className="border border-gray-200 rounded-xl p-3 space-y-2">
-            <div className="flex items-center gap-1.5">
+          <div key={c.id} className="border border-gray-200 rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setPickerChoiceId(c.id)}
+              className="w-full h-24 relative block group focus:outline-none"
+            >
+              {c.imageUrl ? (
+                <img src={c.imageUrl} alt={c.label} className="w-full h-full object-cover" onError={e => { e.target.style.display = 'none'; }} />
+              ) : (
+                <div className="w-full h-full bg-gray-50 flex flex-col items-center justify-center gap-1 text-gray-400 group-hover:bg-gray-100 transition-colors">
+                  <Image className="w-4 h-4" />
+                  <span className="text-[10px]">Add image</span>
+                </div>
+              )}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                <span className="opacity-0 group-hover:opacity-100 text-white text-[10px] font-semibold bg-black/60 px-2 py-0.5 rounded">
+                  {c.imageUrl ? 'Change' : 'Pick image'}
+                </span>
+              </div>
+            </button>
+            <div className="flex items-center gap-1.5 p-2">
               <input
-                className="input text-sm py-1.5 flex-1"
+                className="input text-sm py-1 flex-1"
                 value={c.label}
                 onChange={e => updateField(c.id, 'label', e.target.value)}
                 placeholder="Option label"
@@ -740,20 +766,6 @@ function PictureChoicesConfig({ config, onConfig }) {
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
-            <input
-              className="input text-xs py-1.5"
-              value={c.imageUrl ?? ''}
-              onChange={e => updateField(c.id, 'imageUrl', e.target.value)}
-              placeholder="Image URL (https://…)"
-            />
-            {c.imageUrl && (
-              <img
-                src={c.imageUrl}
-                alt={c.label}
-                className="w-full h-20 object-cover rounded-lg border border-gray-100"
-                onError={e => { e.target.style.display = 'none'; }}
-              />
-            )}
           </div>
         ))}
       </div>
@@ -761,6 +773,33 @@ function PictureChoicesConfig({ config, onConfig }) {
         <Plus className="w-3.5 h-3.5" /> Add option
       </button>
       <Toggle label="Allow multiple selections" checked={config.allowMultiple ?? false} onChange={v => onConfig({ allowMultiple: v })} />
+
+      {pickerChoiceId && fakeQuestion && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={e => { if (e.target === e.currentTarget) setPickerChoiceId(null); }}
+        >
+          <div className="bg-white rounded-2xl border-2 border-[#111] w-80 max-h-[80vh] overflow-y-auto" style={{ boxShadow: '6px 6px 0 #111' }}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 sticky top-0 bg-white z-10">
+              <p className="text-sm font-bold text-[#111]">Choose an image</p>
+              <button onClick={() => setPickerChoiceId(null)} className="text-gray-400 hover:text-gray-700">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <ImagePickerPanel
+              selectedQuestion={fakeQuestion}
+              plan={form?.workspaces?.plan ?? 'free'}
+              workspaceId={form?.workspace_id}
+              onUpdateConfig={(updates) => {
+                if ('blockImage' in updates) {
+                  updateField(pickerChoiceId, 'imageUrl', updates.blockImage ?? '');
+                  if (updates.blockImage) setPickerChoiceId(null);
+                }
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
