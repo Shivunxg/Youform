@@ -33,7 +33,7 @@ export default function AdminWorkspaces() {
     }, 300);
   }, []);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['admin-workspaces', debouncedSearch, planFilter, page],
     queryFn: () => api.admin.workspaces({
       page,
@@ -53,6 +53,12 @@ export default function AdminWorkspaces() {
           {data?.total?.toLocaleString() ?? '—'} total workspaces
         </p>
       </div>
+
+      {isError && (
+        <div className="mb-5 px-4 py-3 bg-red-50 border-2 border-red-300 rounded-xl text-sm text-red-700 font-bold" style={SG}>
+          Failed to load workspaces. Check that the API is running and you have admin access.
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex items-center gap-3 mb-5">

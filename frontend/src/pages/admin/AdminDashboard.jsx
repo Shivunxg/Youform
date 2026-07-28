@@ -1,14 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
-import { Users, Building2, FileText, Inbox, TrendingUp, DollarSign, CheckCircle, Activity } from 'lucide-react';
+import { Users, Building2, FileText, Inbox, DollarSign, Activity } from 'lucide-react';
 import { api } from '@/lib/api';
 
 const SG = { fontFamily: 'Space Grotesk, system-ui, sans-serif' };
 
 const PLAN_COLORS = {
-  free:       { bg: 'bg-gray-100',   text: 'text-gray-700',   bar: '#d1d5db', label: 'Free' },
-  pro:        { bg: 'bg-blue-100',   text: 'text-blue-700',   bar: '#3b82f6', label: 'Pro' },
-  business:   { bg: 'bg-purple-100', text: 'text-purple-700', bar: '#8b5cf6', label: 'Business' },
-  enterprise: { bg: 'bg-orange-100', text: 'text-orange-700', bar: '#f97316', label: 'Enterprise' },
+  free:       { bg: 'bg-gray-100',   text: 'text-gray-700',   bar: '#d1d5db', label: 'Free',     price: 0 },
+  pro:        { bg: 'bg-blue-100',   text: 'text-blue-700',   bar: '#3b82f6', label: 'Pro',      price: 25 },
+  business:   { bg: 'bg-purple-100', text: 'text-purple-700', bar: '#8b5cf6', label: 'Business', price: 89 },
+  enterprise: { bg: 'bg-orange-100', text: 'text-orange-700', bar: '#f97316', label: 'Enterprise', price: 0 },
 };
 
 function StatCard({ icon: Icon, label, value, color = '#f97316', sub }) {
@@ -82,64 +82,87 @@ export default function AdminDashboard() {
             <StatCard icon={Inbox}     label="Total responses"  value={fmt(data?.totalResponses)}  color="#10b981" />
           </div>
 
-          {/* Financial metrics */}
-          <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
-            <FinanceCard
-              label="MRR (est.)"
-              value={fmtMoney(data?.mrr)}
-              sub="Monthly recurring revenue"
-              accent="#10b981"
-            />
-            <FinanceCard
-              label="ARR (est.)"
-              value={fmtMoney(data?.arr)}
-              sub="Annualised recurring revenue"
-              accent="#6366f1"
-            />
-            <FinanceCard
-              label="Paid workspaces"
-              value={fmt(data?.paidWorkspaces)}
-              sub={`${convRate}% conversion rate`}
-              accent="#f97316"
-            />
-            <FinanceCard
-              label="Active this month"
-              value={fmt(data?.activeWorkspaces)}
-              sub="Workspaces with ≥1 response"
-              accent="#3b82f6"
-            />
+          {/* Financial summary */}
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
+            <FinanceCard label="MRR (est.)"        value={fmtMoney(data?.mrr)}           sub="Monthly recurring revenue"      accent="#10b981" />
+            <FinanceCard label="ARR (est.)"        value={fmtMoney(data?.arr)}           sub="Annualised recurring revenue"   accent="#6366f1" />
+            <FinanceCard label="Paid workspaces"   value={fmt(data?.paidWorkspaces)}     sub={`${convRate}% conversion`}      accent="#f97316" />
+            <FinanceCard label="Active this month" value={fmt(data?.activeWorkspaces)}   sub="Workspaces with ≥1 response"   accent="#3b82f6" />
           </div>
 
-          {/* Plan distribution */}
-          <div className="bg-white rounded-xl border-2 border-[#111] p-6" style={{ boxShadow: '4px 4px 0 #111' }}>
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="font-bold text-[#111]" style={SG}>Plan distribution</h2>
-              <div className="flex items-center gap-4 text-sm font-bold text-gray-500" style={SG}>
-                <span>{fmt(data?.freeWorkspaces)} free</span>
-                <span className="text-[#f97316]">{fmt(data?.paidWorkspaces)} paid</span>
+          {/* Plan distribution + revenue breakdown */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+            {/* Plan distribution */}
+            <div className="bg-white rounded-xl border-2 border-[#111] p-6" style={{ boxShadow: '4px 4px 0 #111' }}>
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="font-bold text-[#111]" style={SG}>Plan distribution</h2>
+                <div className="flex items-center gap-4 text-sm font-bold text-gray-500" style={SG}>
+                  <span>{fmt(data?.freeWorkspaces)} free</span>
+                  <span className="text-[#f97316]">{fmt(data?.paidWorkspaces)} paid</span>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {Object.entries(data?.plans ?? {}).map(([plan, count]) => {
+                  const c = PLAN_COLORS[plan] ?? PLAN_COLORS.free;
+                  const pct = totalWs > 0 ? Math.round((count / totalWs) * 100) : 0;
+                  return (
+                    <div key={plan} className="flex items-center gap-3">
+                      <span className={`w-20 text-xs font-bold px-2 py-0.5 rounded-full text-center ${c.bg} ${c.text}`} style={SG}>
+                        {c.label}
+                      </span>
+                      <div className="flex-1 h-3 bg-gray-100 rounded-full border border-gray-200 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-700"
+                          style={{ width: `${pct}%`, background: c.bar }}
+                        />
+                      </div>
+                      <span className="w-24 text-right text-sm font-bold text-[#111]" style={{ ...SG, fontVariantNumeric: 'tabular-nums' }}>
+                        {count.toLocaleString()} <span className="text-gray-400 font-normal">({pct}%)</span>
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-            <div className="space-y-3">
-              {Object.entries(data?.plans ?? {}).map(([plan, count]) => {
-                const c = PLAN_COLORS[plan] ?? PLAN_COLORS.free;
-                const pct = totalWs > 0 ? Math.round((count / totalWs) * 100) : 0;
-                return (
-                  <div key={plan} className="flex items-center gap-3">
-                    <span className={`w-20 text-xs font-bold px-2 py-0.5 rounded-full text-center ${c.bg} ${c.text}`} style={SG}>
-                      {c.label}
-                    </span>
-                    <div className="flex-1 h-3 bg-gray-100 rounded-full border border-gray-200 overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-700"
-                        style={{ width: `${pct}%`, background: c.bar }}
-                      />
+
+            {/* Revenue by plan */}
+            <div className="bg-white rounded-xl border-2 border-[#111] p-6" style={{ boxShadow: '4px 4px 0 #111' }}>
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="font-bold text-[#111]" style={SG}>Revenue by plan</h2>
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider" style={SG}>Monthly est.</span>
+              </div>
+              <div className="space-y-4">
+                {Object.entries(data?.plans ?? {}).filter(([p]) => p !== 'free').map(([plan, count]) => {
+                  const c = PLAN_COLORS[plan] ?? PLAN_COLORS.pro;
+                  const rev = count * (c.price ?? 0);
+                  const totalRev = data?.mrr ?? 1;
+                  const pct = totalRev > 0 ? Math.round((rev / totalRev) * 100) : 0;
+                  return (
+                    <div key={plan}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${c.bg} ${c.text}`} style={SG}>{c.label}</span>
+                          <span className="text-xs text-gray-400" style={SG}>{count} × ${c.price}/mo</span>
+                        </div>
+                        <span className="text-sm font-bold text-[#111]" style={{ ...SG, fontVariantNumeric: 'tabular-nums' }}>
+                          {fmtMoney(rev)}
+                        </span>
+                      </div>
+                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: c.bar }} />
+                      </div>
                     </div>
-                    <span className="w-20 text-right text-sm font-bold text-[#111]" style={{ ...SG, fontVariantNumeric: 'tabular-nums' }}>
-                      {count.toLocaleString()} <span className="text-gray-400 font-normal">({pct}%)</span>
-                    </span>
-                  </div>
-                );
-              })}
+                  );
+                })}
+                <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider" style={SG}>Total MRR</span>
+                  <span className="text-lg font-bold text-emerald-600" style={SG}>{fmtMoney(data?.mrr)}</span>
+                </div>
+                <div className="flex items-center justify-between -mt-1">
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider" style={SG}>ARR (×12)</span>
+                  <span className="text-lg font-bold text-indigo-600" style={SG}>{fmtMoney(data?.arr)}</span>
+                </div>
+              </div>
             </div>
           </div>
         </>
