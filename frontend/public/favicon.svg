@@ -1,4 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="7" fill="#111111"/>
-  <text x="16" y="23" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="22" fill="#f97316">F</text>
+  <!-- Orange rounded background -->
+  <rect width="32" height="32" rx="7" fill="#f97316"/>
+  <!-- White stylised F: vertical bar + two horizontal bars -->
+  <rect x="9" y="8"  width="3" height="16" rx="1.5" fill="white"/>
+  <rect x="9" y="8"  width="13" height="3"  rx="1.5" fill="white"/>
+  <rect x="9" y="14.5" width="10" height="3"  rx="1.5" fill="white"/>
 </svg>
