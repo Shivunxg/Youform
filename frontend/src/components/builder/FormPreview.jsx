@@ -163,16 +163,13 @@ export default function FormPreview() {
               </div>
             )}
 
-            {/* Split layout when block has a blockImage */}
+            {/* Block image layouts */}
             {!submitted && current?.config?.blockImage ? (
-              <div className="flex flex-1 min-h-[460px]">
-                {current.config.blockImagePosition === 'left' && (
-                  <div
-                    className="w-2/5 shrink-0"
-                    style={{ backgroundImage: `url(${current.config.blockImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
-                  />
-                )}
-                <div className="flex-1 p-8 flex flex-col">
+              (() => {
+                const img = current.config.blockImage;
+                const pos = current.config.blockImagePosition ?? 'right';
+                const bgStyle = { backgroundImage: `url(${img})`, backgroundSize: 'cover', backgroundPosition: 'center' };
+                const qView = (
                   <QuestionView
                     question={current}
                     answer={answers[current.id]}
@@ -186,14 +183,27 @@ export default function FormPreview() {
                     isLast={isLast}
                     canAdvance={canAdvance()}
                   />
-                </div>
-                {current.config.blockImagePosition !== 'left' && (
-                  <div
-                    className="w-2/5 shrink-0"
-                    style={{ backgroundImage: `url(${current.config.blockImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
-                  />
-                )}
-              </div>
+                );
+                if (pos === 'top') return (
+                  <div className="flex flex-col flex-1 min-h-[460px]">
+                    <div className="h-48 shrink-0 w-full" style={bgStyle} />
+                    <div className="flex-1 p-8 flex flex-col">{qView}</div>
+                  </div>
+                );
+                if (pos === 'background') return (
+                  <div className="relative flex-1 min-h-[460px]" style={bgStyle}>
+                    <div className="absolute inset-0 bg-black/50" />
+                    <div className="relative z-10 p-8 flex flex-col h-full">{qView}</div>
+                  </div>
+                );
+                return (
+                  <div className="flex flex-1 min-h-[460px]">
+                    {pos === 'left' && <div className="w-2/5 shrink-0" style={bgStyle} />}
+                    <div className="flex-1 p-8 flex flex-col">{qView}</div>
+                    {pos !== 'left' && <div className="w-2/5 shrink-0" style={bgStyle} />}
+                  </div>
+                );
+              })()
             ) : (
               <div className="flex-1 p-8 flex flex-col min-h-[460px]">
                 {submitted ? (

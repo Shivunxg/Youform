@@ -382,19 +382,24 @@ export default function ImagePickerPanel({ selectedQuestion, onUpdateConfig, wor
           None
         </button>
         {current && (
-          <div className="flex gap-1 ml-auto">
-            {['left', 'right'].map(pos => (
+          <div className="flex gap-1 ml-auto flex-wrap justify-end">
+            {[
+              { id: 'left',       label: '← Left'  },
+              { id: 'right',      label: 'Right →'  },
+              { id: 'top',        label: '↑ Top'    },
+              { id: 'background', label: '⬛ BG'    },
+            ].map(({ id, label }) => (
               <button
-                key={pos}
-                onClick={() => onUpdateConfig({ blockImagePosition: pos })}
+                key={id}
+                onClick={() => onUpdateConfig({ blockImagePosition: id })}
                 className={clsx(
                   'text-[10px] font-bold px-2 py-1 rounded-lg border-2 transition-colors',
-                  position === pos
+                  position === id
                     ? 'bg-[#f97316] text-white border-[#f97316]'
                     : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
                 )}
               >
-                {pos === 'left' ? '← Left' : 'Right →'}
+                {label}
               </button>
             ))}
           </div>

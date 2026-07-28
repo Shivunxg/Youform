@@ -163,16 +163,13 @@ export default function PublicFormPage() {
             </div>
           )}
 
-          {/* Content — split layout when block has an image */}
+          {/* Content — image layout varies by position */}
           {!submitted && current?.config?.blockImage ? (
-            <div className="flex flex-1 min-h-[480px]">
-              {current.config.blockImagePosition === 'left' && (
-                <div
-                  className="w-2/5 shrink-0 hidden sm:block"
-                  style={{ backgroundImage: `url(${current.config.blockImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
-                />
-              )}
-              <div className="flex-1 p-8 flex flex-col">
+            (() => {
+              const img = current.config.blockImage;
+              const pos = current.config.blockImagePosition ?? 'right';
+              const bgStyle = { backgroundImage: `url(${img})`, backgroundSize: 'cover', backgroundPosition: 'center' };
+              const slide = (
                 <QuestionSlide
                   question={pipeAnswers(current, questions, answers)}
                   answer={answers[current.id]}
@@ -190,14 +187,27 @@ export default function PublicFormPage() {
                   qColor={qColor}
                   aColor={aColor}
                 />
-              </div>
-              {current.config.blockImagePosition !== 'left' && (
-                <div
-                  className="w-2/5 shrink-0 hidden sm:block"
-                  style={{ backgroundImage: `url(${current.config.blockImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
-                />
-              )}
-            </div>
+              );
+              if (pos === 'top') return (
+                <div className="flex flex-col flex-1 min-h-[480px]">
+                  <div className="h-48 shrink-0 w-full" style={bgStyle} />
+                  <div className="flex-1 p-8 flex flex-col">{slide}</div>
+                </div>
+              );
+              if (pos === 'background') return (
+                <div className="relative flex-1 min-h-[480px]" style={bgStyle}>
+                  <div className="absolute inset-0 bg-black/50" />
+                  <div className="relative z-10 p-8 flex flex-col h-full">{slide}</div>
+                </div>
+              );
+              return (
+                <div className="flex flex-1 min-h-[480px]">
+                  {pos === 'left' && <div className="w-2/5 shrink-0 hidden sm:block" style={bgStyle} />}
+                  <div className="flex-1 p-8 flex flex-col">{slide}</div>
+                  {pos !== 'left' && <div className="w-2/5 shrink-0 hidden sm:block" style={bgStyle} />}
+                </div>
+              );
+            })()
           ) : (
             <div className="flex-1 p-8 flex flex-col min-h-[480px]">
               {submitted ? (
