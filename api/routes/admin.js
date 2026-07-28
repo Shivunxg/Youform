@@ -123,10 +123,11 @@ router.get('/workspaces/:workspaceId', async (req, res, next) => {
   try {
     const { data: workspace, error } = await supabaseAdmin
       .from('workspaces')
-      .select('*, workspace_members(role, profiles(id, email, full_name))')
+      .select('*, workspace_members(role, profiles!user_id(id, email, full_name))')
       .eq('id', req.params.workspaceId)
-      .single();
-    if (error || !workspace) throw createError(404, 'Workspace not found');
+      .maybeSingle();
+    if (error) throw error;
+    if (!workspace) throw createError(404, 'Workspace not found');
 
     const [{ count: formCount }, { count: responseCount }] = await Promise.all([
       supabaseAdmin.from('forms').select('*', { count: 'exact', head: true }).eq('workspace_id', req.params.workspaceId),
