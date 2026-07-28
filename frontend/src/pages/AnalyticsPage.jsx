@@ -2,6 +2,7 @@ import { useParams } from 'react-router-dom';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 import FormHeader from '@/components/builder/FormHeader';
 
 const SG = { fontFamily: 'Space Grotesk, system-ui, sans-serif' };
@@ -77,12 +78,14 @@ function TimelineChart({ timeline }) {
   );
 }
 
-const PREVIEW_COUNT = 4;
+const PAGE_SIZE = 10;
 
 function QuestionAnswers({ q, answers }) {
-  const [expanded, setExpanded] = useState(false);
-  const visible = expanded ? answers : answers.slice(0, PREVIEW_COUNT);
-  const hidden = answers.length - PREVIEW_COUNT;
+  const [page, setPage] = useState(0);
+  const totalPages = Math.ceil(answers.length / PAGE_SIZE);
+  const start = page * PAGE_SIZE;
+  const visible = answers.slice(start, start + PAGE_SIZE);
+
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
@@ -93,20 +96,33 @@ function QuestionAnswers({ q, answers }) {
       </div>
       <div className="space-y-2">
         {visible.map((a, i) => (
-          <div key={i} className="flex gap-3 items-start">
-            <div className="w-1 rounded-full shrink-0 mt-1" style={{ height: '100%', minHeight: '28px', background: '#f97316', opacity: 0.35 }} />
-            <p className="text-sm text-gray-700 break-words leading-relaxed flex-1">{String(a)}</p>
+          <div key={start + i} className="flex gap-3 items-start">
+            <div className="w-1 self-stretch rounded-full shrink-0" style={{ minHeight: '20px', background: '#f97316', opacity: 0.3 }} />
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] text-gray-400 mb-0.5" style={SG}>#{start + i + 1}</p>
+              <p className="text-sm text-gray-700 break-words leading-relaxed">{String(a)}</p>
+            </div>
           </div>
         ))}
       </div>
-      {hidden > 0 && (
-        <button
-          onClick={() => setExpanded(v => !v)}
-          className="mt-3 text-xs font-semibold text-[#f97316] hover:underline"
-          style={SG}
-        >
-          {expanded ? '↑ Show less' : `↓ Show ${hidden} more`}
-        </button>
+      {totalPages > 1 && (
+        <div className="flex items-center gap-2 mt-4 pt-3 border-t border-gray-100">
+          <button
+            disabled={page === 0}
+            onClick={() => setPage(p => p - 1)}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg border-2 border-[#111] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-50"
+            style={SG}
+          >← Prev</button>
+          <span className="text-xs text-gray-500 flex-1 text-center" style={SG}>
+            {start + 1}–{Math.min(start + PAGE_SIZE, answers.length)} of {answers.length}
+          </span>
+          <button
+            disabled={page >= totalPages - 1}
+            onClick={() => setPage(p => p + 1)}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg border-2 border-[#111] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-50"
+            style={SG}
+          >Next →</button>
+        </div>
       )}
     </div>
   );
@@ -243,8 +259,26 @@ function ChoiceDistribution({ title, q, stat, choices, avgScore, maxScore, isNps
   );
 }
 
+async function downloadCsv(formId, formTitle) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+  const res = await fetch(api.responses.exportCsv(formId), { headers });
+  if (!res.ok) throw new Error('Export failed');
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${(formTitle || 'responses').replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export default function AnalyticsPage() {
   const { formId } = useParams();
+  const [csvLoading, setCsvLoading] = useState(false);
+  const [csvError, setCsvError] = useState(null);
 
   const { data: formData } = useQuery({
     queryKey: ['form-meta', formId],
@@ -281,9 +315,31 @@ export default function AnalyticsPage() {
 
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-6 py-8">
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-[#111]" style={SG}>Analytics</h1>
-            <p className="text-sm text-gray-500 mt-1">Response rates, drop-off, and answer breakdowns.</p>
+          <div className="mb-8 flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-[#111]" style={SG}>Analytics</h1>
+              <p className="text-sm text-gray-500 mt-1">Response rates, drop-off, and answer breakdowns.</p>
+            </div>
+            <div className="flex flex-col items-end gap-1 shrink-0">
+              <button
+                onClick={async () => {
+                  setCsvError(null);
+                  setCsvLoading(true);
+                  try { await downloadCsv(formId, form?.title); }
+                  catch (e) { setCsvError('Download failed. Try again.'); }
+                  finally { setCsvLoading(false); }
+                }}
+                disabled={csvLoading}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-[#111] bg-white text-sm font-semibold text-[#111] hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ ...SG, boxShadow: '3px 3px 0 #111' }}
+              >
+                {csvLoading
+                  ? <><span className="w-3.5 h-3.5 border-2 border-[#111] border-t-transparent rounded-full animate-spin inline-block" /> Exporting…</>
+                  : <>⬇ Download CSV</>
+                }
+              </button>
+              {csvError && <p className="text-[10px] text-red-500">{csvError}</p>}
+            </div>
           </div>
 
           {isLoading ? (
