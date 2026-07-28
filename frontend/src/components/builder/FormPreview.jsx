@@ -164,7 +164,7 @@ export default function FormPreview() {
             )}
 
             {/* Split layout when block has a blockImage */}
-            {!submitted && current?.config?.blockImage && !['welcome_screen', 'thank_you_screen'].includes(current.type) ? (
+            {!submitted && current?.config?.blockImage ? (
               <div className="flex flex-1 min-h-[460px]">
                 {current.config.blockImagePosition === 'left' && (
                   <div

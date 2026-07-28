@@ -163,32 +163,68 @@ export default function PublicFormPage() {
             </div>
           )}
 
-          {/* Content */}
-          <div className="flex-1 p-8 flex flex-col min-h-[480px]">
-            {submitted ? (
-              <ThankYouScreen question={thankYouQ} primary={primary} formTitle={form.title} quizScore={quizScore} quizMode={form.settings?.quizMode} qColor={qColor} aColor={aColor} />
-            ) : current ? (
-              <QuestionSlide
-                question={pipeAnswers(current, questions, answers)}
-                answer={answers[current.id]}
-                onAnswer={(v) => setAnswer(current.id, v)}
-                primary={primary}
-                index={currentIndex}
-                total={questions.length}
-                onNext={handleNext}
-                onPrev={handlePrev}
-                isFirst={currentIndex === 0}
-                isLast={isLast}
-                submitting={submitting}
-                submitError={submitError}
-                formId={form.id}
-                qColor={qColor}
-                aColor={aColor}
-              />
-            ) : (
-              <p className="text-center" style={{ color: aColor }}>This form has no questions.</p>
-            )}
-          </div>
+          {/* Content — split layout when block has an image */}
+          {!submitted && current?.config?.blockImage ? (
+            <div className="flex flex-1 min-h-[480px]">
+              {current.config.blockImagePosition === 'left' && (
+                <div
+                  className="w-2/5 shrink-0 hidden sm:block"
+                  style={{ backgroundImage: `url(${current.config.blockImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+                />
+              )}
+              <div className="flex-1 p-8 flex flex-col">
+                <QuestionSlide
+                  question={pipeAnswers(current, questions, answers)}
+                  answer={answers[current.id]}
+                  onAnswer={(v) => setAnswer(current.id, v)}
+                  primary={primary}
+                  index={currentIndex}
+                  total={questions.length}
+                  onNext={handleNext}
+                  onPrev={handlePrev}
+                  isFirst={currentIndex === 0}
+                  isLast={isLast}
+                  submitting={submitting}
+                  submitError={submitError}
+                  formId={form.id}
+                  qColor={qColor}
+                  aColor={aColor}
+                />
+              </div>
+              {current.config.blockImagePosition !== 'left' && (
+                <div
+                  className="w-2/5 shrink-0 hidden sm:block"
+                  style={{ backgroundImage: `url(${current.config.blockImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+                />
+              )}
+            </div>
+          ) : (
+            <div className="flex-1 p-8 flex flex-col min-h-[480px]">
+              {submitted ? (
+                <ThankYouScreen question={thankYouQ} primary={primary} formTitle={form.title} quizScore={quizScore} quizMode={form.settings?.quizMode} qColor={qColor} aColor={aColor} />
+              ) : current ? (
+                <QuestionSlide
+                  question={pipeAnswers(current, questions, answers)}
+                  answer={answers[current.id]}
+                  onAnswer={(v) => setAnswer(current.id, v)}
+                  primary={primary}
+                  index={currentIndex}
+                  total={questions.length}
+                  onNext={handleNext}
+                  onPrev={handlePrev}
+                  isFirst={currentIndex === 0}
+                  isLast={isLast}
+                  submitting={submitting}
+                  submitError={submitError}
+                  formId={form.id}
+                  qColor={qColor}
+                  aColor={aColor}
+                />
+              ) : (
+                <p className="text-center" style={{ color: aColor }}>This form has no questions.</p>
+              )}
+            </div>
+          )}
 
           {/* Branding */}
           {!form.settings?.removeBranding && (
