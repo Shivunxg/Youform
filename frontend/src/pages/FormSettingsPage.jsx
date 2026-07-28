@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/authStore';
@@ -11,6 +11,7 @@ import { Lock } from 'lucide-react';
 
 export default function FormSettingsPage() {
   const { formId } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuthStore();
 
   const { data, isLoading, refetch } = useQuery({
@@ -81,6 +82,24 @@ export default function FormSettingsPage() {
                 disabled={!hasFeature(plan, 'remove_branding')}
                 onChange={v => setLocal(s => ({ ...s, removeBranding: v }))}
               />
+            </SettingRow>
+
+            <SettingRow
+              label="Company logo"
+              description="Your workspace logo shown at the bottom of this form. Set it in Organization settings."
+            >
+              <div className="flex items-center gap-3">
+                {form?.workspaces?.logo_url
+                  ? <img src={form.workspaces.logo_url} alt="Logo" className="h-7 max-w-[120px] object-contain rounded" />
+                  : <span className="text-xs text-gray-400">No logo set</span>
+                }
+                <button
+                  onClick={() => navigate('/settings/organization')}
+                  className="text-xs font-medium text-orange-500 hover:underline whitespace-nowrap"
+                >
+                  {form?.workspaces?.logo_url ? 'Change →' : 'Add logo →'}
+                </button>
+              </div>
             </SettingRow>
           </SettingsSection>
 
