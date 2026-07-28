@@ -36,18 +36,18 @@ const CATALOG = [
   {
     id: 'notion',
     name: 'Notion',
-    description: 'Push form responses directly into a Notion database.',
+    description: 'Push form responses directly into a Notion database as new pages.',
     icon: '📝',
     category: 'Productivity',
-    available: false,
+    available: true,
   },
   {
     id: 'zapier',
     name: 'Zapier',
-    description: 'Connect to 5,000+ apps through Zapier automations.',
+    description: 'Connect to 5,000+ apps — send response data to any Zapier workflow.',
     icon: '⚙️',
     category: 'Automation',
-    available: false,
+    available: true,
   },
 ];
 
@@ -226,6 +226,22 @@ function IntegrationCard({ item, integration, formId, formTitle, isExpanded, onT
           )}
           {item.id === 'webhook' && (
             <WebhookPanel
+              integration={integration}
+              formId={formId}
+              onRefetch={onRefetch}
+              onClose={onToggle}
+            />
+          )}
+          {item.id === 'zapier' && (
+            <ZapierPanel
+              integration={integration}
+              formId={formId}
+              onRefetch={onRefetch}
+              onClose={onToggle}
+            />
+          )}
+          {item.id === 'notion' && (
+            <NotionPanel
               integration={integration}
               formId={formId}
               onRefetch={onRefetch}
@@ -474,6 +490,24 @@ function GoogleSheetsPicker({ integration, formId, formTitle, onRefetch, onClose
   );
 }
 
+// ── Shared helper ────────────────────────────────────────────────────
+
+function Steps({ steps }) {
+  return (
+    <div className="bg-white rounded-lg border-2 border-[#111] p-4">
+      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Setup steps</p>
+      <ol className="space-y-1.5">
+        {steps.map((s, i) => (
+          <li key={i} className="flex gap-2 text-xs text-gray-600">
+            <span className="shrink-0 w-4 h-4 rounded-full bg-[#f97316]/15 text-[#f97316] font-bold text-[10px] flex items-center justify-center mt-px">{i + 1}</span>
+            <span dangerouslySetInnerHTML={{ __html: s }} />
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 // ── Webhook panel ────────────────────────────────────────────────────
 
 function WebhookPanel({ integration, formId, onRefetch, onClose }) {
@@ -518,6 +552,147 @@ function WebhookPanel({ integration, formId, onRefetch, onClose }) {
           className="btn btn-primary text-xs"
         >
           {saveMutation.isPending ? 'Saving…' : 'Save webhook'}
+        </button>
+        {integration && (
+          <button
+            onClick={() => deleteMutation.mutate()}
+            disabled={deleteMutation.isPending}
+            className="btn btn-danger text-xs"
+          >
+            {deleteMutation.isPending ? 'Removing…' : 'Remove'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Zapier panel ─────────────────────────────────────────────────────
+
+function ZapierPanel({ integration, formId, onRefetch, onClose }) {
+  const [webhookUrl, setWebhookUrl] = useState(integration?.config?.webhookUrl ?? '');
+
+  const saveMutation = useMutation({
+    mutationFn: () => integration
+      ? api.integrations.update(formId, integration.id, { config: { webhookUrl }, enabled: true })
+      : api.integrations.create(formId, { type: 'zapier', config: { webhookUrl } }),
+    onSuccess: () => { toast.success('Zapier connected!'); onRefetch(); onClose(); },
+    onError:   (e) => toast.error(e.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => api.integrations.delete(formId, integration.id),
+    onSuccess:  () => { toast.success('Zapier removed.'); onRefetch(); onClose(); },
+    onError:    (e) => toast.error(e.message),
+  });
+
+  return (
+    <div className="space-y-4">
+      <Steps steps={[
+        'Go to <strong>zapier.com</strong> → Create a Zap',
+        'Trigger: choose <strong>Webhooks by Zapier</strong> → <strong>Catch Hook</strong>',
+        'Copy the <strong>webhook URL</strong> Zapier shows you',
+        'Paste it below and click <strong>Save</strong>',
+        'Submit a test response, then finish building your Zap actions in Zapier',
+      ]} />
+
+      <div>
+        <label className="block text-xs font-bold text-[#111] mb-2" style={SG}>Zapier Webhook URL</label>
+        <input
+          value={webhookUrl}
+          onChange={e => setWebhookUrl(e.target.value)}
+          placeholder="https://hooks.zapier.com/hooks/catch/..."
+          className="input"
+        />
+        <p className="text-[11px] text-gray-400 mt-1.5">
+          Every submission POSTs a JSON payload with all answers to this URL.
+        </p>
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          onClick={() => saveMutation.mutate()}
+          disabled={!webhookUrl.trim() || saveMutation.isPending}
+          className="btn btn-primary text-xs"
+        >
+          {saveMutation.isPending ? 'Saving…' : 'Save Zapier hook'}
+        </button>
+        {integration && (
+          <button
+            onClick={() => deleteMutation.mutate()}
+            disabled={deleteMutation.isPending}
+            className="btn btn-danger text-xs"
+          >
+            {deleteMutation.isPending ? 'Removing…' : 'Remove'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Notion panel ─────────────────────────────────────────────────────
+
+function NotionPanel({ integration, formId, onRefetch, onClose }) {
+  const [token,      setToken]      = useState(integration?.config?.token      ?? '');
+  const [databaseId, setDatabaseId] = useState(integration?.config?.database_id ?? '');
+
+  const saveMutation = useMutation({
+    mutationFn: () => integration
+      ? api.integrations.update(formId, integration.id, { config: { token, database_id: databaseId }, enabled: true })
+      : api.integrations.create(formId, { type: 'notion', config: { token, database_id: databaseId } }),
+    onSuccess: () => { toast.success('Notion connected!'); onRefetch(); onClose(); },
+    onError:   (e) => toast.error(e.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => api.integrations.delete(formId, integration.id),
+    onSuccess:  () => { toast.success('Notion removed.'); onRefetch(); onClose(); },
+    onError:    (e) => toast.error(e.message),
+  });
+
+  return (
+    <div className="space-y-4">
+      <Steps steps={[
+        'Go to <strong>notion.so/my-integrations</strong> → New integration → give it a name → Submit',
+        'Copy the <strong>Internal Integration Secret</strong> (starts with <code class="bg-gray-100 px-1 rounded">ntn_</code> or <code class="bg-gray-100 px-1 rounded">secret_</code>)',
+        'Open your Notion database → click <strong>⋯ → Connections → Add connection</strong> → pick your integration',
+        'Copy the database URL. The <strong>Database ID</strong> is the 32-char segment before <code class="bg-gray-100 px-1 rounded">?v=</code>',
+        'Paste both below and click <strong>Connect Notion</strong>',
+      ]} />
+
+      <div>
+        <label className="block text-xs font-bold text-[#111] mb-2" style={SG}>Integration Token</label>
+        <input
+          value={token}
+          onChange={e => setToken(e.target.value)}
+          placeholder="ntn_xxxxxxxxxxxxxxxxxxxx"
+          className="input"
+          type="password"
+          autoComplete="off"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-bold text-[#111] mb-2" style={SG}>Database ID</label>
+        <input
+          value={databaseId}
+          onChange={e => setDatabaseId(e.target.value)}
+          placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          className="input"
+        />
+        <p className="text-[11px] text-gray-400 mt-1.5">
+          notion.so/[workspace]/<strong>[database-id]</strong>?v=... — the 32-character part.
+        </p>
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          onClick={() => saveMutation.mutate()}
+          disabled={!token.trim() || !databaseId.trim() || saveMutation.isPending}
+          className="btn btn-primary text-xs"
+        >
+          {saveMutation.isPending ? 'Connecting…' : 'Connect Notion'}
         </button>
         {integration && (
           <button

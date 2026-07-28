@@ -93,7 +93,13 @@ async function processResponse({ responseId, formId, workspaceId }) {
           await triggerGoogleSheets(integration, response, form);
           break;
         case 'webhook':
-          await triggerWebhook(integration, response, formId);
+          await triggerWebhook(integration, response, formId, responseId);
+          break;
+        case 'zapier':
+          await triggerZapier(integration, response, formId, responseId);
+          break;
+        case 'notion':
+          await triggerNotion(integration, response, form, responseId);
           break;
         default:
           break;
@@ -155,13 +161,13 @@ async function triggerGoogleSheets(integration, response, form) {
 }
 
 // ── Webhook ──────────────────────────────────────────────────────
-async function triggerWebhook(integration, response, formId) {
+async function triggerWebhook(integration, response, formId, responseId) {
   const { url, headers: extraHeaders = {} } = integration.config;
   if (!url) throw new Error('No webhook URL configured');
 
   const payload = {
     form_id:      formId,
-    response_id:  response.id,
+    response_id:  responseId,
     submitted_at: response.submitted_at,
     answers:      response.answers,
   };
@@ -172,4 +178,82 @@ async function triggerWebhook(integration, response, formId) {
     body:    JSON.stringify(payload),
   });
   if (!res.ok) throw new Error(`Webhook returned ${res.status}`);
+}
+
+// ── Zapier ───────────────────────────────────────────────────────
+async function triggerZapier(integration, response, formId, responseId) {
+  const { webhookUrl } = integration.config;
+  if (!webhookUrl) throw new Error('No Zapier webhook URL configured');
+
+  const payload = {
+    form_id:      formId,
+    response_id:  responseId,
+    submitted_at: response.submitted_at,
+    answers:      response.answers,
+    source:       'youform',
+  };
+
+  const res = await fetch(webhookUrl, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`Zapier returned ${res.status}`);
+}
+
+// ── Notion ───────────────────────────────────────────────────────
+async function triggerNotion(integration, response, form, responseId) {
+  const { token, database_id } = integration.config;
+  if (!token || !database_id) throw new Error('Notion token and database ID are required');
+
+  // Find the title property name (varies per database)
+  const dbRes = await fetch(`https://api.notion.com/v1/databases/${database_id}`, {
+    headers: { 'Authorization': `Bearer ${token}`, 'Notion-Version': '2022-06-28' },
+  });
+  if (!dbRes.ok) throw new Error(`Cannot access Notion database (${dbRes.status}) — check token and ensure the integration is shared with the database`);
+  const db = await dbRes.json();
+  const titleKey = Object.entries(db.properties).find(([, v]) => v.type === 'title')?.[0] ?? 'Name';
+
+  const questions = form.questions ?? [];
+  const answers   = response.answers ?? {};
+
+  // Build bold-label paragraph blocks for each answered question
+  const blocks = questions
+    .filter(q => !['welcome_screen', 'thank_you_screen', 'statement'].includes(q.type))
+    .flatMap(q => {
+      const val = answers[q.id];
+      if (val === null || val === undefined || val === '') return [];
+      const text = Array.isArray(val) ? val.join(', ') : String(val);
+      return [{
+        object: 'block',
+        type:   'paragraph',
+        paragraph: {
+          rich_text: [
+            { type: 'text', text: { content: `${q.title || q.id}: ` }, annotations: { bold: true } },
+            { type: 'text', text: { content: text } },
+          ],
+        },
+      }];
+    });
+
+  const pageTitle = new Date(response.submitted_at || Date.now()).toLocaleString();
+
+  const pageRes = await fetch('https://api.notion.com/v1/pages', {
+    method:  'POST',
+    headers: {
+      'Authorization':  `Bearer ${token}`,
+      'Content-Type':   'application/json',
+      'Notion-Version': '2022-06-28',
+    },
+    body: JSON.stringify({
+      parent:     { database_id },
+      properties: { [titleKey]: { title: [{ type: 'text', text: { content: pageTitle } }] } },
+      children:   blocks,
+    }),
+  });
+
+  if (!pageRes.ok) {
+    const err = await pageRes.json().catch(() => ({}));
+    throw new Error(err.message || `Notion API returned ${pageRes.status}`);
+  }
 }

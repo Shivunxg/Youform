@@ -251,6 +251,13 @@ function validateIntegrationConfig(type, config) {
     case 'slack':
       if (!config.webhookUrl || !config.webhookUrl.startsWith('https://hooks.slack.com/')) throw createError(400, 'Invalid Slack webhook URL');
       break;
+    case 'zapier':
+      if (!config.webhookUrl || !config.webhookUrl.startsWith('https://hooks.zapier.com/')) throw createError(400, 'Invalid Zapier URL — must start with https://hooks.zapier.com/');
+      break;
+    case 'notion':
+      if (!config.token) throw createError(400, 'Notion integration token is required');
+      if (!config.database_id) throw createError(400, 'Notion database ID is required');
+      break;
     case 'email':
       if (!config.to || !Array.isArray(config.to) || config.to.length === 0) throw createError(400, 'Email integration requires at least one recipient');
       break;
