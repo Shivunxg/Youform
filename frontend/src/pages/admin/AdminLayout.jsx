@@ -30,7 +30,7 @@ export default function AdminLayout() {
               <span className="text-white font-bold text-sm" style={SG}>F</span>
             </div>
             <div>
-              <p className="text-white font-bold text-sm leading-none" style={SG}>Youform</p>
+              <p className="text-white font-bold text-sm leading-none" style={SG}>Formflow</p>
               <div className="flex items-center gap-1 mt-0.5">
                 <Shield className="w-2.5 h-2.5 text-[#f97316]" />
                 <span className="text-[#f97316] text-xs font-bold" style={SG}>Admin</span>

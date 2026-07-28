@@ -52,7 +52,7 @@ export default function AdminLoginPage() {
             <span className="text-white font-bold text-lg" style={SG}>F</span>
           </div>
           <div>
-            <p className="text-white font-bold text-xl leading-none" style={SG}>Youform</p>
+            <p className="text-white font-bold text-xl leading-none" style={SG}>Formflow</p>
             <p className="text-[#f97316] text-xs font-bold tracking-widest uppercase" style={SG}>Admin Portal</p>
           </div>
         </div>
