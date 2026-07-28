@@ -6,6 +6,10 @@ import { PLANS } from '../lib/plans.js';
 
 const PLAN_PRICES = { free: 0, pro: 25, business: 89 };
 
+// Emails that are platform admins (from env var, no DB column needed)
+const ADMIN_EMAILS = (process.env.PLATFORM_ADMIN_EMAILS ?? '')
+  .split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+
 const router = Router();
 router.use(requirePlatformAdmin);
 
@@ -65,7 +69,7 @@ router.get('/users', async (req, res, next) => {
     let q = supabaseAdmin
       .from('profiles')
       .select(
-        'id, email, full_name, avatar_url, created_at, is_platform_admin, workspace_members!user_id(role, workspaces(id, name, plan))',
+        'id, email, full_name, avatar_url, created_at, workspace_members(role, workspaces(id, name, plan))',
         { count: 'exact' }
       )
       .order('created_at', { ascending: false })
@@ -73,7 +77,12 @@ router.get('/users', async (req, res, next) => {
     if (search) q = q.ilike('email', `%${search}%`);
     const { data, count, error } = await q;
     if (error) throw error;
-    res.json({ users: data ?? [], total: count ?? 0, page: +page, limit: +limit });
+    // Compute is_platform_admin from env var (no DB column needed)
+    const users = (data ?? []).map(u => ({
+      ...u,
+      is_platform_admin: ADMIN_EMAILS.includes(u.email?.toLowerCase()),
+    }));
+    res.json({ users, total: count ?? 0, page: +page, limit: +limit });
   } catch (err) { next(err); }
 });
 

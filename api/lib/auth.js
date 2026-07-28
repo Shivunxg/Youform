@@ -14,9 +14,9 @@ export async function requirePlatformAdmin(req, res, next) {
     req.user = user; return next();
   }
 
-  // Fallback: DB flag (requires migration 007)
-  const { data: profile } = await supabaseAdmin.from('profiles').select('is_platform_admin').eq('id', user.id).single();
-  if (!profile?.is_platform_admin) return res.status(403).json({ error: 'Platform admin access required' });
+  // Fallback: DB flag (requires migration 007 — silently fails if column missing)
+  const { data: profile } = await supabaseAdmin.from('profiles').select('is_platform_admin').eq('id', user.id).maybeSingle();
+  if (!profile?.is_platform_admin) return res.status(403).json({ error: 'Platform admin access required. Set PLATFORM_ADMIN_EMAILS env var in Vercel.' });
   req.user = user;
   next();
 }
