@@ -239,13 +239,25 @@ export default function PublicFormPage() {
           )}
 
           {/* Branding */}
-          {!form.settings?.removeBranding && (
-            <div className="text-center py-3 border-t border-black/5">
-              <a href="/" className="text-xs text-gray-400 hover:text-gray-600">
-                Powered by <span className="font-semibold">FormFlow</span>
-              </a>
-            </div>
-          )}
+          {(() => {
+            const ws = form.workspaces ?? {};
+            const hidePoweredBy = form.settings?.removeBranding || ws.remove_branding;
+            const logoUrl = ws.logo_url;
+            if (hidePoweredBy && !logoUrl) return null;
+            return (
+              <div className="flex items-center justify-between px-2 py-3 border-t border-black/5">
+                {logoUrl
+                  ? <img src={logoUrl} alt="Company logo" className="h-7 max-w-[140px] object-contain" />
+                  : <span />
+                }
+                {!hidePoweredBy && (
+                  <a href="/" className="text-xs text-gray-400 hover:text-gray-600 ml-auto">
+                    Powered by <span className="font-semibold">FormFlow</span>
+                  </a>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>
@@ -497,6 +509,10 @@ function PublicAnswerInput({ question, answer, onAnswer, primary, formId }) {
     );
   }
 
+  if (type === 'signature') {
+    return <SignaturePad value={answer} onChange={onAnswer} primary={primary} />;
+  }
+
   if (type === 'statement') return <p className="text-gray-600 text-lg leading-relaxed">{question.description}</p>;
 
   if (type === 'file_upload') {
@@ -504,6 +520,102 @@ function PublicAnswerInput({ question, answer, onAnswer, primary, formId }) {
   }
 
   return null;
+}
+
+function SignaturePad({ value, onChange, primary }) {
+  const canvasRef = useRef(null);
+  const drawing   = useRef(false);
+  const [hasSig,  setHasSig]  = useState(!!value);
+
+  // Restore saved signature on mount
+  useEffect(() => {
+    if (!value || !canvasRef.current) return;
+    const img = new Image();
+    img.onload = () => canvasRef.current?.getContext('2d').drawImage(img, 0, 0);
+    img.src = value;
+  }, []);
+
+  const pos = (e, canvas) => {
+    const r = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return {
+      x: (src.clientX - r.left) * (canvas.width  / r.width),
+      y: (src.clientY - r.top)  * (canvas.height / r.height),
+    };
+  };
+
+  const onStart = (e) => {
+    e.preventDefault();
+    const c = canvasRef.current;
+    const ctx = c.getContext('2d');
+    const p = pos(e, c);
+    drawing.current = true;
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+  };
+
+  const onMove = (e) => {
+    e.preventDefault();
+    if (!drawing.current) return;
+    const c = canvasRef.current;
+    const ctx = c.getContext('2d');
+    const p = pos(e, c);
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth   = 2;
+    ctx.lineCap     = 'round';
+    ctx.lineJoin    = 'round';
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+  };
+
+  const onEnd = () => {
+    if (!drawing.current) return;
+    drawing.current = false;
+    const dataUrl = canvasRef.current.toDataURL('image/png');
+    setHasSig(true);
+    onChange(dataUrl);
+  };
+
+  const clear = () => {
+    const c = canvasRef.current;
+    c.getContext('2d').clearRect(0, 0, c.width, c.height);
+    setHasSig(false);
+    onChange('');
+  };
+
+  return (
+    <div>
+      <div className="relative rounded-xl overflow-hidden border-2 border-dashed border-gray-300 bg-white" style={{ touchAction: 'none' }}>
+        <canvas
+          ref={canvasRef}
+          width={600}
+          height={180}
+          className="w-full cursor-crosshair block"
+          onMouseDown={onStart}
+          onMouseMove={onMove}
+          onMouseUp={onEnd}
+          onMouseLeave={onEnd}
+          onTouchStart={onStart}
+          onTouchMove={onMove}
+          onTouchEnd={onEnd}
+        />
+        {!hasSig && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-1">
+            <span className="text-2xl opacity-20">✍️</span>
+            <p className="text-sm text-gray-400">Draw your signature here</p>
+          </div>
+        )}
+      </div>
+      <div className="flex items-center justify-between mt-2">
+        <p className="text-xs text-gray-400">Use your mouse or finger to sign</p>
+        {hasSig && (
+          <button onClick={clear} className="text-xs text-red-500 hover:underline font-medium">
+            Clear
+          </button>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function FileUploadInput({ config, answer, onAnswer, formId, primary }) {

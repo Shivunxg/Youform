@@ -98,6 +98,9 @@ async function processResponse({ responseId, formId, workspaceId }) {
         case 'zapier':
           await triggerZapier(integration, response, formId, responseId);
           break;
+        case 'slack':
+          await triggerSlack(integration, response, form, formId);
+          break;
         case 'notion':
           await triggerNotion(integration, response, form, responseId);
           break;
@@ -178,6 +181,53 @@ async function triggerWebhook(integration, response, formId, responseId) {
     body:    JSON.stringify(payload),
   });
   if (!res.ok) throw new Error(`Webhook returned ${res.status}`);
+}
+
+// ── Slack ────────────────────────────────────────────────────────
+async function triggerSlack(integration, response, form, formId) {
+  const { webhookUrl } = integration.config;
+  if (!webhookUrl) throw new Error('No Slack webhook URL configured');
+
+  const questions = form.questions ?? [];
+  const answers   = response.answers ?? {};
+
+  const fields = questions
+    .filter(q => !['welcome_screen', 'thank_you_screen', 'statement', 'signature'].includes(q.type))
+    .slice(0, 8)
+    .flatMap(q => {
+      const val = answers[q.id];
+      if (val === null || val === undefined || val === '') return [];
+      const text = Array.isArray(val) ? val.join(', ') : String(val).slice(0, 300);
+      return [{ type: 'mrkdwn', text: `*${q.title || 'Question'}:*\n${text}` }];
+    });
+
+  const blocks = [
+    {
+      type: 'section',
+      text: { type: 'mrkdwn', text: `📋 *New response for "${form.title}"*` },
+    },
+    ...(fields.length ? [{ type: 'section', fields: fields.slice(0, 10) }] : []),
+    {
+      type: 'context',
+      elements: [{ type: 'mrkdwn', text: `Submitted at ${new Date(response.submitted_at || Date.now()).toLocaleString()}` }],
+    },
+    {
+      type: 'actions',
+      elements: [{
+        type: 'button',
+        text: { type: 'plain_text', text: 'View responses ↗', emoji: true },
+        url: `${process.env.APP_URL}/forms/${formId}/responses`,
+        style: 'primary',
+      }],
+    },
+  ];
+
+  const res = await fetch(webhookUrl, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ blocks, text: `New response for "${form.title}"` }),
+  });
+  if (!res.ok) throw new Error(`Slack returned ${res.status}`);
 }
 
 // ── Zapier ───────────────────────────────────────────────────────

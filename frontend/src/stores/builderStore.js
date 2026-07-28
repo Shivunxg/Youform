@@ -9,6 +9,7 @@ export function defaultConfig(type) {
     case 'rating':          return { steps: 5, shape: 'star' };
     case 'nps':             return { lowLabel: 'Not likely', highLabel: 'Extremely likely' };
     case 'file_upload':     return { allowedTypes: ['pdf', 'png', 'jpg', 'jpeg'], maxSizeMb: 10, maxFiles: 1 };
+    case 'signature':       return {};
     case 'dropdown':        return { choices: [{ id: nanoid(), label: 'Option 1' }] };
     case 'matrix':          return { rows: ['Row 1', 'Row 2'], columns: ['Col 1', 'Col 2', 'Col 3'] };
     case 'ranking':         return { items: [{ id: nanoid(), label: 'Item 1' }, { id: nanoid(), label: 'Item 2' }] };

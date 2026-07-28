@@ -28,10 +28,10 @@ const CATALOG = [
   {
     id: 'slack',
     name: 'Slack',
-    description: 'Get a Slack channel notification on every form submission.',
+    description: 'Get a Slack channel notification with a response summary on every submission.',
     icon: '💬',
     category: 'Notifications',
-    available: false,
+    available: true,
   },
   {
     id: 'notion',
@@ -226,6 +226,14 @@ function IntegrationCard({ item, integration, formId, formTitle, isExpanded, onT
           )}
           {item.id === 'webhook' && (
             <WebhookPanel
+              integration={integration}
+              formId={formId}
+              onRefetch={onRefetch}
+              onClose={onToggle}
+            />
+          )}
+          {item.id === 'slack' && (
+            <SlackPanel
               integration={integration}
               formId={formId}
               onRefetch={onRefetch}
@@ -552,6 +560,70 @@ function WebhookPanel({ integration, formId, onRefetch, onClose }) {
           className="btn btn-primary text-xs"
         >
           {saveMutation.isPending ? 'Saving…' : 'Save webhook'}
+        </button>
+        {integration && (
+          <button
+            onClick={() => deleteMutation.mutate()}
+            disabled={deleteMutation.isPending}
+            className="btn btn-danger text-xs"
+          >
+            {deleteMutation.isPending ? 'Removing…' : 'Remove'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Slack panel ──────────────────────────────────────────────────────
+
+function SlackPanel({ integration, formId, onRefetch, onClose }) {
+  const [webhookUrl, setWebhookUrl] = useState(integration?.config?.webhookUrl ?? '');
+
+  const saveMutation = useMutation({
+    mutationFn: () => integration
+      ? api.integrations.update(formId, integration.id, { config: { webhookUrl }, enabled: true })
+      : api.integrations.create(formId, { type: 'slack', config: { webhookUrl } }),
+    onSuccess: () => { toast.success('Slack connected!'); onRefetch(); onClose(); },
+    onError:   (e) => toast.error(e.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => api.integrations.delete(formId, integration.id),
+    onSuccess:  () => { toast.success('Slack removed.'); onRefetch(); onClose(); },
+    onError:    (e) => toast.error(e.message),
+  });
+
+  return (
+    <div className="space-y-4">
+      <Steps steps={[
+        'Open your Slack workspace → go to <strong>api.slack.com/apps</strong> → Create New App → <strong>From scratch</strong>',
+        'Under <strong>Features → Incoming Webhooks</strong>, toggle it On',
+        'Click <strong>Add New Webhook to Workspace</strong>, pick a channel, and click Allow',
+        'Copy the <strong>Webhook URL</strong> (starts with <code class="bg-gray-100 px-1 rounded">https://hooks.slack.com/</code>)',
+        'Paste it below. Every new response will post a summary to that channel.',
+      ]} />
+
+      <div>
+        <label className="block text-xs font-bold text-[#111] mb-2" style={SG}>Slack Webhook URL</label>
+        <input
+          value={webhookUrl}
+          onChange={e => setWebhookUrl(e.target.value)}
+          placeholder="https://hooks.slack.com/services/..."
+          className="input"
+        />
+        <p className="text-[11px] text-gray-400 mt-1.5">
+          Each submission sends a rich message with the top answers and a "View responses" button.
+        </p>
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          onClick={() => saveMutation.mutate()}
+          disabled={!webhookUrl.trim() || saveMutation.isPending}
+          className="btn btn-primary text-xs"
+        >
+          {saveMutation.isPending ? 'Saving…' : 'Save Slack hook'}
         </button>
         {integration && (
           <button

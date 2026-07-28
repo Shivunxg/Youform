@@ -14,6 +14,7 @@ const TYPES = [
   { type: 'number', label: 'Number', icon: '🔢' },
   { type: 'date', label: 'Date', icon: '📅' },
   { type: 'file_upload', label: 'File upload', icon: '📎' },
+  { type: 'signature',   label: 'Signature',   icon: '✍️' },
   { type: 'thank_you_screen', label: 'Thank you', icon: '🎉' },
 ];
 export default function AddQuestionPanel() {

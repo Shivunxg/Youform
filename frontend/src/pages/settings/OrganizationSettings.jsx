@@ -14,19 +14,20 @@ export default function OrganizationSettings() {
     enabled: !!activeWorkspaceId,
   });
 
-  const [name, setName] = useState('');
+  const [name,    setName]    = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
   const [emailNotifs, setEmailNotifs] = useState(true);
   const workspace = data?.workspace;
 
-  // Sync state when data loads
   useEffect(() => {
     if (workspace) {
       setName(workspace.name ?? '');
+      setLogoUrl(workspace.logo_url ?? '');
     }
   }, [workspace]);
 
   const updateMutation = useMutation({
-    mutationFn: () => api.workspaces.update(activeWorkspaceId, { name }),
+    mutationFn: () => api.workspaces.update(activeWorkspaceId, { name, logo_url: logoUrl || null }),
     onSuccess: () => { qc.invalidateQueries(['workspace', activeWorkspaceId]); toast.success('Settings updated'); },
     onError: (err) => toast.error(err.message || 'Update failed'),
   });
@@ -41,10 +42,29 @@ export default function OrganizationSettings() {
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Organization Name</label>
           <input
             className="input"
-            value={name || workspace?.name || ''}
+            value={name}
             onChange={e => setName(e.target.value)}
             placeholder="Your organization name"
           />
+        </div>
+
+        {/* Company Logo */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Company Logo URL</label>
+          <input
+            className="input"
+            value={logoUrl}
+            onChange={e => setLogoUrl(e.target.value)}
+            placeholder="https://your-domain.com/logo.png"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Shown at the bottom of your forms instead of the "Powered by FormFlow" badge (Pro+). Use a PNG or SVG on a transparent background, ideally under 200px tall.
+          </p>
+          {logoUrl && (
+            <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200 inline-block">
+              <img src={logoUrl} alt="Logo preview" className="h-8 max-w-[160px] object-contain" onError={e => e.target.style.opacity = 0.2} />
+            </div>
+          )}
         </div>
 
         <button
@@ -52,7 +72,7 @@ export default function OrganizationSettings() {
           disabled={updateMutation.isPending}
           className="btn-primary"
         >
-          {updateMutation.isPending ? 'Updating…' : 'Update'}
+          {updateMutation.isPending ? 'Updating…' : 'Save'}
         </button>
 
         <hr className="border-gray-100" />
