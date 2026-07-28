@@ -16,6 +16,7 @@ export const QUESTION_META = {
   signature:       { label: 'Signature',         icon: '✍️' },
   ranking:         { label: 'Ranking',           icon: '↕️' },
   matrix:          { label: 'Matrix',            icon: '⊞'  },
+  picture_choice:  { label: 'Picture choice',     icon: '🖼️' },
   payment:         { label: 'Payment',           icon: '💳' },
   statement:       { label: 'Statement',         icon: '💬' },
   welcome_screen:  { label: 'Welcome screen',    icon: '👋' },

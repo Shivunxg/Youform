@@ -2,7 +2,8 @@ export const PLANS = {
   free: {
     tier: 'free',
     // Usage
-    responses_limit: 500,
+    responses_limit: 10,
+    forms_limit: 3,
     storage_limit_mb: 100,
     seat_limit: 1,
     file_upload_limit_mb: 10,
@@ -26,6 +27,7 @@ export const PLANS = {
   pro: {
     tier: 'pro',
     responses_limit: 5000,
+    forms_limit: null,
     storage_limit_mb: 2048,    // 2 GB
     seat_limit: 3,
     file_upload_limit_mb: null, // unlimited
@@ -44,6 +46,7 @@ export const PLANS = {
   business: {
     tier: 'business',
     responses_limit: 25000,
+    forms_limit: null,
     storage_limit_mb: 10240,   // 10 GB
     seat_limit: 10,
     file_upload_limit_mb: null,

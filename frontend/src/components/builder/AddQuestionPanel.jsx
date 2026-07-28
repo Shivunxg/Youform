@@ -4,6 +4,7 @@ const TYPES = [
   { type: 'short_text', label: 'Short text', icon: '✏️' },
   { type: 'long_text', label: 'Long text', icon: '📄' },
   { type: 'multiple_choice', label: 'Multiple choice', icon: '☑️' },
+  { type: 'picture_choice',  label: 'Picture choice',  icon: '🖼️' },
   { type: 'dropdown', label: 'Dropdown', icon: '▾' },
   { type: 'rating', label: 'Rating', icon: '⭐' },
   { type: 'nps', label: 'NPS', icon: '📊' },

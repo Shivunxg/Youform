@@ -405,6 +405,50 @@ function PublicAnswerInput({ question, answer, onAnswer, primary, formId }) {
   if (type === 'date') return <input type="date" className="input text-lg py-3" value={answer ?? ''} onChange={e => onAnswer(e.target.value)} />;
   if (type === 'time') return <input type="time" className="input text-lg py-3" value={answer ?? ''} onChange={e => onAnswer(e.target.value)} />;
 
+  if (type === 'picture_choice') {
+    const choices = config?.choices ?? [];
+    const selected = answer ?? (config?.allowMultiple ? [] : null);
+    return (
+      <div className="grid grid-cols-2 gap-3">
+        {choices.map(c => {
+          const isSel = config?.allowMultiple
+            ? (Array.isArray(selected) && selected.includes(c.id))
+            : selected === c.id;
+          return (
+            <button
+              key={c.id}
+              onClick={() => {
+                if (config?.allowMultiple) {
+                  const arr = Array.isArray(selected) ? selected : [];
+                  onAnswer(isSel ? arr.filter(x => x !== c.id) : [...arr, c.id]);
+                } else onAnswer(c.id);
+              }}
+              className="rounded-xl border-2 overflow-hidden text-left transition-all"
+              style={isSel ? { borderColor: primary } : { borderColor: '#e5e7eb' }}
+            >
+              {c.imageUrl ? (
+                <div className="relative">
+                  <img
+                    src={c.imageUrl}
+                    alt={c.label}
+                    className="w-full h-28 object-cover"
+                    onError={e => { e.target.style.display = 'none'; }}
+                  />
+                  {isSel && (
+                    <div className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: primary }}>✓</div>
+                  )}
+                </div>
+              ) : (
+                <div className="w-full h-20 bg-gray-100 flex items-center justify-center text-gray-400 text-xs">No image</div>
+              )}
+              <div className="px-3 py-2 text-sm font-medium" style={{ color: isSel ? primary : '#374151' }}>{c.label}</div>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   if (type === 'statement') return <p className="text-gray-600 text-lg leading-relaxed">{question.description}</p>;
 
   if (type === 'file_upload') {

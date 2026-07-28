@@ -10,7 +10,7 @@ import bcrypt from 'bcryptjs';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { requireAuth, requireWorkspaceMember, requireEditor, requireAdmin } from '../lib/auth.js';
 import { createError } from '../lib/errorHandler.js';
-import { hasFeature } from '../lib/plans.js';
+import { hasFeature, getPlan } from '../lib/plans.js';
 import { logActivity } from '../lib/activity.js';
 
 const router = Router();
@@ -69,6 +69,16 @@ router.post(
 
       const { workspaceId } = req.params;
       const { title = 'Untitled form', layout = 'conversational', templateId, theme } = req.body;
+
+      // Enforce plan forms_limit
+      const { data: ws } = await supabaseAdmin.from('workspaces').select('plan').eq('id', workspaceId).single();
+      const planConfig = getPlan(ws?.plan ?? 'free');
+      if (planConfig.forms_limit !== null && planConfig.forms_limit !== undefined) {
+        const { count } = await supabaseAdmin.from('forms').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId);
+        if (count >= planConfig.forms_limit) {
+          throw createError(403, `Your plan allows a maximum of ${planConfig.forms_limit} forms. Upgrade to create more.`);
+        }
+      }
 
       // Generate unique slug
       const baseSlug = slugify(title, { lower: true, strict: true }) || 'form';

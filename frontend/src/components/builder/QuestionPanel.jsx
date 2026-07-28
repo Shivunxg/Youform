@@ -19,7 +19,7 @@ const TYPE_GROUPS = [
   },
   {
     label: 'Choice',
-    types: ['multiple_choice', 'dropdown', 'yes_no', 'rating', 'nps', 'ranking', 'matrix'],
+    types: ['multiple_choice', 'picture_choice', 'dropdown', 'yes_no', 'rating', 'nps', 'ranking', 'matrix'],
   },
   {
     label: 'Media & other',
@@ -159,7 +159,7 @@ function TypeSwitcherDropdown({ currentType, onSelect, onClose }) {
 }
 
 // ── Manual tab ────────────────────────────────────────────────────────────────
-const ANSWERABLE_TYPES = new Set(['short_text','long_text','multiple_choice','dropdown','yes_no','rating','nps','email','phone','number','date']);
+const ANSWERABLE_TYPES = new Set(['short_text','long_text','multiple_choice','picture_choice','dropdown','yes_no','rating','nps','email','phone','number','date']);
 
 function ManualTab({ question, pipable, updateQuestion, updateQuestionConfig, quizMode }) {
   const alignment = question.config?.alignment ?? 'left';
@@ -476,6 +476,9 @@ function TypeConfig({ question, onConfig, quizMode }) {
   if (type === 'multiple_choice' || type === 'dropdown') {
     return <ChoicesConfig config={config} onConfig={update} allowMultiple={type === 'multiple_choice'} quizMode={quizMode} />;
   }
+  if (type === 'picture_choice') {
+    return <PictureChoicesConfig config={config} onConfig={update} />;
+  }
   if (type === 'yes_no' && quizMode) {
     return (
       <div className="space-y-3">
@@ -710,6 +713,54 @@ function ChoicesConfig({ config, onConfig, allowMultiple, quizMode }) {
         <Toggle label="Allow multiple selections" checked={config.allowMultiple ?? false} onChange={v => onConfig({ allowMultiple: v })} />
       )}
       <Toggle label="Allow 'Other' option" checked={config.allowOther ?? false} onChange={v => onConfig({ allowOther: v })} />
+    </div>
+  );
+}
+
+function PictureChoicesConfig({ config, onConfig }) {
+  const choices = config.choices ?? [];
+  const addChoice    = () => onConfig({ choices: [...choices, { id: nanoid(), label: '', imageUrl: '' }] });
+  const removeChoice = (id) => onConfig({ choices: choices.filter(c => c.id !== id) });
+  const updateField  = (id, field, val) => onConfig({ choices: choices.map(c => c.id === id ? { ...c, [field]: val } : c) });
+
+  return (
+    <div className="space-y-3">
+      <label className="block text-xs font-medium text-gray-600">Picture choices</label>
+      <div className="space-y-3">
+        {choices.map(c => (
+          <div key={c.id} className="border border-gray-200 rounded-xl p-3 space-y-2">
+            <div className="flex items-center gap-1.5">
+              <input
+                className="input text-sm py-1.5 flex-1"
+                value={c.label}
+                onChange={e => updateField(c.id, 'label', e.target.value)}
+                placeholder="Option label"
+              />
+              <button onClick={() => removeChoice(c.id)} className="p-1 text-gray-300 hover:text-red-400 shrink-0">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <input
+              className="input text-xs py-1.5"
+              value={c.imageUrl ?? ''}
+              onChange={e => updateField(c.id, 'imageUrl', e.target.value)}
+              placeholder="Image URL (https://…)"
+            />
+            {c.imageUrl && (
+              <img
+                src={c.imageUrl}
+                alt={c.label}
+                className="w-full h-20 object-cover rounded-lg border border-gray-100"
+                onError={e => { e.target.style.display = 'none'; }}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+      <button onClick={addChoice} className="btn-ghost text-xs w-full justify-center py-1.5 border border-dashed border-gray-200">
+        <Plus className="w-3.5 h-3.5" /> Add option
+      </button>
+      <Toggle label="Allow multiple selections" checked={config.allowMultiple ?? false} onChange={v => onConfig({ allowMultiple: v })} />
     </div>
   );
 }

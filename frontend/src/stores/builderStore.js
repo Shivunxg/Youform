@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 export function defaultConfig(type) {
   switch (type) {
     case 'multiple_choice': return { choices: [{ id: nanoid(), label: 'Option 1' }, { id: nanoid(), label: 'Option 2' }], allowMultiple: false, allowOther: false };
+    case 'picture_choice':  return { choices: [{ id: nanoid(), label: 'Option 1', imageUrl: '' }, { id: nanoid(), label: 'Option 2', imageUrl: '' }], allowMultiple: false };
     case 'rating':          return { steps: 5, shape: 'star' };
     case 'nps':             return { lowLabel: 'Not likely', highLabel: 'Extremely likely' };
     case 'file_upload':     return { allowedTypes: ['pdf', 'png', 'jpg', 'jpeg'], maxSizeMb: 10, maxFiles: 1 };
