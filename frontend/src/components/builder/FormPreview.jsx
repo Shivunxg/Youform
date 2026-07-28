@@ -3,6 +3,7 @@ import { X, Monitor, Smartphone, RefreshCw, ChevronRight, ChevronLeft, ChevronUp
 import { useBuilderStore } from '@/stores/builderStore';
 import { clsx } from 'clsx';
 import EmbedBlock from '@/components/EmbedBlock';
+import { loadGoogleFont } from '@/lib/fonts';
 
 export default function FormPreview() {
   const { form, questions, setPreviewMode } = useBuilderStore();
@@ -21,6 +22,8 @@ export default function FormPreview() {
   const theme           = form?.theme ?? {};
   const primary         = theme.buttonColor ?? theme.primaryColor ?? '#6366f1';
   const showBranding    = !form?.settings?.removeBranding;
+
+  useEffect(() => { loadGoogleFont(theme.fontFamily); }, [theme.fontFamily]);
 
   const reset = useCallback(() => {
     setCurrentIndex(0);

@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { clsx } from 'clsx';
 import toast from 'react-hot-toast';
+import { loadGoogleFont } from '@/lib/fonts';
 
 const SG = { fontFamily: 'Space Grotesk, system-ui, sans-serif' };
 
@@ -277,7 +278,7 @@ export default function DesignPanel({ onClose }) {
           <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2" style={SG}>Font</p>
           <select
             value={theme.fontFamily ?? 'Playfair Display, Georgia, serif'}
-            onChange={e => updateTheme({ fontFamily: e.target.value })}
+            onChange={e => { loadGoogleFont(e.target.value); updateTheme({ fontFamily: e.target.value }); }}
             className="w-full border-2 border-[#111] rounded-xl px-3 py-2 text-sm font-medium text-[#111] bg-white outline-none focus:border-[#f97316]"
             style={SG}
           >

@@ -4,6 +4,7 @@ import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { api } from '@/lib/api';
 import { clsx } from 'clsx';
 import EmbedBlock from '@/components/EmbedBlock';
+import { loadGoogleFont } from '@/lib/fonts';
 
 export default function PublicFormPage() {
   const { slug } = useParams();
@@ -50,6 +51,7 @@ export default function PublicFormPage() {
       .then(({ form, requiresPassword }) => {
         setForm(form);
         setRequiresPassword(!!requiresPassword);
+        loadGoogleFont(form.theme?.fontFamily);
         setLoading(false);
         if (!requiresPassword) {
           api.public.startForm(form.id).catch(() => {});
