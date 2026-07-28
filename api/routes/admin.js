@@ -69,7 +69,7 @@ router.get('/users', async (req, res, next) => {
     let q = supabaseAdmin
       .from('profiles')
       .select(
-        'id, email, full_name, avatar_url, created_at, workspace_members(role, workspaces(id, name, plan))',
+        'id, email, full_name, avatar_url, created_at, is_platform_admin, workspace_members!user_id(role, workspaces(id, name, plan))',
         { count: 'exact' }
       )
       .order('created_at', { ascending: false })
@@ -77,10 +77,10 @@ router.get('/users', async (req, res, next) => {
     if (search) q = q.ilike('email', `%${search}%`);
     const { data, count, error } = await q;
     if (error) throw error;
-    // Compute is_platform_admin from env var (no DB column needed)
+    // Supplement DB flag with env-var list so newly-added admins get the badge
     const users = (data ?? []).map(u => ({
       ...u,
-      is_platform_admin: ADMIN_EMAILS.includes(u.email?.toLowerCase()),
+      is_platform_admin: u.is_platform_admin || ADMIN_EMAILS.includes(u.email?.toLowerCase()),
     }));
     res.json({ users, total: count ?? 0, page: +page, limit: +limit });
   } catch (err) { next(err); }
