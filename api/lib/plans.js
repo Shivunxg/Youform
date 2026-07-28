@@ -66,6 +66,31 @@ export const PLANS = {
 
 export function getPlan(tier) { return PLANS[tier] ?? PLANS.free; }
 
+export function isPlanAtLeast(plan, minPlan) {
+  const order = ['free', 'pro', 'business'];
+  return order.indexOf(plan ?? 'free') >= order.indexOf(minPlan);
+}
+
+const FEATURE_MIN_PLAN = {
+  remove_branding:          'pro',
+  custom_domain:            'pro',
+  custom_thank_you:         'pro',
+  respondent_notifications: 'pro',
+  partial_submissions:      'pro',
+  integrations:             'pro',
+  ai_features:              'pro',
+  imports:                  'pro',
+  phone_otp:                'business',
+  email_otp:                'business',
+  activity_log:             'business',
+};
+
+export function hasFeature(plan, feature) {
+  const minPlan = FEATURE_MIN_PLAN[feature];
+  if (!minPlan) return true;
+  return isPlanAtLeast(plan, minPlan);
+}
+
 export async function canAcceptResponse(supabaseAdmin, workspaceId, plan) {
   const limits = getPlan(plan);
   if (!limits.responses_limit) return { allowed: true };

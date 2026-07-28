@@ -52,8 +52,25 @@ const PLAN_FEATURES = {
   },
 };
 
+// Minimum plan required per feature — business inherits pro, pro inherits free
+const FEATURE_MIN_PLAN = {
+  remove_branding:          'pro',
+  custom_domain:            'pro',
+  custom_thank_you:         'pro',
+  respondent_notifications: 'pro',
+  partial_submissions:      'pro',
+  integrations:             'pro',
+  ai_features:              'pro',
+  imports:                  'pro',
+  phone_otp:                'business',
+  email_otp:                'business',
+  activity_log:             'business',
+};
+
 export function hasFeature(plan, feature) {
-  return !!(PLAN_FEATURES[plan] ?? PLAN_FEATURES.free)[feature];
+  const minPlan = FEATURE_MIN_PLAN[feature];
+  if (!minPlan) return true; // free-tier feature, always on
+  return isPlanAtLeast(plan, minPlan);
 }
 
 export function getSeatLimit(plan) {

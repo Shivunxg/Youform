@@ -73,13 +73,15 @@ export default function OrganizationSettings() {
           )}
         </div>
 
-        <button
-          onClick={() => updateMutation.mutate()}
-          disabled={updateMutation.isPending}
-          className="btn-primary"
-        >
-          {updateMutation.isPending ? 'Saving…' : 'Save changes'}
-        </button>
+        <div className="flex justify-end">
+          <button
+            onClick={() => updateMutation.mutate()}
+            disabled={updateMutation.isPending}
+            className="btn-primary px-6"
+          >
+            {updateMutation.isPending ? 'Saving…' : 'Save changes'}
+          </button>
+        </div>
 
         <hr className="border-gray-100" />
 
