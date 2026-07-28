@@ -1,4 +1,5 @@
 import { useParams } from 'react-router-dom';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import FormHeader from '@/components/builder/FormHeader';
@@ -76,16 +77,55 @@ function TimelineChart({ timeline }) {
   );
 }
 
-function TextAnswersCard({ title, answers }) {
-  if (!answers?.length) return null;
+const PREVIEW_COUNT = 4;
+
+function QuestionAnswers({ q, answers }) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? answers : answers.slice(0, PREVIEW_COUNT);
+  const hidden = answers.length - PREVIEW_COUNT;
   return (
-    <div className="bg-white rounded-xl border-2 border-[#111] p-6 mb-4" style={{ boxShadow: '4px 4px 0 #111' }}>
-      <h2 className="text-sm font-bold text-[#111] mb-1" style={SG}>{title || 'Untitled'}</h2>
-      <p className="text-xs text-gray-400 mb-4">{answers.length} answer{answers.length !== 1 ? 's' : ''}</p>
-      <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-        {answers.map((a, i) => (
-          <div key={i} className="text-sm text-[#111] bg-gray-50 rounded-lg px-3 py-2 border border-gray-100 break-words">
-            {String(a)}
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <p className="text-sm font-semibold text-[#111] flex-1 min-w-0" style={SG}>{q.title || 'Untitled'}</p>
+        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f97316]/10 text-[#f97316] shrink-0">
+          {answers.length} {answers.length === 1 ? 'answer' : 'answers'}
+        </span>
+      </div>
+      <div className="space-y-2">
+        {visible.map((a, i) => (
+          <div key={i} className="flex gap-3 items-start">
+            <div className="w-1 rounded-full shrink-0 mt-1" style={{ height: '100%', minHeight: '28px', background: '#f97316', opacity: 0.35 }} />
+            <p className="text-sm text-gray-700 break-words leading-relaxed flex-1">{String(a)}</p>
+          </div>
+        ))}
+      </div>
+      {hidden > 0 && (
+        <button
+          onClick={() => setExpanded(v => !v)}
+          className="mt-3 text-xs font-semibold text-[#f97316] hover:underline"
+          style={SG}
+        >
+          {expanded ? '↑ Show less' : `↓ Show ${hidden} more`}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function OpenEndedSection({ questions, textAnswers }) {
+  const withAnswers = questions.filter(q => textAnswers[q.id]?.length);
+  if (!withAnswers.length) return null;
+  return (
+    <div className="bg-white rounded-xl border-2 border-[#111] mb-6" style={{ boxShadow: '4px 4px 0 #111' }}>
+      <div className="px-6 py-4 border-b-2 border-[#111] flex items-center gap-2">
+        <span className="text-base">💬</span>
+        <h2 className="text-sm font-bold text-[#111]" style={SG}>Open-ended answers</h2>
+        <span className="ml-auto text-[10px] font-bold text-gray-400 uppercase tracking-wider">{withAnswers.length} question{withAnswers.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div className="divide-y-2 divide-[#f3f0e8]">
+        {withAnswers.map(q => (
+          <div key={q.id} className="px-6 py-5">
+            <QuestionAnswers q={q} answers={textAnswers[q.id]} />
           </div>
         ))}
       </div>
@@ -336,15 +376,7 @@ export default function AnalyticsPage() {
 
               {/* Text / open-ended answers */}
               {textQuestions.length > 0 && analytics?.text_answers && (
-                <>
-                  <h2 className="text-sm font-bold text-[#111] mb-4 mt-2" style={SG}>Open-ended answers</h2>
-                  {textQuestions.map(q => {
-                    const answers = analytics.text_answers[q.id];
-                    return answers?.length
-                      ? <TextAnswersCard key={q.id} title={q.title} answers={answers} />
-                      : null;
-                  })}
-                </>
+                <OpenEndedSection questions={textQuestions} textAnswers={analytics.text_answers} />
               )}
 
               {/* Traffic source breakdown */}

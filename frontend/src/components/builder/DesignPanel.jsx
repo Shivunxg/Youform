@@ -115,15 +115,58 @@ function SectionHeader({ label }) {
 }
 
 // ── Main panel ────────────────────────────────────────────────────────────────
-const FONT_OPTIONS = [
-  { label: 'Inter',             value: 'Inter, system-ui, sans-serif'                },
-  { label: 'Space Grotesk',     value: 'Space Grotesk, system-ui, sans-serif'        },
-  { label: 'Playfair Display',  value: 'Playfair Display, Georgia, serif'            },
-  { label: 'Roboto',            value: 'Roboto, system-ui, sans-serif'               },
-  { label: 'Poppins',           value: 'Poppins, system-ui, sans-serif'              },
-  { label: 'Lato',              value: 'Lato, system-ui, sans-serif'                 },
-  { label: 'Georgia',           value: 'Georgia, serif'                              },
-  { label: 'System UI',         value: 'system-ui, sans-serif'                       },
+const FONT_GROUPS = [
+  {
+    label: 'Sans-serif',
+    fonts: [
+      { label: 'Inter',               value: 'Inter, system-ui, sans-serif'               },
+      { label: 'Space Grotesk',       value: 'Space Grotesk, system-ui, sans-serif'       },
+      { label: 'DM Sans',             value: 'DM Sans, system-ui, sans-serif'             },
+      { label: 'Outfit',              value: 'Outfit, system-ui, sans-serif'              },
+      { label: 'Nunito',              value: 'Nunito, system-ui, sans-serif'              },
+      { label: 'Poppins',             value: 'Poppins, system-ui, sans-serif'             },
+      { label: 'Montserrat',          value: 'Montserrat, system-ui, sans-serif'          },
+      { label: 'Raleway',             value: 'Raleway, system-ui, sans-serif'             },
+      { label: 'Open Sans',           value: 'Open Sans, system-ui, sans-serif'           },
+      { label: 'Work Sans',           value: 'Work Sans, system-ui, sans-serif'           },
+      { label: 'Manrope',             value: 'Manrope, system-ui, sans-serif'             },
+      { label: 'Plus Jakarta Sans',   value: 'Plus Jakarta Sans, system-ui, sans-serif'   },
+      { label: 'Figtree',             value: 'Figtree, system-ui, sans-serif'             },
+      { label: 'Syne',                value: 'Syne, system-ui, sans-serif'                },
+      { label: 'Roboto',              value: 'Roboto, system-ui, sans-serif'              },
+      { label: 'Lato',                value: 'Lato, system-ui, sans-serif'               },
+      { label: 'Oswald',              value: 'Oswald, system-ui, sans-serif'              },
+      { label: 'Josefin Sans',        value: 'Josefin Sans, system-ui, sans-serif'        },
+    ],
+  },
+  {
+    label: 'Serif',
+    fonts: [
+      { label: 'Playfair Display',    value: 'Playfair Display, Georgia, serif'           },
+      { label: 'Merriweather',        value: 'Merriweather, Georgia, serif'               },
+      { label: 'Lora',                value: 'Lora, Georgia, serif'                       },
+      { label: 'EB Garamond',         value: 'EB Garamond, Georgia, serif'               },
+      { label: 'Cormorant Garamond',  value: 'Cormorant Garamond, Georgia, serif'        },
+      { label: 'DM Serif Display',    value: 'DM Serif Display, Georgia, serif'          },
+      { label: 'Libre Baskerville',   value: 'Libre Baskerville, Georgia, serif'         },
+      { label: 'Fraunces',            value: 'Fraunces, Georgia, serif'                  },
+      { label: 'Georgia',             value: 'Georgia, serif'                            },
+    ],
+  },
+  {
+    label: 'Monospace',
+    fonts: [
+      { label: 'JetBrains Mono',      value: 'JetBrains Mono, monospace'                 },
+      { label: 'Fira Code',           value: 'Fira Code, monospace'                      },
+      { label: 'IBM Plex Mono',       value: 'IBM Plex Mono, monospace'                  },
+    ],
+  },
+  {
+    label: 'System',
+    fonts: [
+      { label: 'System UI',           value: 'system-ui, sans-serif'                     },
+    ],
+  },
 ];
 
 export default function DesignPanel({ onClose }) {
@@ -282,8 +325,12 @@ export default function DesignPanel({ onClose }) {
             className="w-full border-2 border-[#111] rounded-xl px-3 py-2 text-sm font-medium text-[#111] bg-white outline-none focus:border-[#f97316]"
             style={SG}
           >
-            {FONT_OPTIONS.map(f => (
-              <option key={f.value} value={f.value}>{f.label}</option>
+            {FONT_GROUPS.map(g => (
+              <optgroup key={g.label} label={g.label}>
+                {g.fonts.map(f => (
+                  <option key={f.value} value={f.value}>{f.label}</option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </div>
