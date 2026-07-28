@@ -3,7 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const NAV = [
-  { to: '/settings/organization', label: 'Settings',       sub: null },
+  { to: '/settings/organization', label: 'Organization',    sub: 'Name & branding' },
   { to: '/settings/members',      label: 'Members',        sub: null },
   { to: '/settings/smtp',         label: 'SMTP Settings',  sub: 'For sending emails' },
   { to: '/settings/sms',          label: 'SMS Provider',   sub: 'For phone verification' },

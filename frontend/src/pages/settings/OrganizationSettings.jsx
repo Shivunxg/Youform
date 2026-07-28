@@ -34,12 +34,12 @@ export default function OrganizationSettings() {
 
   return (
     <div className="max-w-xl">
-      <h1 className="text-xl font-bold text-gray-900 mb-6">Organization Settings</h1>
+      <h1 className="text-xl font-bold text-gray-900 mb-6">Organization</h1>
 
       <div className="space-y-6">
         {/* Org name */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Organization Name</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Organization name</label>
           <input
             className="input"
             value={name}
@@ -48,21 +48,27 @@ export default function OrganizationSettings() {
           />
         </div>
 
-        {/* Company Logo */}
+        <hr className="border-gray-100" />
+
+        {/* Branding */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Company Logo URL</label>
+          <h2 className="text-base font-semibold text-gray-900 mb-0.5">Branding</h2>
+          <p className="text-sm text-gray-500 mb-4">Your logo appears at the bottom of every public form. On Pro/Business plans the "Powered by FormFlow" badge is hidden automatically.</p>
+
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Company logo URL</label>
           <input
             className="input"
             value={logoUrl}
             onChange={e => setLogoUrl(e.target.value)}
             placeholder="https://your-domain.com/logo.png"
           />
-          <p className="text-xs text-gray-500 mt-1">
-            Shown at the bottom of your forms instead of the "Powered by FormFlow" badge (Pro+). Use a PNG or SVG on a transparent background, ideally under 200px tall.
+          <p className="text-xs text-gray-400 mt-1.5">
+            Use a PNG or SVG with a transparent background, ideally under 200 px tall.
           </p>
           {logoUrl && (
-            <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200 inline-block">
-              <img src={logoUrl} alt="Logo preview" className="h-8 max-w-[160px] object-contain" onError={e => e.target.style.opacity = 0.2} />
+            <div className="mt-3 p-4 bg-gray-50 rounded-xl border border-gray-200 inline-flex items-center gap-3">
+              <img src={logoUrl} alt="Logo preview" className="h-9 max-w-[180px] object-contain" onError={e => { e.target.style.opacity = '0.25'; }} />
+              <span className="text-xs text-gray-400">preview</span>
             </div>
           )}
         </div>
@@ -72,7 +78,7 @@ export default function OrganizationSettings() {
           disabled={updateMutation.isPending}
           className="btn-primary"
         >
-          {updateMutation.isPending ? 'Updating…' : 'Save'}
+          {updateMutation.isPending ? 'Saving…' : 'Save changes'}
         </button>
 
         <hr className="border-gray-100" />
