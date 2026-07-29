@@ -1,19 +1,44 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Mail } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { api } from '@/lib/api';
+import { useWorkspaceStore } from '@/stores/workspaceStore';
+
+const EMPTY = { host: '', port: '587', username: '', password: '', fromEmail: '', fromName: '', encryption: 'tls' };
 
 export default function SmtpSettings() {
+  const { activeWorkspaceId } = useWorkspaceStore();
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ host: '', port: '587', username: '', password: '', fromEmail: '', fromName: '', encryption: 'tls' });
-  const [testing, setTesting] = useState(false);
+  const [form, setForm] = useState(EMPTY);
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
 
-  const handleTest = async () => {
-    setTesting(true);
-    await new Promise(r => setTimeout(r, 1500));
-    setTesting(false);
-    toast.success('SMTP connection successful!');
-  };
+  const { data, isLoading } = useQuery({
+    queryKey: ['smtp', activeWorkspaceId],
+    queryFn: () => api.workspaces.smtp(activeWorkspaceId),
+    enabled: !!activeWorkspaceId,
+  });
+
+  useEffect(() => {
+    if (data?.smtp_settings) {
+      setForm({ ...EMPTY, ...data.smtp_settings });
+      setShowForm(true);
+    }
+  }, [data]);
+
+  const saveMutation = useMutation({
+    mutationFn: () => api.workspaces.saveSmtp(activeWorkspaceId, { smtp_settings: form }),
+    onSuccess: () => { toast.success('SMTP settings saved'); setShowForm(false); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const testMutation = useMutation({
+    mutationFn: () => api.workspaces.testSmtp(activeWorkspaceId, form),
+    onSuccess: () => toast.success('SMTP connection successful!'),
+    onError: (err) => toast.error(`Connection failed: ${err.message}`),
+  });
+
+  if (isLoading) return <div className="text-sm text-gray-400 py-8 text-center">Loading…</div>;
 
   if (!showForm) {
     return (
@@ -75,11 +100,11 @@ export default function SmtpSettings() {
           </select>
         </div>
         <div className="flex gap-3 pt-2">
-          <button onClick={handleTest} disabled={testing} className="btn-secondary">
-            {testing ? 'Testing…' : 'Test Connection'}
+          <button onClick={() => testMutation.mutate()} disabled={testMutation.isPending || !form.host} className="btn-secondary">
+            {testMutation.isPending ? 'Testing…' : 'Test Connection'}
           </button>
-          <button onClick={() => { toast.success('SMTP settings saved'); setShowForm(false); }} className="btn-primary">
-            Save Settings
+          <button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !form.host} className="btn-primary">
+            {saveMutation.isPending ? 'Saving…' : 'Save Settings'}
           </button>
           <button onClick={() => setShowForm(false)} className="btn-ghost text-gray-500">Cancel</button>
         </div>

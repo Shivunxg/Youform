@@ -43,6 +43,7 @@ export default function MembersSettings() {
       toast.success(`Invite sent to ${inviteEmail}`);
       setInviteEmail(''); setShowInvite(false);
       qc.invalidateQueries(['members', activeWorkspaceId]);
+      qc.invalidateQueries(['invites', activeWorkspaceId]);
     },
     onError: (err) => toast.error(err.message),
   });
@@ -53,7 +54,20 @@ export default function MembersSettings() {
     onError: () => toast.error('Could not remove member'),
   });
 
+  const { data: invitesData } = useQuery({
+    queryKey: ['invites', activeWorkspaceId],
+    queryFn: () => api.workspaces.invites(activeWorkspaceId),
+    enabled: !!activeWorkspaceId && canManage,
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: (inviteId) => api.workspaces.revokeInvite(activeWorkspaceId, inviteId),
+    onSuccess: () => { toast.success('Invite revoked'); qc.invalidateQueries(['invites', activeWorkspaceId]); },
+    onError: () => toast.error('Could not revoke invite'),
+  });
+
   const members = data?.members ?? [];
+  const pendingInvites = invitesData?.invites ?? [];
   const plan = usageData?.plan ?? 'free';
   const seatLimit = getSeatLimit(plan);
   const atLimit = seatLimit !== null && members.length >= seatLimit;
@@ -177,12 +191,36 @@ export default function MembersSettings() {
       </div>
 
       {/* Pending invites */}
-      <div className="mt-8">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">Pending invites</h2>
-        <div className="text-center py-8 text-sm text-gray-400 bg-gray-50 rounded-xl">
-          No pending invites for this organization.
+      {canManage && (
+        <div className="mt-8">
+          <h2 className="text-sm font-semibold text-gray-700 mb-3">Pending invites</h2>
+          {pendingInvites.length === 0 ? (
+            <div className="text-center py-8 text-sm text-gray-400 bg-gray-50 rounded-xl">
+              No pending invites.
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
+              {pendingInvites.map(inv => (
+                <div key={inv.id} className="flex items-center justify-between px-4 py-3 bg-white">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{inv.email}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Invited as <span className="capitalize">{inv.role}</span>
+                      {' · '}expires {new Date(inv.expires_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => { if (confirm('Revoke this invite?')) revokeMutation.mutate(inv.id); }}
+                    className="text-xs text-red-400 hover:text-red-600"
+                  >
+                    Revoke
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }

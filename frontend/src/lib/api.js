@@ -41,9 +41,14 @@ export const api = {
     },
     members: (id)          => get(`/workspaces/${id}/members`),
     invite: (id, body)     => post(`/workspaces/${id}/invites`, body),
+    invites: (id)          => get(`/workspaces/${id}/invites`),
+    revokeInvite: (id, inviteId) => del(`/workspaces/${id}/invites/${inviteId}`),
     removeMember: (id, uid) => del(`/workspaces/${id}/members/${uid}`),
     updateMember: (id, uid, body) => patch(`/workspaces/${id}/members/${uid}`, body),
     acceptInvite: (token)  => post(`/workspaces/accept-invite/${token}`),
+    smtp: (id)             => get(`/workspaces/${id}/smtp`),
+    saveSmtp: (id, body)   => patch(`/workspaces/${id}/smtp`, body),
+    testSmtp: (id, body)   => post(`/workspaces/${id}/smtp/test`, body),
   },
 
   // ── Forms ──────────────────────────────────────────────────

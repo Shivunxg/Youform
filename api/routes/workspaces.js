@@ -5,7 +5,7 @@ import { nanoid } from 'nanoid';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { requireAuth } from '../lib/auth.js';
 import { createError } from '../lib/errorHandler.js';
-import { emailService } from '../lib/email.js';
+import { emailService, testSmtpConnection } from '../lib/email.js';
 import { getPlan, hasFeature } from '../lib/plans.js';
 import { logActivity } from '../lib/activity.js';
 
@@ -274,6 +274,91 @@ router.delete('/:workspaceId/members/:userId', async (req, res, next) => {
     }
     res.json({ success: true });
   } catch (err) { next(err); }
+});
+
+// ============================================================
+// GET  /workspaces/:workspaceId/invites — list pending invites
+// DELETE /workspaces/:workspaceId/invites/:inviteId — revoke
+// ============================================================
+router.get('/:workspaceId/invites', async (req, res, next) => {
+  try {
+    const { workspaceId } = req.params;
+    const { data: self } = await supabaseAdmin.from('workspace_members')
+      .select('role').eq('workspace_id', workspaceId).eq('user_id', req.user.id).single();
+    if (!self || !['owner', 'admin'].includes(self.role)) throw createError(403, 'Admin access required');
+
+    const { data, error } = await supabaseAdmin
+      .from('workspace_invites')
+      .select('id, email, role, created_at, expires_at')
+      .eq('workspace_id', workspaceId)
+      .is('accepted_at', null)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json({ invites: data ?? [] });
+  } catch (err) { next(err); }
+});
+
+router.delete('/:workspaceId/invites/:inviteId', async (req, res, next) => {
+  try {
+    const { workspaceId, inviteId } = req.params;
+    const { data: self } = await supabaseAdmin.from('workspace_members')
+      .select('role').eq('workspace_id', workspaceId).eq('user_id', req.user.id).single();
+    if (!self || !['owner', 'admin'].includes(self.role)) throw createError(403, 'Admin access required');
+
+    const { error } = await supabaseAdmin.from('workspace_invites')
+      .delete().eq('id', inviteId).eq('workspace_id', workspaceId);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
+// ============================================================
+// GET  /workspaces/:workspaceId/smtp  — load SMTP settings
+// PATCH /workspaces/:workspaceId/smtp — save SMTP settings
+// POST  /workspaces/:workspaceId/smtp/test — verify connection
+// ============================================================
+router.get('/:workspaceId/smtp', async (req, res, next) => {
+  try {
+    const { workspaceId } = req.params;
+    const { data: self } = await supabaseAdmin.from('workspace_members')
+      .select('role').eq('workspace_id', workspaceId).eq('user_id', req.user.id).single();
+    if (!self || !['owner', 'admin'].includes(self.role)) throw createError(403, 'Admin access required');
+
+    const { data, error } = await supabaseAdmin.from('workspaces')
+      .select('smtp_settings').eq('id', workspaceId).maybeSingle();
+    if (error) throw error;
+    res.json({ smtp_settings: data?.smtp_settings ?? null });
+  } catch (err) { next(err); }
+});
+
+router.patch('/:workspaceId/smtp', async (req, res, next) => {
+  try {
+    const { workspaceId } = req.params;
+    const { data: self } = await supabaseAdmin.from('workspace_members')
+      .select('role').eq('workspace_id', workspaceId).eq('user_id', req.user.id).single();
+    if (!self || !['owner', 'admin'].includes(self.role)) throw createError(403, 'Admin access required');
+
+    const { smtp_settings } = req.body;
+    const { error } = await supabaseAdmin.from('workspaces')
+      .update({ smtp_settings }).eq('id', workspaceId);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
+router.post('/:workspaceId/smtp/test', async (req, res, next) => {
+  try {
+    const { workspaceId } = req.params;
+    const { data: self } = await supabaseAdmin.from('workspace_members')
+      .select('role').eq('workspace_id', workspaceId).eq('user_id', req.user.id).single();
+    if (!self || !['owner', 'admin'].includes(self.role)) throw createError(403, 'Admin access required');
+
+    await testSmtpConnection(req.body);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message ?? 'SMTP connection failed' });
+  }
 });
 
 // ============================================================
