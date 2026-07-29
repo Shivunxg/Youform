@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { TEMPLATES, CATEGORIES, getTemplatesByCategory } from '@/lib/templates';
 import { getTemplateTheme } from '@/lib/templateThemes';
+import TemplatePreview from '@/components/ui/TemplatePreview';
 import AppShell from '@/components/ui/AppShell';
 import toast from 'react-hot-toast';
 import { clsx } from 'clsx';
@@ -159,6 +160,7 @@ export default function TemplatesPage() {
               description={tpl.description}
               defaultColor={tpl.color}
               textColor={tpl.textColor}
+              questions={tpl.questions}
               questionCount={tpl.questions.length}
               category={tpl.category}
               loading={creating === tpl.id}
@@ -192,9 +194,9 @@ function getSwatches(templateColor) {
   return [templateColor, ...others].slice(0, 8);
 }
 
-function TemplateCard({ templateId, title, description, defaultColor, textColor, questionCount, category, isBlank, loading, disabled, onClick }) {
+function TemplateCard({ templateId, title, description, defaultColor, textColor, questions, questionCount, category, isBlank, loading, disabled, onClick }) {
   const [activeColor, setActiveColor] = useState(defaultColor);
-  const Theme = getTemplateTheme(templateId);
+  const BlankTheme = getTemplateTheme('blank');
   const swatches = isBlank ? [] : getSwatches(defaultColor);
 
   function handleSwatchClick(e, color) {
@@ -220,7 +222,10 @@ function TemplateCard({ templateId, title, description, defaultColor, textColor,
           </div>
         ) : (
           <>
-            <Theme color={activeColor} textColor={textColor} />
+            {isBlank
+              ? <BlankTheme color={activeColor} textColor={textColor} />
+              : <TemplatePreview questions={questions} color={activeColor} textColor={textColor} />
+            }
             {!isBlank && (
               <div
                 className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-150"
