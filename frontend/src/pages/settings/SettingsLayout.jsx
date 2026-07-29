@@ -6,7 +6,6 @@ const NAV = [
   { to: '/settings/organization', label: 'Organization',    sub: 'Name & branding' },
   { to: '/settings/members',      label: 'Members',        sub: null },
   { to: '/settings/smtp',         label: 'SMTP Settings',  sub: 'For sending emails' },
-  { to: '/settings/sms',          label: 'SMS Provider',   sub: 'For phone verification' },
   { to: '/settings/stripe',       label: 'Stripe Settings',sub: 'For payments' },
   { to: '/settings/activity',     label: 'Activity Log',   sub: 'Audit trail' },
   { to: '/settings/billing',      label: 'Billing',        sub: null },

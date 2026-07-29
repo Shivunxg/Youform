@@ -50,7 +50,6 @@ const PLANS = {
         {
           label: 'Everything in Pro, plus',
           items: [
-            'Phone OTP verification',
             'Email OTP verification',
             'Workspace activity log & audit trail',
           ],
@@ -103,7 +102,6 @@ const PLANS = {
         {
           label: 'Everything in Pro, plus',
           items: [
-            'Phone OTP verification',
             'Email OTP verification',
             'Workspace activity log & audit trail',
           ],

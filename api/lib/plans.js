@@ -18,9 +18,6 @@ export const PLANS = {
     integrations: false,
     ai_features: false,
     imports: false,
-    // Identity verification
-    phone_otp: false,
-    email_otp: false,
     // Admin & compliance
     activity_log: false,
   },
@@ -39,7 +36,6 @@ export const PLANS = {
     integrations: true,
     ai_features: true,
     imports: true,
-    phone_otp: false,
     email_otp: false,
     activity_log: false,
   },
@@ -58,7 +54,6 @@ export const PLANS = {
     integrations: true,
     ai_features: true,
     imports: true,
-    phone_otp: true,
     email_otp: true,
     activity_log: true,
   },
@@ -80,7 +75,6 @@ const FEATURE_MIN_PLAN = {
   integrations:             'pro',
   ai_features:              'pro',
   imports:                  'pro',
-  phone_otp:                'business',
   email_otp:                'business',
   activity_log:             'business',
 };

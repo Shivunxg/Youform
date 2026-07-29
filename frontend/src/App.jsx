@@ -24,7 +24,6 @@ import SettingsLayout       from '@/pages/settings/SettingsLayout';
 import OrganizationSettings from '@/pages/settings/OrganizationSettings';
 import MembersSettings      from '@/pages/settings/MembersSettings';
 import SmtpSettings         from '@/pages/settings/SmtpSettings';
-import SmsSettings          from '@/pages/settings/SmsSettings';
 import StripeSettings       from '@/pages/settings/StripeSettings';
 import ActivityLog          from '@/pages/settings/ActivityLog';
 import BillingSettings      from '@/pages/settings/BillingSettings';
@@ -111,7 +110,6 @@ export default function App() {
         <Route path="organization" element={<OrganizationSettings />} />
         <Route path="members"      element={<MembersSettings />} />
         <Route path="smtp"         element={<SmtpSettings />} />
-        <Route path="sms"          element={<SmsSettings />} />
         <Route path="stripe"       element={<StripeSettings />} />
         <Route path="activity"     element={<ActivityLog />} />
         <Route path="billing"      element={<BillingSettings />} />

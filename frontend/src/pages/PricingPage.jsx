@@ -102,7 +102,6 @@ const COMPARISON = [
   {
     section: 'Identity verification',
     rows: [
-      { label: 'Phone OTP verification', free: false, pro: false, business: true },
       { label: 'Email OTP verification', free: false, pro: false, business: true },
     ],
   },
