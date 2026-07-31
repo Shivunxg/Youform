@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Plus, Paintbrush, GitBranch, Monitor, Smartphone, Check, Loader } from 'lucide-react';
+import { Plus, Paintbrush, GitBranch, Monitor, Smartphone, Check, Loader, MousePointer2, Star, Upload, ThumbsUp, ThumbsDown, CheckCircle } from 'lucide-react';
 import { useBuilderStore } from '@/stores/builderStore';
 import { TypePickerDropdown } from './BlockList';
 import { clsx } from 'clsx';
@@ -197,8 +197,8 @@ export default function Canvas({ onToggleDesign }) {
           </div>
         ) : (
           <div className="relative z-10 text-center select-none">
-            <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-gray-200 flex items-center justify-center mx-auto mb-4 text-2xl">
-              👆
+            <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-gray-200 flex items-center justify-center mx-auto mb-4">
+              <MousePointer2 className="w-6 h-6 text-slate-300" />
             </div>
             <p className="text-sm font-semibold text-gray-500">Select a block to preview</p>
             <p className="text-xs text-gray-400 mt-1">
@@ -240,7 +240,9 @@ function BlockPreview({ question, primary, questionColor, index, total }) {
   if (question.type === 'thank_you_screen') {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-center">
-        <div className="text-5xl mb-4">🎉</div>
+        <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-4">
+          <CheckCircle className="w-7 h-7 text-emerald-500" />
+        </div>
         <h2 className="text-2xl font-semibold mb-2 text-balance" style={{ color: qc }}>
           {question.title || 'Thank you!'}
         </h2>
@@ -334,20 +336,22 @@ function AnswerPreview({ question, primary }) {
   if (type === 'yes_no') {
     return (
       <div className="flex gap-3">
-        <div className="flex-1 py-2.5 rounded-xl border-2 border-gray-200 text-sm text-center text-gray-500">👍 Yes</div>
-        <div className="flex-1 py-2.5 rounded-xl border-2 border-gray-200 text-sm text-center text-gray-500">👎 No</div>
+        <div className="flex-1 py-2.5 rounded-xl border-2 border-gray-200 text-sm text-center text-gray-500 flex items-center justify-center gap-1.5">
+          <ThumbsUp className="w-3.5 h-3.5" /> Yes
+        </div>
+        <div className="flex-1 py-2.5 rounded-xl border-2 border-gray-200 text-sm text-center text-gray-500 flex items-center justify-center gap-1.5">
+          <ThumbsDown className="w-3.5 h-3.5" /> No
+        </div>
       </div>
     );
   }
 
   if (type === 'rating') {
     const steps = config?.steps ?? 5;
-    const icons = { star: '⭐', heart: '❤️', thumb: '👍', circle: '●' };
-    const icon = icons[config?.shape ?? 'star'];
     return (
       <div className="flex gap-2">
         {[...Array(steps)].map((_, i) => (
-          <span key={i} className="text-2xl opacity-25">{icon}</span>
+          <Star key={i} className="w-7 h-7 text-gray-200" />
         ))}
       </div>
     );
@@ -380,7 +384,7 @@ function AnswerPreview({ question, primary }) {
   if (type === 'file_upload') {
     return (
       <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center">
-        <p className="text-2xl mb-1">📎</p>
+        <Upload className="w-6 h-6 text-gray-300 mx-auto mb-2" />
         <p className="text-sm text-gray-400">Click to upload or drag & drop</p>
         <p className="text-xs text-gray-300 mt-1">Max {config?.maxSizeMb ?? 10}MB</p>
       </div>

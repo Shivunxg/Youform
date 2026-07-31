@@ -3,42 +3,12 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Plus, GripVertical, Copy, Trash2 } from 'lucide-react';
 import { useBuilderStore } from '@/stores/builderStore';
+import { QUESTION_META } from './questionMeta';
 import { clsx } from 'clsx';
 
-const TYPE_META = {
-  welcome_screen:   { icon: '👋', color: '#8B5CF6', label: 'Welcome screen' },
-  short_text:       { icon: '✏️', color: '#9CA3AF', label: 'Short text' },
-  long_text:        { icon: '📄', color: '#9CA3AF', label: 'Long text' },
-  multiple_choice:  { icon: '☑️', color: '#EAB308', label: 'Multiple choice' },
-  dropdown:         { icon: '▾',  color: '#3B82F6', label: 'Dropdown' },
-  rating:           { icon: '⭐', color: '#F97316', label: 'Rating' },
-  nps:              { icon: '📊', color: '#F97316', label: 'NPS Score' },
-  yes_no:           { icon: '✅', color: '#10B981', label: 'Yes / No' },
-  email:            { icon: '✉️', color: '#3B82F6', label: 'Email' },
-  phone:            { icon: '📞', color: '#3B82F6', label: 'Phone' },
-  number:           { icon: '🔢', color: '#9CA3AF', label: 'Number' },
-  date:             { icon: '📅', color: '#8B5CF6', label: 'Date' },
-  time:             { icon: '⏰', color: '#8B5CF6', label: 'Time' },
-  file_upload:      { icon: '📎', color: '#F97316', label: 'File upload' },
-  statement:        { icon: '💬', color: '#9CA3AF', label: 'Statement' },
-  thank_you_screen: { icon: '🎉', color: '#10B981', label: 'Thank you' },
-};
-
 export const ADD_BLOCK_TYPES = [
-  { type: 'welcome_screen', label: 'Welcome screen', icon: '👋' },
-  { type: 'short_text',     label: 'Short text',     icon: '✏️' },
-  { type: 'long_text',      label: 'Long text',       icon: '📄' },
-  { type: 'multiple_choice',label: 'Multiple choice', icon: '☑️' },
-  { type: 'dropdown',       label: 'Dropdown',        icon: '▾' },
-  { type: 'rating',         label: 'Rating',          icon: '⭐' },
-  { type: 'nps',            label: 'NPS Score',       icon: '📊' },
-  { type: 'yes_no',         label: 'Yes / No',        icon: '✅' },
-  { type: 'email',          label: 'Email',           icon: '✉️' },
-  { type: 'phone',          label: 'Phone',           icon: '📞' },
-  { type: 'number',         label: 'Number',          icon: '🔢' },
-  { type: 'date',           label: 'Date',            icon: '📅' },
-  { type: 'file_upload',    label: 'File upload',     icon: '📎' },
-  { type: 'statement',      label: 'Statement',       icon: '💬' },
+  'welcome_screen', 'short_text', 'long_text', 'multiple_choice', 'dropdown',
+  'rating', 'nps', 'yes_no', 'email', 'phone', 'number', 'date', 'file_upload', 'statement',
 ];
 
 export function TypePickerDropdown({ onSelect, onClose, anchor = 'right' }) {
@@ -52,16 +22,23 @@ export function TypePickerDropdown({ onSelect, onClose, anchor = 'right' }) {
         <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xs leading-none">✕</button>
       </div>
       <div className="p-1 max-h-60 overflow-y-auto">
-        {ADD_BLOCK_TYPES.map(({ type, label, icon }) => (
-          <button
-            key={type}
-            onClick={() => onSelect(type)}
-            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-brand-50 hover:text-brand-700 text-left transition-colors group"
-          >
-            <span className="text-sm w-5 text-center shrink-0">{icon}</span>
-            <span className="text-xs font-medium text-gray-700 group-hover:text-brand-700">{label}</span>
-          </button>
-        ))}
+        {ADD_BLOCK_TYPES.map(type => {
+          const meta = QUESTION_META[type];
+          if (!meta) return null;
+          const { Icon, label, color } = meta;
+          return (
+            <button
+              key={type}
+              onClick={() => onSelect(type)}
+              className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-50 text-left transition-colors group"
+            >
+              <span className="w-5 flex items-center justify-center shrink-0">
+                <Icon className="w-3.5 h-3.5" style={{ color }} />
+              </span>
+              <span className="text-xs font-medium text-gray-700 group-hover:text-gray-900">{label}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -91,7 +68,6 @@ export default function BlockList() {
 
   return (
     <aside className="w-64 bg-white border-r border-gray-100 flex flex-col overflow-hidden shrink-0">
-      {/* Sidebar header */}
       <div className="px-3 pt-2.5 pb-2 border-b border-gray-100 flex items-center justify-between shrink-0">
         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Blocks</span>
         <div className="relative" ref={pickerRef}>
@@ -108,7 +84,6 @@ export default function BlockList() {
         </div>
       </div>
 
-      {/* Block list */}
       <div className="flex-1 overflow-y-auto py-1.5 px-1.5 space-y-0.5">
         {mainBlocks.length === 0 && (
           <div className="text-center py-10">
@@ -125,7 +100,6 @@ export default function BlockList() {
           <BlockItem key={q.id} question={q} index={i} />
         ))}
 
-        {/* Ending / Thank you section */}
         <div className="pt-2 mt-1 border-t border-gray-100">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1.5 mb-1">
             Ending
@@ -150,7 +124,8 @@ export default function BlockList() {
 function BlockItem({ question, index, isTerminal }) {
   const { selectedQuestionId, selectQuestion, deleteQuestion, duplicateQuestion } = useBuilderStore();
   const isSelected = selectedQuestionId === question.id;
-  const meta = TYPE_META[question.type] ?? { icon: '❓', color: '#9CA3AF', label: question.type };
+  const meta = QUESTION_META[question.type] ?? { Icon: null, color: '#9CA3AF', label: question.type };
+  const { Icon, color } = meta;
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: question.id,
@@ -169,39 +144,39 @@ function BlockItem({ question, index, isTerminal }) {
           : 'hover:bg-gray-50'
       )}
     >
-      {/* Color bar — always visible, full opacity when selected */}
       <div
         className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full transition-opacity"
-        style={{ backgroundColor: meta.color, opacity: isSelected ? 1 : 0.35 }}
+        style={{ backgroundColor: color, opacity: isSelected ? 1 : 0.35 }}
       />
 
-      {/* Number badge (main blocks only) */}
       {!isTerminal ? (
         <div
           className="w-[18px] h-[18px] rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 transition-colors"
           style={{
-            background: isSelected ? meta.color : '#F3F4F6',
+            background: isSelected ? color : '#F3F4F6',
             color: isSelected ? '#fff' : '#9CA3AF',
           }}
         >
           {index + 1}
         </div>
       ) : (
-        <span className="text-xs w-[18px] text-center shrink-0 leading-none">{meta.icon}</span>
+        <span className="w-[18px] flex items-center justify-center shrink-0">
+          {Icon && <Icon className="w-3 h-3" style={{ color }} />}
+        </span>
       )}
 
-      {/* Icon + text */}
       <div className="flex-1 min-w-0">
-        {!isTerminal && (
-          <span className="text-[11px] mr-1 leading-none">{meta.icon}</span>
-        )}
-        <span className={clsx('text-xs font-medium', question.title ? 'text-gray-800' : 'text-gray-400 italic')}>
-          {question.title || 'Untitled'}
-        </span>
+        <div className="flex items-center gap-1.5">
+          {!isTerminal && Icon && (
+            <Icon className="w-3 h-3 shrink-0 opacity-50" style={{ color }} />
+          )}
+          <span className={clsx('text-xs font-medium truncate', question.title ? 'text-gray-800' : 'text-gray-400 italic')}>
+            {question.title || 'Untitled'}
+          </span>
+        </div>
         <p className="text-[10px] text-gray-400 mt-0.5 truncate">{meta.label}</p>
       </div>
 
-      {/* Hover actions */}
       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
         {!isTerminal && (
           <>

@@ -1,34 +1,34 @@
 import { useBuilderStore } from '@/stores/builderStore';
+import { QUESTION_META } from './questionMeta';
+
 const TYPES = [
-  { type: 'welcome_screen', label: 'Welcome screen', icon: '👋' },
-  { type: 'short_text', label: 'Short text', icon: '✏️' },
-  { type: 'long_text', label: 'Long text', icon: '📄' },
-  { type: 'multiple_choice', label: 'Multiple choice', icon: '☑️' },
-  { type: 'picture_choice',  label: 'Picture choice',  icon: '🖼️' },
-  { type: 'dropdown', label: 'Dropdown', icon: '▾' },
-  { type: 'rating', label: 'Rating', icon: '⭐' },
-  { type: 'nps', label: 'NPS', icon: '📊' },
-  { type: 'yes_no', label: 'Yes / No', icon: '✅' },
-  { type: 'email', label: 'Email', icon: '✉️' },
-  { type: 'phone', label: 'Phone', icon: '📞' },
-  { type: 'number', label: 'Number', icon: '🔢' },
-  { type: 'date', label: 'Date', icon: '📅' },
-  { type: 'file_upload', label: 'File upload', icon: '📎' },
-  { type: 'signature',   label: 'Signature',   icon: '✍️' },
-  { type: 'thank_you_screen', label: 'Thank you', icon: '🎉' },
+  'welcome_screen', 'short_text', 'long_text', 'multiple_choice', 'picture_choice',
+  'dropdown', 'rating', 'nps', 'yes_no', 'email', 'phone', 'number', 'date',
+  'file_upload', 'signature', 'thank_you_screen',
 ];
+
 export default function AddQuestionPanel() {
   const { addQuestion, selectedQuestionId } = useBuilderStore();
   return (
     <aside className="w-52 bg-white border-r border-gray-100 overflow-y-auto shrink-0 p-2">
       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-2 py-2">Add question</p>
-      {TYPES.map(({ type, label, icon }) => (
-        <button key={type} onClick={() => addQuestion(type, selectedQuestionId)}
-          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-brand-50 hover:text-brand-700 text-gray-700 transition-colors">
-          <span className="text-base w-5 text-center">{icon}</span>
-          <span className="text-xs font-medium">{label}</span>
-        </button>
-      ))}
+      {TYPES.map(type => {
+        const meta = QUESTION_META[type];
+        if (!meta) return null;
+        const { Icon, label, color } = meta;
+        return (
+          <button
+            key={type}
+            onClick={() => addQuestion(type, selectedQuestionId)}
+            className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-left hover:bg-slate-50 text-gray-700 transition-colors group"
+          >
+            <span className="w-5 flex items-center justify-center shrink-0">
+              <Icon className="w-3.5 h-3.5" style={{ color }} />
+            </span>
+            <span className="text-xs font-medium group-hover:text-gray-900">{label}</span>
+          </button>
+        );
+      })}
     </aside>
   );
 }

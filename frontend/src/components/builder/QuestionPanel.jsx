@@ -146,7 +146,9 @@ function TypeSwitcherDropdown({ currentType, onSelect, onClose }) {
                       : 'hover:bg-gray-50 text-gray-700'
                   )}
                 >
-                  <span className="text-sm w-5 text-center shrink-0">{meta.icon}</span>
+                  <span className="w-5 flex items-center justify-center shrink-0">
+                    {meta.Icon && <meta.Icon className="w-3.5 h-3.5" style={{ color: meta.color }} />}
+                  </span>
                   <span className="text-xs font-medium">{meta.label}</span>
                   {type === currentType && <span className="ml-auto text-[10px] text-brand-500">✓</span>}
                 </button>
@@ -404,7 +406,7 @@ export default function QuestionPanel() {
               showTypePicker ? 'bg-gray-100' : 'hover:bg-gray-100'
             )}
           >
-            <span className="text-sm leading-none">{meta.icon}</span>
+            {meta.Icon && <meta.Icon className="w-3.5 h-3.5 shrink-0" style={{ color: meta.color }} />}
             <span className="max-w-[72px] truncate">{meta.label}</span>
             <ChevronDown className="w-3 h-3 text-gray-400 shrink-0" />
           </button>
