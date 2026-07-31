@@ -39,8 +39,26 @@ export default function MembersSettings() {
 
   const inviteMutation = useMutation({
     mutationFn: () => api.workspaces.invite(activeWorkspaceId, { email: inviteEmail, role: inviteRole }),
-    onSuccess: () => {
-      toast.success(`Invite sent to ${inviteEmail}`);
+    onSuccess: (data) => {
+      if (data.emailSent === false) {
+        toast((t) => (
+          <div>
+            <p className="text-sm font-semibold mb-1">Invite created — email delivery failed</p>
+            <p className="text-xs text-gray-500 mb-2">Share this link manually:</p>
+            <div className="flex items-center gap-2">
+              <code className="text-xs bg-gray-100 px-2 py-1 rounded flex-1 truncate">{data.inviteUrl}</code>
+              <button
+                className="text-xs text-brand-500 font-semibold shrink-0"
+                onClick={() => { navigator.clipboard.writeText(data.inviteUrl); toast.dismiss(t.id); toast.success('Link copied!'); }}
+              >
+                Copy
+              </button>
+            </div>
+          </div>
+        ), { duration: 15000 });
+      } else {
+        toast.success(`Invite sent to ${inviteEmail}`);
+      }
       setInviteEmail(''); setShowInvite(false);
       qc.invalidateQueries(['members', activeWorkspaceId]);
       qc.invalidateQueries(['invites', activeWorkspaceId]);

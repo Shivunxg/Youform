@@ -176,11 +176,19 @@ router.post(
       if (error) throw error;
 
       const inviteUrl = `${process.env.APP_URL}/invite/${invite.token}`;
-      await emailService.sendWorkspaceInvite({ email, inviterName: req.user.email, workspaceName: member.workspaces.name, inviteUrl, role });
+      let emailSent = true;
+      let emailError = null;
+      try {
+        await emailService.sendWorkspaceInvite({ email, inviterName: req.user.email, workspaceName: member.workspaces.name, inviteUrl, role, workspaceId });
+      } catch (err) {
+        emailSent = false;
+        emailError = err.message;
+        logger.error('Invite email failed', { err: err.message, to: email });
+      }
 
       logActivity(supabaseAdmin, { workspace_id: workspaceId, user_id: req.user.id, action: 'member_invited', resource_type: 'invite', description: `Invited ${email} as ${role}`, metadata: { email, role } });
 
-      res.status(201).json({ invite: { id: invite.id, email, role, expires_at: invite.expires_at } });
+      res.status(201).json({ invite: { id: invite.id, email, role, expires_at: invite.expires_at }, emailSent, inviteUrl: emailSent ? undefined : inviteUrl, emailError: emailSent ? undefined : emailError });
     } catch (err) { next(err); }
   }
 );

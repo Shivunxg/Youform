@@ -49,14 +49,13 @@ async function send({ to, subject, html, workspaceId }) {
 
   // 2. Fallback to Resend
   if (!resend) {
-    logger.warn('Email skipped — no workspace SMTP configured and no RESEND_API_KEY set', { to });
-    return;
+    throw new Error('No email provider configured — set RESEND_API_KEY or configure workspace SMTP settings');
   }
   const { error } = await resend.emails.send({
     from: `${GLOBAL_FROM_NAME} <${GLOBAL_FROM_EMAIL}>`,
     to, subject, html,
   });
-  if (error) logger.error('Resend send failed', { error });
+  if (error) throw new Error(error.message ?? 'Resend failed to send email');
 }
 
 // ── Shared email layout ───────────────────────────────────────
