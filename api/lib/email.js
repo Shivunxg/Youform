@@ -104,7 +104,7 @@ export const emailService = {
       to: email,
       subject: `${inviterName} invited you to ${workspaceName}`,
       html: layout(
-        H1('You've been invited to join a workspace') +
+        H1("You've been invited to join a workspace") +
         P(`<strong>${inviterName}</strong> has invited you to join <strong>${workspaceName}</strong> as a <strong style="text-transform:capitalize">${role}</strong>.`) +
         `<div style="background:#fafaf8;border:1px solid #f0efed;border-radius:8px;padding:14px 18px;margin:18px 0">
           <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">

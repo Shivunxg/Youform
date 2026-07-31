@@ -54,10 +54,18 @@ router.get('/health', async (req, res) => {
   const isAuthenticated = incomingKey && incomingKey === process.env.HEALTH_SECRET;
 
   if (!isAuthenticated) {
+    const t = Date.now();
     const { error } = await supabaseAdmin.from('forms').select('id').limit(1);
-    const status = error ? 'down' : 'ok';
+    const db = error ? 'down' : 'ok';
+    const status = db;
     if (error) logger.warn('Health liveness check failed', { error: error.message });
-    return res.status(error ? 503 : 200).json({ status, timestamp: new Date().toISOString() });
+    return res.status(error ? 503 : 200).json({
+      status,
+      db,
+      dbLatencyMs: Date.now() - t,
+      uptimeMs: Date.now() - BOOT_TIME,
+      timestamp: new Date().toISOString(),
+    });
   }
 
   const [dbResult, formsResult, questionsResult, responsesResult, workspacesResult] =

@@ -8,6 +8,11 @@ import { hasFeature } from '../lib/plans.js';
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
+const ALLOWED_IMAGE_TYPES = new Set([
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+]);
+const IMAGE_MIME_EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp' };
+
 const UNSPLASH_API = 'https://api.unsplash.com';
 const UTM = 'utm_source=youform&utm_medium=referral';
 
@@ -92,7 +97,8 @@ router.post('/images/upload', requireAuth, upload.single('file'), async (req, re
       return res.status(403).json({ error: 'pro_required', message: 'Image uploads require Pro or higher.' });
     }
     if (!req.file) return res.status(400).json({ error: 'No file provided' });
-    const ext = (req.file.originalname.split('.').pop() || 'jpg').toLowerCase();
+    if (!ALLOWED_IMAGE_TYPES.has(req.file.mimetype)) return res.status(415).json({ error: `File type "${req.file.mimetype}" is not allowed` });
+    const ext = IMAGE_MIME_EXT[req.file.mimetype] ?? 'jpg';
     const path = `design-images/${workspaceId}/${nanoid()}.${ext}`;
     const { data, error } = await supabaseAdmin.storage
       .from('form-uploads')
