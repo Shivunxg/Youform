@@ -3,6 +3,7 @@ import { hasFeature } from './plans.js';
 import { emailService } from './email.js';
 import { logger } from './logger.js';
 import { getValidToken, ensureHeaders, appendRow } from './googleSheets.js';
+import { isPrivateUrl } from './ssrf.js';
 
 // Fire-and-forget: processResponse runs after the HTTP response is sent.
 // This prevents Vercel's 30s function timeout from blocking form submissions.
@@ -17,7 +18,7 @@ export const responseQueue = {
 async function processResponse({ responseId, formId, workspaceId }) {
   const { data: response } = await supabaseAdmin
     .from('responses')
-    .select('answers, respondent_email, submitted_at')
+    .select('answers, respondent_email, submitted_at, is_test')
     .eq('id', responseId).single();
 
   const { data: form } = await supabaseAdmin
@@ -26,6 +27,7 @@ async function processResponse({ responseId, formId, workspaceId }) {
     .eq('id', formId).single();
 
   if (!response || !form) return;
+  if (response.is_test) return;
 
   // ── Email notifications (notification_settings table) ────
   const { data: notifications } = await supabaseAdmin
@@ -167,6 +169,7 @@ async function triggerGoogleSheets(integration, response, form) {
 async function triggerWebhook(integration, response, formId, responseId) {
   const { url, headers: extraHeaders = {} } = integration.config;
   if (!url) throw new Error('No webhook URL configured');
+  if (isPrivateUrl(url)) throw new Error('Webhook URL targets a private or local network address');
 
   const payload = {
     form_id:      formId,

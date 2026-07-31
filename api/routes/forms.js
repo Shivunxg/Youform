@@ -29,13 +29,14 @@ router.get(
     try {
       const { workspaceId } = req.params;
       const { status, search, page = 1, limit = 20 } = req.query;
+      const pg = Math.max(1, parseInt(page, 10) || 1), lim = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
 
       let q = supabaseAdmin
         .from('forms')
         .select('id, title, slug, status, layout, views_count, starts_count, responses_count, published_at, created_at, updated_at, created_by, profiles(full_name, avatar_url)', { count: 'exact' })
         .eq('workspace_id', workspaceId)
         .order('updated_at', { ascending: false })
-        .range((page - 1) * limit, page * limit - 1);
+        .range((pg - 1) * lim, pg * lim - 1);
 
       if (status) q = q.eq('status', status);
       if (search) q = q.ilike('title', `%${search}%`);
@@ -43,7 +44,7 @@ router.get(
       const { data, error, count } = await q;
       if (error) throw error;
 
-      res.json({ forms: data, total: count, page: +page, limit: +limit });
+      res.json({ forms: data, total: count, page: pg, limit: lim });
     } catch (err) { next(err); }
   }
 );

@@ -18,12 +18,19 @@ import adminRouter from './routes/admin.js';
 import aiRouter from './routes/ai.js';
 import googleFormsRouter from './routes/google-forms.js';
 import imagesRouter from './routes/images.js';
+import accountRouter from './routes/account.js';
 
 const app = express();
 
 app.set('trust proxy', 1);
 
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      frameAncestors: ["'none'"],
+    },
+  },
+}));
 app.use(cors({
   origin: (process.env.ALLOWED_ORIGINS ?? 'http://localhost:3000').split(',').map(s => s.trim()),
   credentials: true,
@@ -39,11 +46,11 @@ app.use(rateLimit({ windowMs: 60_000, max: 300, standardHeaders: true, legacyHea
 
 app.use('/api', healthRouter);
 app.use('/api', errorsRouter);
+app.use('/api/oauth', oauthRouter);      // must be before any router with global requireAuth
 app.use('/api', formsRouter);
 app.use('/api', responsesRouter);
 app.use('/api/workspaces', workspacesRouter);
 app.use('/api', integrationsRouter);
-app.use('/api/oauth', oauthRouter);
 app.use('/api/billing', billingRouter);
 app.use('/api/templates', templatesRouter);
 app.use('/api', typeformRouter);
@@ -51,6 +58,7 @@ app.use('/api/admin', adminRouter);
 app.use('/api', aiRouter);
 app.use('/api', googleFormsRouter);
 app.use('/api', imagesRouter);
+app.use('/api', accountRouter);
 app.use((req, res) => res.status(404).json({ error: `${req.method} ${req.path} not found` }));
 app.use(errorHandler);
 

@@ -46,6 +46,21 @@ const ALLOWED_MIME_TYPES = new Set([
   'application/zip',
 ]);
 
+// Derive file extension from validated MIME type rather than trusting the
+// client-supplied filename, which could carry a spoofed extension (e.g. evil.html
+// sent as image/jpeg).
+const MIME_EXT = {
+  'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp',
+  'application/pdf': 'pdf', 'application/msword': 'doc',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+  'application/vnd.ms-excel': 'xls',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+  'text/plain': 'txt', 'text/csv': 'csv',
+  'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov',
+  'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/ogg': 'ogg',
+  'application/zip': 'zip',
+};
+
 // ============================================================
 // PUBLIC: GET /public/forms/:slug
 // Fetch published form for public rendering (no auth)
@@ -127,7 +142,7 @@ router.post('/public/forms/:formId/upload', publicWriteLimit, upload.single('fil
       throw createError(413, `File exceeds your plan's ${limitMb} MB upload limit`);
     }
 
-    const ext = (req.file.originalname.split('.').pop() ?? 'bin').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const ext = MIME_EXT[req.file.mimetype] ?? 'bin';
     const path = `${formId}/${nanoid()}.${ext}`;
 
     const { data, error } = await supabaseAdmin.storage
@@ -186,8 +201,17 @@ router.post(
       if (form.closes_at && new Date(form.closes_at) < now) throw createError(410, 'Form is closed');
       if (form.response_limit && form.responses_count >= form.response_limit) throw createError(410, 'Response limit reached');
 
-      // Check plan response quota (skip for test submissions)
-      if (!req.body.is_test) {
+      // is_test is only honoured for authenticated workspace members — never anonymous submitters,
+      // who could otherwise bypass the monthly quota by setting is_test: true.
+      let isTest = false;
+      if (req.body.is_test === true && req.user) {
+        const { data: testMember } = await supabaseAdmin.from('workspace_members')
+          .select('role').eq('workspace_id', form.workspace_id).eq('user_id', req.user.id).maybeSingle();
+        if (testMember) isTest = true;
+      }
+
+      // Check plan response quota (skip for authenticated test submissions)
+      if (!isTest) {
         const { allowed, used, limit } = await canAcceptResponse(supabaseAdmin, form.workspace_id, form.workspaces?.plan);
         if (!allowed) {
           return res.status(429).json({
@@ -217,7 +241,7 @@ router.post(
         respondent_email: req.body.respondent_email ?? req.user?.email ?? null,
         answers,
         is_partial: false,
-        is_test: req.body.is_test ?? false,
+        is_test: isTest,
         started_at: req.body.started_at ?? now.toISOString(),
         submitted_at: now.toISOString(),
         completion_time_ms: req.body.completion_time_ms ?? null,
@@ -417,18 +441,18 @@ router.get('/forms/:formId/analytics', requireAuth, async (req, res, next) => {
   try {
     const { formId } = req.params;
 
-    const [{ data: form }, { data: agg, error: aggErr }] = await Promise.all([
-      supabaseAdmin.from('forms')
-        .select('workspace_id, views_count, starts_count, questions(id, title, type, config)')
-        .eq('id', formId).order('position', { referencedTable: 'questions' }).single(),
-      supabaseAdmin.rpc('get_form_analytics', { p_form_id: formId }),
-    ]);
+    // Auth check before running any analytics queries — prevent unauthorized RPC calls.
+    const { data: form } = await supabaseAdmin.from('forms')
+      .select('workspace_id, views_count, starts_count, questions(id, title, type, config)')
+      .eq('id', formId).order('position', { referencedTable: 'questions' }).single();
     if (!form) throw createError(404, 'Form not found');
-    if (aggErr) throw aggErr;
 
     const { data: member } = await supabaseAdmin.from('workspace_members')
       .select('role').eq('workspace_id', form.workspace_id).eq('user_id', req.user.id).single();
     if (!member) throw createError(403, 'Access denied');
+
+    const { data: agg, error: aggErr } = await supabaseAdmin.rpc('get_form_analytics', { p_form_id: formId });
+    if (aggErr) throw aggErr;
 
     const stats = agg ?? {};
     const total     = Number(stats.total     ?? 0);

@@ -66,6 +66,7 @@ router.get('/stats', async (req, res, next) => {
 router.get('/users', async (req, res, next) => {
   try {
     const { page = 1, limit = 25, search } = req.query;
+    const pg = Math.max(1, parseInt(page, 10) || 1), lim = Math.min(200, Math.max(1, parseInt(limit, 10) || 25));
     let q = supabaseAdmin
       .from('profiles')
       .select(
@@ -73,7 +74,7 @@ router.get('/users', async (req, res, next) => {
         { count: 'exact' }
       )
       .order('created_at', { ascending: false })
-      .range((+page - 1) * +limit, +page * +limit - 1);
+      .range((pg - 1) * lim, pg * lim - 1);
     if (search) q = q.ilike('email', `%${search}%`);
     const { data, count, error } = await q;
     if (error) throw error;
@@ -82,7 +83,7 @@ router.get('/users', async (req, res, next) => {
       ...u,
       is_platform_admin: u.is_platform_admin || ADMIN_EMAILS.includes(u.email?.toLowerCase()),
     }));
-    res.json({ users, total: count ?? 0, page: +page, limit: +limit });
+    res.json({ users, total: count ?? 0, page: pg, limit: lim });
   } catch (err) { next(err); }
 });
 
@@ -105,16 +106,17 @@ router.patch('/users/:userId/admin', async (req, res, next) => {
 router.get('/workspaces', async (req, res, next) => {
   try {
     const { page = 1, limit = 25, search, plan } = req.query;
+    const pg = Math.max(1, parseInt(page, 10) || 1), lim = Math.min(200, Math.max(1, parseInt(limit, 10) || 25));
     let q = supabaseAdmin
       .from('workspaces')
       .select('id, name, slug, plan, created_at, subscription_status', { count: 'exact' })
       .order('created_at', { ascending: false })
-      .range((+page - 1) * +limit, +page * +limit - 1);
+      .range((pg - 1) * lim, pg * lim - 1);
     if (search) q = q.ilike('name', `%${search}%`);
     if (plan) q = q.eq('plan', plan);
     const { data, count, error } = await q;
     if (error) throw error;
-    res.json({ workspaces: data ?? [], total: count ?? 0, page: +page, limit: +limit });
+    res.json({ workspaces: data ?? [], total: count ?? 0, page: pg, limit: lim });
   } catch (err) { next(err); }
 });
 

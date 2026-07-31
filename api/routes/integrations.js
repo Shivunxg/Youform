@@ -5,6 +5,7 @@ import { requireAuth } from '../lib/auth.js';
 import { createError } from '../lib/errorHandler.js';
 import { hasFeature } from '../lib/plans.js';
 import { getValidToken, listUserSheets, getSpreadsheetMeta, createSpreadsheet } from '../lib/googleSheets.js';
+import { isPrivateUrl } from '../lib/ssrf.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -92,12 +93,16 @@ router.patch('/forms/:formId/integrations/:integrationId', async (req, res, next
     const allowed = ['enabled', 'config'];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
 
-    // Re-validate config if being updated (same rules that POST enforces)
+    // Re-validate config if being updated (same rules that POST enforces).
+    // Merge incoming config onto the stored config so that redacted secrets
+    // (webhookUrl, token) are re-populated from the DB before validation.
     if (updates.config) {
       const { data: existing } = await supabaseAdmin.from('integrations')
-        .select('type').eq('id', integrationId).eq('form_id', formId).single();
+        .select('type, config').eq('id', integrationId).eq('form_id', formId).single();
       if (!existing) throw createError(404, 'Integration not found');
-      validateIntegrationConfig(existing.type, updates.config);
+      const mergedConfig = { ...existing.config, ...updates.config };
+      validateIntegrationConfig(existing.type, mergedConfig);
+      updates.config = mergedConfig;
     }
 
     const { data, error } = await supabaseAdmin.from('integrations')
@@ -219,28 +224,64 @@ router.post('/forms/:formId/integrations/google-sheets/create-sheet', async (req
 });
 
 // ============================================================
+// POST /forms/:formId/integrations/google-sheets/connect-by-url
+// Connect an existing spreadsheet by pasting its URL or ID
+// Uses only the spreadsheets scope — no Drive listing needed
+// ============================================================
+router.post('/forms/:formId/integrations/google-sheets/connect-by-url', async (req, res, next) => {
+  try {
+    await getFormAndCheckAccess(req.params.formId, req.user.id);
+    const { url } = req.body;
+    if (!url) throw createError(400, 'url is required');
+
+    // Extract spreadsheet ID from URL or treat input as raw ID
+    const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    const spreadsheetId = match ? match[1] : url.trim();
+    if (!spreadsheetId || !/^[a-zA-Z0-9-_]+$/.test(spreadsheetId)) {
+      throw createError(400, 'Could not extract a valid spreadsheet ID from the provided URL');
+    }
+
+    const { data: integration } = await supabaseAdmin
+      .from('integrations')
+      .select('id, config')
+      .eq('form_id', req.params.formId)
+      .eq('type', 'google_sheets')
+      .maybeSingle();
+
+    if (!integration?.config?.access_token) {
+      throw createError(400, 'Google account not connected. Please connect first.');
+    }
+
+    const { accessToken, updatedConfig } = await getValidToken(integration.config);
+
+    // Persist refreshed token before proceeding so it isn't lost if the next call fails
+    if (updatedConfig) {
+      await supabaseAdmin.from('integrations')
+        .update({ config: updatedConfig }).eq('id', integration.id);
+    }
+
+    // Validate access and get sheet metadata using only the spreadsheets scope
+    const meta = await getSpreadsheetMeta(accessToken, spreadsheetId);
+    const spreadsheetName = meta.properties?.title || spreadsheetId;
+    const sheetName = meta.sheets?.[0]?.properties?.title || 'Sheet1';
+
+    const newConfig = {
+      ...(updatedConfig ?? integration.config),
+      spreadsheetId,
+      spreadsheetName,
+      sheetName,
+    };
+
+    await supabaseAdmin.from('integrations')
+      .update({ config: newConfig, enabled: true }).eq('id', integration.id);
+
+    res.json({ spreadsheetId, spreadsheetName, sheetName });
+  } catch (err) { next(err); }
+});
+
+// ============================================================
 // Helpers
 // ============================================================
-
-// Block requests to private/loopback IP ranges to prevent SSRF
-function isPrivateUrl(urlStr) {
-  try {
-    const { hostname, protocol } = new URL(urlStr);
-    if (!['http:', 'https:'].includes(protocol)) return true;
-    const lower = hostname.toLowerCase();
-    if (['localhost', '0.0.0.0', '::1', '[::]'].includes(lower)) return true;
-    const parts = lower.split('.').map(Number);
-    if (parts.length === 4 && parts.every(n => !isNaN(n))) {
-      if (parts[0] === 127) return true;                                         // loopback
-      if (parts[0] === 10)  return true;                                         // 10.x.x.x
-      if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;    // 172.16-31.x.x
-      if (parts[0] === 192 && parts[1] === 168) return true;                     // 192.168.x.x
-      if (parts[0] === 169 && parts[1] === 254) return true;                     // 169.254 link-local
-      if (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127) return true;   // 100.64 (CGNAT)
-    }
-    return false;
-  } catch { return true; }
-}
 
 function validateIntegrationConfig(type, config) {
   switch (type) {
@@ -273,12 +314,16 @@ function redactConfig(type, config) {
   if (redacted.access_token)  delete redacted.access_token;
   if (redacted.refresh_token) delete redacted.refresh_token;
   if (redacted.token_expiry)  delete redacted.token_expiry;
+  // Notion uses 'token'; Slack/Zapier use 'webhookUrl' — neither is in the generic list above
+  if (redacted.token)         delete redacted.token;
+  if (redacted.webhookUrl)    delete redacted.webhookUrl;
   return redacted;
 }
 
 async function triggerIntegration(integration, payload) {
   switch (integration.type) {
     case 'webhook': {
+      if (isPrivateUrl(integration.config.url)) throw new Error('Webhook URL targets a private or local network address');
       const resp = await fetch(integration.config.url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(integration.config.headers ?? {}) },
