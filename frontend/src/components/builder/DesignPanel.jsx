@@ -264,7 +264,7 @@ export default function DesignPanel({ onClose }) {
           />
           <ColorSwatch
             label="Buttons"
-            value={theme.buttonColor ?? theme.primaryColor ?? '#6366f1'}
+            value={theme.buttonColor ?? theme.primaryColor ?? '#f97316'}
             onChange={v => updateTheme({ buttonColor: v, primaryColor: v })}
           />
           <ColorSwatch
@@ -284,7 +284,7 @@ export default function DesignPanel({ onClose }) {
           const bg  = theme.backgroundColor  ?? '#FFFFFF';
           const qc  = theme.questionColor    ?? '#111111';
           const ac  = theme.answerColor      ?? '#374151';
-          const btn = theme.buttonColor      ?? '#6366f1';
+          const btn = theme.buttonColor      ?? '#f97316';
           const btx = theme.buttonTextColor  ?? '#FFFFFF';
           const warnings = [];
           const qRatio = contrastRatio(bg, qc);

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { ChevronRight, ChevronLeft } from 'lucide-react';
+import { ChevronRight, ChevronLeft, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { api } from '@/lib/api';
 import { clsx } from 'clsx';
 import EmbedBlock from '@/components/EmbedBlock';
@@ -86,7 +86,7 @@ export default function PublicFormPage() {
       <PasswordGate
         slug={slug}
         formTitle={form.title}
-        primaryColor={form.theme?.primaryColor ?? '#6366f1'}
+        primaryColor={form.theme?.primaryColor ?? '#f97316'}
         onUnlocked={() => {
           setPasswordUnlocked(true);
           api.public.startForm(form.id).catch(() => {});
@@ -98,7 +98,7 @@ export default function PublicFormPage() {
   const questions = (form.questions ?? []).filter(q => q.type !== 'thank_you_screen');
   const thankYouQ = (form.questions ?? []).find(q => q.type === 'thank_you_screen');
   const theme = form.theme ?? {};
-  const primary = theme.primaryColor ?? '#6366f1';
+  const primary = theme.primaryColor ?? '#f97316';
 
   const current = questions[currentIndex];
   const nextIndex = current ? getNextIndex(currentIndex, questions, answers) : questions.length;
@@ -306,14 +306,17 @@ function QuestionSlide({ question, answer, onAnswer, primary, index, total, onNe
 
       <div className="flex items-center gap-3">
         {!isFirst && (
-          <button onClick={onPrev} className="btn-secondary">
+          <button
+            onClick={onPrev}
+            className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl border-2 border-gray-200 text-sm font-semibold text-gray-500 hover:border-gray-300 hover:bg-gray-50 transition-colors"
+          >
             <ChevronLeft className="w-4 h-4" /> Back
           </button>
         )}
         <button
           onClick={onNext}
           disabled={submitting || (question.required && !hasAnswer(answer))}
-          className="px-6 py-2.5 rounded-xl text-white font-medium flex items-center gap-2 transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 px-7 py-2.5 rounded-xl text-white font-semibold text-sm shadow-sm hover:shadow-md hover:opacity-95 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
           style={{ backgroundColor: primary }}
         >
           {submitting ? (
@@ -388,18 +391,23 @@ function PublicAnswerInput({ question, answer, onAnswer, primary, formId }) {
   }
 
   if (type === 'yes_no') {
+    const opts = [{ label: 'Yes', Icon: ThumbsUp }, { label: 'No', Icon: ThumbsDown }];
     return (
       <div className="flex gap-3">
-        {['Yes', 'No'].map(opt => (
-          <button
-            key={opt}
-            onClick={() => onAnswer(opt)}
-            className="flex-1 py-4 rounded-xl border-2 text-base font-semibold transition-all"
-            style={answer === opt ? { borderColor: primary, backgroundColor: primary, color: '#fff' } : { borderColor: '#e5e7eb', color: '#374151' }}
-          >
-            {opt === 'Yes' ? '👍  Yes' : '👎  No'}
-          </button>
-        ))}
+        {opts.map(({ label, Icon }) => {
+          const sel = answer === label;
+          return (
+            <button
+              key={label}
+              onClick={() => onAnswer(label)}
+              className="flex-1 flex items-center justify-center gap-2 py-4 rounded-xl border-2 text-base font-semibold transition-all"
+              style={sel ? { borderColor: primary, backgroundColor: primary, color: '#fff' } : { borderColor: '#e5e7eb', color: '#374151' }}
+            >
+              <Icon className="w-5 h-5" />
+              {label}
+            </button>
+          );
+        })}
       </div>
     );
   }

@@ -868,7 +868,7 @@ function Toggle({ label, hint, checked, onChange }) {
         onClick={() => onChange(!checked)}
         className={clsx('relative w-9 h-5 rounded-full transition-colors shrink-0', checked ? 'bg-brand-500' : 'bg-gray-200')}
       >
-        <span className={clsx('absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform', checked ? 'translate-x-4' : 'translate-x-0.5')} />
+        <span className={clsx('absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform', checked ? 'translate-x-[18px]' : 'translate-x-0.5')} />
       </button>
     </div>
   );
