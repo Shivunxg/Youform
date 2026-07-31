@@ -11,7 +11,7 @@ const PLANS = {
     {
       id: 'pro',
       name: 'Pro',
-      price: 25,
+      price: 15,
       period: 'month',
       color: 'bg-orange-500',
       highlight: true,
@@ -29,7 +29,7 @@ const PLANS = {
         {
           label: 'Integrations & automation',
           items: [
-            'All integrations — Slack, Webhook, Zapier, HubSpot, Airtable, Mailchimp, Notion',
+            'All integrations — Slack, Webhook, Zapier, Notion',
             'AI form generator',
             'AI block rewriter',
             'Import from Typeform & Google Forms',
@@ -40,7 +40,7 @@ const PLANS = {
     {
       id: 'business',
       name: 'Business',
-      price: 89,
+      price: 39,
       period: 'month',
       color: 'bg-violet-600',
       highlight: false,
@@ -61,9 +61,9 @@ const PLANS = {
     {
       id: 'pro',
       name: 'Pro',
-      price: 20,
+      price: 12,
       period: 'month',
-      billed: 'billed annually ($240/yr)',
+      billed: 'billed annually ($144/yr)',
       color: 'bg-orange-500',
       highlight: true,
       tagline: 'For growing teams who need automation and full branding control.',
@@ -80,7 +80,7 @@ const PLANS = {
         {
           label: 'Integrations & automation',
           items: [
-            'All integrations — Slack, Webhook, Zapier, HubSpot, Airtable, Mailchimp, Notion',
+            'All integrations — Slack, Webhook, Zapier, Notion',
             'AI form generator',
             'AI block rewriter',
             'Import from Typeform & Google Forms',
@@ -91,9 +91,9 @@ const PLANS = {
     {
       id: 'business',
       name: 'Business',
-      price: 60,
+      price: 29,
       period: 'month',
-      billed: 'billed annually ($720/yr)',
+      billed: 'billed annually ($348/yr)',
       color: 'bg-violet-600',
       highlight: false,
       tagline: 'For teams that need identity verification, compliance, and scale.',
@@ -112,7 +112,7 @@ const PLANS = {
 };
 
 const FREE_FEATURES = [
-  { label: 'Usage', items: ['500 responses / month', '1 team member', '100 MB storage', '10 MB file uploads'] },
+  { label: 'Usage', items: ['100 responses / month', '1 team member', '100 MB storage', '10 MB file uploads'] },
   { label: 'Form building', items: ['All question types', 'Conditional logic', 'Template library', 'Form password protection', 'Form scheduling & response caps'] },
   { label: 'Analytics & data', items: ['Completion analytics', 'Drop-off by question', 'CSV export', 'Google Sheets integration', 'Email notifications to owner'] },
 ];
@@ -168,7 +168,7 @@ export default function BillingSettings() {
               onClick={() => setBillingInterval(iv)}
               className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${billingInterval === iv ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
             >
-              {iv === 'yearly' ? <>Yearly <span className="text-emerald-600 text-xs">Save 30%</span></> : 'Monthly'}
+              {iv === 'yearly' ? <>Yearly <span className="text-emerald-600 text-xs">Save 20%</span></> : 'Monthly'}
             </button>
           ))}
         </div>
@@ -177,7 +177,9 @@ export default function BillingSettings() {
       {/* Plan cards */}
       <div className="grid grid-cols-2 gap-4 mb-6">
         {plans.map(plan => {
+          const PLAN_ORDER = ['free', 'pro', 'business'];
           const isCurrent = currentPlan === plan.id;
+          const isDowngrade = PLAN_ORDER.indexOf(plan.id) < PLAN_ORDER.indexOf(currentPlan);
           return (
             <div
               key={plan.id}
@@ -232,6 +234,10 @@ export default function BillingSettings() {
                 {isCurrent ? (
                   <div className="w-full py-2.5 rounded-xl text-center text-sm font-semibold text-gray-500 bg-gray-100">
                     Current plan
+                  </div>
+                ) : isDowngrade ? (
+                  <div className="w-full py-2.5 rounded-xl text-center text-sm font-medium text-gray-400 bg-gray-50 border border-gray-200 cursor-default">
+                    Lower than current plan
                   </div>
                 ) : (
                   <button

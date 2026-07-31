@@ -106,7 +106,7 @@ router.post('/:workspaceId/checkout', requireAuth, async (req, res, next) => {
       },
       allow_promotion_codes: true,
       customer_update: { address: 'auto', name: 'auto' },
-      automatic_tax: { enabled: false },
+      automatic_tax: { enabled: true },
     });
 
     res.json({ url: session.url });
