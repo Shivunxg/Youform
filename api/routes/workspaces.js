@@ -8,6 +8,7 @@ import { createError } from '../lib/errorHandler.js';
 import { emailService, testSmtpConnection } from '../lib/email.js';
 import { getPlan, hasFeature } from '../lib/plans.js';
 import { logActivity } from '../lib/activity.js';
+import { logger } from '../lib/logger.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -122,7 +123,7 @@ router.get('/:workspaceId/members', async (req, res, next) => {
     if (!self) throw createError(403, 'Access denied');
 
     const { data, error } = await supabaseAdmin.from('workspace_members')
-      .select('role, joined_at, profiles(id, email, full_name, avatar_url)')
+      .select('role, joined_at, profiles!user_id(id, email, full_name, avatar_url)')
       .eq('workspace_id', workspaceId);
     if (error) throw error;
 
