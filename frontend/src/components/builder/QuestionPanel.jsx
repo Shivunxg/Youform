@@ -865,10 +865,15 @@ function Toggle({ label, hint, checked, onChange }) {
         {hint && <p className="text-xs text-gray-400">{hint}</p>}
       </div>
       <button
+        role="switch"
+        aria-checked={checked}
         onClick={() => onChange(!checked)}
-        className={clsx('relative w-9 h-5 rounded-full transition-colors shrink-0', checked ? 'bg-brand-500' : 'bg-gray-200')}
+        className={clsx('relative w-10 h-6 rounded-full transition-colors duration-200 shrink-0 focus:outline-none', checked ? 'bg-brand-500' : 'bg-gray-200')}
       >
-        <span className={clsx('absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform', checked ? 'translate-x-[18px]' : 'translate-x-0.5')} />
+        <span
+          className="absolute top-[3px] w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-transform duration-200"
+          style={{ transform: checked ? 'translateX(19px)' : 'translateX(3px)' }}
+        />
       </button>
     </div>
   );
