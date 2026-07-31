@@ -372,26 +372,17 @@ function GoogleSheetsManage({ integration, formId, onRefetch, onClose }) {
 }
 
 function GoogleSheetsPicker({ integration, formId, formTitle, onRefetch, onClose }) {
-  const [selectedId,   setSelectedId]   = useState('');
-  const [selectedName, setSelectedName] = useState('');
+  const [sheetUrl, setSheetUrl] = useState('');
   const [newTitle, setNewTitle] = useState(`${formTitle || 'Form'} Responses`);
 
-  const { data: sheetsData, isLoading, error } = useQuery({
-    queryKey: ['gs-sheets-list', formId],
-    queryFn:  () => api.integrations.googleSheets.listSheets(formId),
-    staleTime: 60_000,
-    retry: 1,
-  });
-
-  const sheets = sheetsData?.sheets ?? [];
-
-  const selectMutation = useMutation({
-    mutationFn: () => api.integrations.update(formId, integration.id, {
-      config:  { ...integration.config, spreadsheetId: selectedId, spreadsheetName: selectedName, sheetName: 'Sheet1' },
-      enabled: true,
-    }),
-    onSuccess: () => { toast.success('Sheet connected!'); onRefetch(); onClose(); },
-    onError:   (e) => toast.error(e.message),
+  const connectMutation = useMutation({
+    mutationFn: () => api.integrations.googleSheets.connectByUrl(formId, { url: sheetUrl }),
+    onSuccess: (data) => {
+      toast.success(`Connected to "${data.spreadsheetName}"!`);
+      onRefetch();
+      onClose();
+    },
+    onError: (e) => toast.error(e.message || 'Could not connect — check the URL and ensure the sheet is accessible.'),
   });
 
   const createMutation = useMutation({
@@ -400,79 +391,43 @@ function GoogleSheetsPicker({ integration, formId, formTitle, onRefetch, onClose
     onError:    (e) => toast.error(e.message),
   });
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
-        <RefreshCw className="w-4 h-4 animate-spin" /> Loading your Google Sheets…
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="space-y-3">
-        <p className="text-sm text-red-600 font-medium">
-          Could not load your sheets. Your Google session may have expired.
-        </p>
-        <button
-          onClick={async () => {
-            try {
-              const { url } = await api.integrations.googleOAuthStart(formId, integration?.id);
-              window.location.href = url;
-            } catch {
-              toast.error('Could not reconnect Google. Try again.');
-            }
-          }}
-          className="btn btn-primary text-xs"
-        >
-          Reconnect Google account
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-5">
-      {sheets.length > 0 && (
-        <div>
-          <label className="block text-xs font-bold text-[#111] mb-2" style={SG}>
-            Choose an existing sheet
-          </label>
-          <select
-            value={selectedId}
-            onChange={e => {
-              const s = sheets.find(x => x.id === e.target.value);
-              setSelectedId(e.target.value);
-              setSelectedName(s?.name ?? '');
-            }}
-            className="input mb-2"
-          >
-            <option value="">— Select a sheet —</option>
-            {sheets.map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
-          <button
-            onClick={() => selectMutation.mutate()}
-            disabled={!selectedId || selectMutation.isPending}
-            className="btn btn-primary text-xs"
-          >
-            {selectMutation.isPending ? 'Connecting…' : 'Use this sheet'}
-          </button>
-        </div>
-      )}
-
-      {sheets.length > 0 && (
-        <div className="flex items-center gap-3">
-          <div className="flex-1 border-t-2 border-[#111]" />
-          <span className="text-xs font-bold text-gray-400">OR</span>
-          <div className="flex-1 border-t-2 border-[#111]" />
-        </div>
-      )}
-
+      {/* Option 1: paste existing sheet URL */}
       <div>
         <label className="block text-xs font-bold text-[#111] mb-2" style={SG}>
-          {sheets.length === 0 ? 'Create a Google Sheet' : 'Create a new sheet'}
+          Connect an existing Google Sheet
+        </label>
+        <div className="flex gap-2">
+          <input
+            value={sheetUrl}
+            onChange={e => setSheetUrl(e.target.value)}
+            placeholder="https://docs.google.com/spreadsheets/d/..."
+            className="input flex-1 text-xs"
+          />
+          <button
+            onClick={() => connectMutation.mutate()}
+            disabled={!sheetUrl.trim() || connectMutation.isPending}
+            className="btn btn-primary text-xs shrink-0"
+          >
+            {connectMutation.isPending ? 'Connecting…' : 'Connect'}
+          </button>
+        </div>
+        <p className="text-[11px] text-gray-400 mt-1.5">
+          Open any Google Sheet → copy the URL from the address bar → paste above.
+        </p>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <div className="flex-1 border-t-2 border-[#111]" />
+        <span className="text-xs font-bold text-gray-400">OR</span>
+        <div className="flex-1 border-t-2 border-[#111]" />
+      </div>
+
+      {/* Option 2: create new sheet */}
+      <div>
+        <label className="block text-xs font-bold text-[#111] mb-2" style={SG}>
+          Create a new Google Sheet
         </label>
         <div className="flex gap-2">
           <input
@@ -491,7 +446,7 @@ function GoogleSheetsPicker({ integration, formId, formTitle, onRefetch, onClose
           </button>
         </div>
         <p className="text-[11px] text-gray-400 mt-1.5">
-          A new spreadsheet will be created in your Google Drive.
+          A new spreadsheet will be created in your Google Drive automatically.
         </p>
       </div>
     </div>

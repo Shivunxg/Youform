@@ -125,8 +125,9 @@ export const api = {
     googleOAuthStart: (formId, integrationId) =>
       post('/oauth/google/start', { formId, integrationId: integrationId || null }),
     googleSheets: {
-      listSheets:  (fid)       => get(`/forms/${fid}/integrations/google-sheets/sheets`),
-      createSheet: (fid, body) => post(`/forms/${fid}/integrations/google-sheets/create-sheet`, body),
+      listSheets:    (fid)       => get(`/forms/${fid}/integrations/google-sheets/sheets`),
+      createSheet:   (fid, body) => post(`/forms/${fid}/integrations/google-sheets/create-sheet`, body),
+      connectByUrl:  (fid, body) => post(`/forms/${fid}/integrations/google-sheets/connect-by-url`, body),
     },
   },
 
@@ -189,5 +190,10 @@ export const api = {
       if (!res.ok) throw Object.assign(new Error(data.message || 'Upload failed'), { code: data.error });
       return data;
     },
+  },
+
+  account: {
+    export: () => get('/account/export'),
+    delete: () => del('/account'),
   },
 };

@@ -20,9 +20,9 @@ const PLANS = [
     id: 'pro',
     name: 'Pro',
     tagline: 'Automation, branding, and team tools.',
-    monthly: 25,
-    yearly: 20,
-    yearlySuffix: '$240 billed annually',
+    monthly: 15,
+    yearly: 12,
+    yearlySuffix: '$144 billed annually',
     cta: 'Get Pro',
     ctaLink: '/signup?plan=pro',
     accent: '#f97316',
@@ -32,9 +32,9 @@ const PLANS = [
     id: 'business',
     name: 'Business',
     tagline: 'Scale, verify, and audit at team speed.',
-    monthly: 89,
-    yearly: 60,
-    yearlySuffix: '$720 billed annually',
+    monthly: 39,
+    yearly: 29,
+    yearlySuffix: '$348 billed annually',
     cta: 'Get Business',
     ctaLink: '/signup?plan=business',
     accent: '#7c3aed',
@@ -44,7 +44,7 @@ const PLANS = [
 
 // Usage limits shown in the cards
 const CARD_LIMITS = {
-  free:     ['500 responses / mo', '1 team member', '100 MB storage', '10 MB uploads'],
+  free:     ['100 responses / mo', '1 team member', '100 MB storage', '10 MB uploads'],
   pro:      ['5,000 responses / mo', '3 team members', '2 GB storage', 'Unlimited uploads'],
   business: ['25,000 responses / mo', '10 team members', '10 GB storage', 'Unlimited uploads'],
 };
@@ -93,7 +93,7 @@ const COMPARISON = [
     section: 'Integrations & automation',
     rows: [
       { label: 'Slack, Webhook, Zapier',           free: false, pro: true, business: true },
-      { label: 'HubSpot, Airtable, Mailchimp, Notion', free: false, pro: true, business: true },
+      { label: 'Slack, Webhook, Zapier, Notion', free: false, pro: true, business: true },
       { label: 'AI form generator',               free: false, pro: true, business: true },
       { label: 'AI block rewriter',               free: false, pro: true, business: true },
       { label: 'Import from Typeform & Google Forms', free: false, pro: true, business: true },
@@ -170,7 +170,7 @@ export default function PricingPage() {
               style={{ padding: '6px 16px', borderRadius: 999, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, transition: 'all .15s', background: yearly ? '#111' : 'transparent', color: yearly ? '#fff' : '#888' }}
             >
               Yearly
-              <span style={{ background: '#10b981', color: '#fff', fontSize: 10, fontWeight: 800, padding: '2px 7px', borderRadius: 999, letterSpacing: '0.04em' }}>SAVE 33%</span>
+              <span style={{ background: '#10b981', color: '#fff', fontSize: 10, fontWeight: 800, padding: '2px 7px', borderRadius: 999, letterSpacing: '0.04em' }}>SAVE 20%</span>
             </button>
           </div>
         </div>
