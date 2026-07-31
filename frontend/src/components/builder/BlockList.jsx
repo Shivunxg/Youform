@@ -124,8 +124,9 @@ export default function BlockList() {
 function BlockItem({ question, index, isTerminal }) {
   const { selectedQuestionId, selectQuestion, deleteQuestion, duplicateQuestion } = useBuilderStore();
   const isSelected = selectedQuestionId === question.id;
-  const meta = QUESTION_META[question.type] ?? { Icon: null, color: '#9CA3AF', label: question.type };
-  const { Icon, color } = meta;
+  const meta = QUESTION_META[question.type] ?? { Icon: null, label: question.type };
+  const { Icon } = meta;
+  const iconColor = isSelected ? '#f97316' : '#94a3b8';
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: question.id,
@@ -139,21 +140,19 @@ function BlockItem({ question, index, isTerminal }) {
       onClick={() => selectQuestion(question.id)}
       className={clsx(
         'group relative flex items-center gap-2 pl-3.5 pr-2 py-2 rounded-lg cursor-pointer transition-all',
-        isSelected
-          ? 'bg-brand-50 shadow-sm ring-1 ring-inset ring-brand-200'
-          : 'hover:bg-gray-50'
+        isSelected ? 'bg-brand-50' : 'hover:bg-gray-50'
       )}
     >
       <div
-        className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full transition-opacity"
-        style={{ backgroundColor: color, opacity: isSelected ? 1 : 0.35 }}
+        className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-sm transition-opacity"
+        style={{ backgroundColor: '#f97316', opacity: isSelected ? 1 : 0 }}
       />
 
       {!isTerminal ? (
         <div
           className="w-[18px] h-[18px] rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 transition-colors"
           style={{
-            background: isSelected ? color : '#F3F4F6',
+            background: isSelected ? '#f97316' : '#F3F4F6',
             color: isSelected ? '#fff' : '#9CA3AF',
           }}
         >
@@ -161,14 +160,14 @@ function BlockItem({ question, index, isTerminal }) {
         </div>
       ) : (
         <span className="w-[18px] flex items-center justify-center shrink-0">
-          {Icon && <Icon className="w-3 h-3" style={{ color }} />}
+          {Icon && <Icon className="w-3 h-3" style={{ color: iconColor }} />}
         </span>
       )}
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           {!isTerminal && Icon && (
-            <Icon className="w-3 h-3 shrink-0 opacity-50" style={{ color }} />
+            <Icon className="w-3 h-3 shrink-0" style={{ color: iconColor }} />
           )}
           <span className={clsx('text-xs font-medium truncate', question.title ? 'text-gray-800' : 'text-gray-400 italic')}>
             {question.title || 'Untitled'}
