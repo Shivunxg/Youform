@@ -218,7 +218,7 @@ function BlockPreview({ question, primary, questionColor, index, total }) {
   if (question.type === 'welcome_screen') {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-center">
-        <h1 className="text-2xl font-bold mb-3 leading-tight text-balance" style={{ color: qc }}>
+        <h1 className="text-2xl font-bold mb-3 leading-tight text-balance" style={{ color: qc, fontFamily: 'inherit' }}>
           {question.title || <span className="opacity-30 italic">Welcome title…</span>}
         </h1>
         {question.config?.description && (
@@ -243,7 +243,7 @@ function BlockPreview({ question, primary, questionColor, index, total }) {
         <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-4">
           <CheckCircle className="w-7 h-7 text-emerald-500" />
         </div>
-        <h2 className="text-2xl font-semibold mb-2 text-balance" style={{ color: qc }}>
+        <h2 className="text-2xl font-semibold mb-2 text-balance" style={{ color: qc, fontFamily: 'inherit' }}>
           {question.title || 'Thank you!'}
         </h2>
         <p className="text-sm opacity-60" style={{ color: qc }}>{question.config?.message ?? 'Your response has been recorded.'}</p>
@@ -256,7 +256,7 @@ function BlockPreview({ question, primary, questionColor, index, total }) {
       {total > 0 && index >= 0 && (
         <p className="text-xs opacity-40 mb-2" style={{ color: qc }}>{index + 1} / {total}</p>
       )}
-      <h2 className="text-xl font-semibold mb-1 leading-snug text-balance" style={{ color: qc }}>
+      <h2 className="text-xl font-semibold mb-1 leading-snug text-balance" style={{ color: qc, fontFamily: 'inherit' }}>
         {question.title || <span className="opacity-30 italic">Question text…</span>}
         {question.required && <span className="text-red-400 ml-1">*</span>}
       </h2>
