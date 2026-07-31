@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 export default function SignupPage() {
@@ -7,10 +7,12 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const { signUp } = useAuthStore();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get('redirect') || '/dashboard';
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
   const handleSubmit = async (e) => {
     e.preventDefault(); setLoading(true);
-    try { await signUp({ email: form.email, password: form.password, fullName: form.fullName }); toast.success('Account created!'); navigate('/dashboard'); }
+    try { await signUp({ email: form.email, password: form.password, fullName: form.fullName }); toast.success('Account created!'); navigate(redirect); }
     catch (err) { toast.error(err.message); }
     finally { setLoading(false); }
   };

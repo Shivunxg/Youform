@@ -19,6 +19,7 @@ import TypeformImportPage   from '@/pages/TypeformImportPage';
 import PublicFormPage  from '@/pages/PublicFormPage';
 import PricingPage     from '@/pages/PricingPage';
 import AccountSettings from '@/pages/AccountSettings';
+import InvitePage      from '@/pages/InvitePage';
 
 import SettingsLayout       from '@/pages/settings/SettingsLayout';
 import OrganizationSettings from '@/pages/settings/OrganizationSettings';
@@ -88,7 +89,8 @@ export default function App() {
       <Route path="/login"   element={<LoginPage />} />
       <Route path="/signup"  element={<SignupPage />} />
       <Route path="/pricing" element={<PricingPage />} />
-      <Route path="/f/:slug" element={<PublicFormPage />} />
+      <Route path="/f/:slug"      element={<PublicFormPage />} />
+      <Route path="/invite/:token" element={<InvitePage />} />
 
       {/* App */}
       <Route path="/" element={<RequireAuth><Navigate to="/dashboard" replace /></RequireAuth>} />

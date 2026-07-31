@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 export default function LoginPage() {
@@ -8,9 +8,11 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { signIn, signInWithGoogle } = useAuthStore();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get('redirect') || '/dashboard';
   const handleSubmit = async (e) => {
     e.preventDefault(); setLoading(true);
-    try { await signIn({ email, password }); navigate('/dashboard'); }
+    try { await signIn({ email, password }); navigate(redirect); }
     catch (err) { toast.error(err.message); }
     finally { setLoading(false); }
   };
