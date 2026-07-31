@@ -5,7 +5,7 @@ import { supabaseAdmin } from './supabase.js';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const GLOBAL_FROM_NAME  = process.env.EMAIL_FROM_NAME ?? 'FormFlow';
-const GLOBAL_FROM_EMAIL = process.env.EMAIL_FROM       ?? 'noreply@formflow.io';
+const GLOBAL_FROM_EMAIL = process.env.EMAIL_FROM       ?? 'noreply@formflowx.com';
 
 // Fetch workspace SMTP config from DB (returns null if not configured)
 async function getSmtpConfig(workspaceId) {
