@@ -53,6 +53,8 @@
     { "src": "/features/logic.html", "dest": "/frontend/feature-logic.html" },
     { "src": "/features/multi-step", "dest": "/frontend/feature-multi-step.html" },
     { "src": "/features/multi-step.html", "dest": "/frontend/feature-multi-step.html" },
+    { "src": "/templates", "dest": "/frontend/templates.html" },
+    { "src": "/templates.html", "dest": "/frontend/templates.html" },
     { "src": "/templates/contact-form", "dest": "/frontend/template-contact-form.html" },
     { "src": "/templates/contact-form.html", "dest": "/frontend/template-contact-form.html" },
     { "src": "/templates/client-intake", "dest": "/frontend/template-client-intake.html" },
