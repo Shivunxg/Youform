@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, Minus, Zap } from 'lucide-react';
+import SEO from '@/components/SEO';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -120,6 +121,8 @@ export default function PricingPage() {
   const [yearly, setYearly] = useState(true);
 
   return (
+    <>
+    <SEO title="Pricing — Free, Pro & Business Plans" description="FormFlowX pricing: Free forever with 100 responses/month, Pro at $15/mo, Business at $39/mo. No hidden fees. Cancel anytime." canonical="/pricing" />
     <div style={{ backgroundColor: '#FFFBF2', minHeight: '100vh', fontFamily: 'system-ui, sans-serif' }}>
 
       {/* ── Nav ── */}
@@ -345,6 +348,7 @@ export default function PricingPage() {
         </p>
       </div>
     </div>
+    </>
   );
 }
 

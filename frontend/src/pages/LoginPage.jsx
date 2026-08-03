@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
+import SEO from '@/components/SEO';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,6 +18,8 @@ export default function LoginPage() {
     finally { setLoading(false); }
   };
   return (
+    <>
+    <SEO title="Sign In" description="Sign in to your FormFlowX account to manage your forms, view responses, and more." canonical="/login" noindex />
     <div className="min-h-screen bg-paper flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
@@ -40,5 +43,6 @@ export default function LoginPage() {
         <p className="text-center mt-3"><a href="/" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">← Back to homepage</a></p>
       </div>
     </div>
+    </>
   );
 }

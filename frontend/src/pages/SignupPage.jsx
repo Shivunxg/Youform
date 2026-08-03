@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
+import SEO from '@/components/SEO';
 export default function SignupPage() {
   const [form, setForm] = useState({ fullName: '', email: '', password: '' });
   const [loading, setLoading] = useState(false);
@@ -17,6 +18,8 @@ export default function SignupPage() {
     finally { setLoading(false); }
   };
   return (
+    <>
+    <SEO title="Create Free Account" description="Sign up for FormFlowX free. Build beautiful forms, collect responses, and integrate with your favourite tools — no credit card required." canonical="/signup" noindex />
     <div className="min-h-screen bg-paper flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
@@ -39,5 +42,6 @@ export default function SignupPage() {
         <p className="text-center mt-3"><a href="/" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">← Back to homepage</a></p>
       </div>
     </div>
+    </>
   );
 }

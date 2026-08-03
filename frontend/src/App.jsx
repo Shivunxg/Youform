@@ -35,6 +35,7 @@ import AdminDashboard        from '@/pages/admin/AdminDashboard';
 import AdminUsers            from '@/pages/admin/AdminUsers';
 import AdminWorkspaces       from '@/pages/admin/AdminWorkspaces';
 import AdminWorkspaceDetail  from '@/pages/admin/AdminWorkspaceDetail';
+import NotFoundPage          from '@/pages/NotFoundPage';
 
 function Spinner() {
   return (
@@ -127,7 +128,7 @@ export default function App() {
         <Route path="workspaces/:workspaceId" element={<AdminWorkspaceDetail />} />
       </Route>
 
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }
