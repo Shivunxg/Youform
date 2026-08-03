@@ -45,6 +45,8 @@
     { "src": "/vs/google-forms.html", "dest": "/frontend/vs-google-forms.html" },
     { "src": "/vs/tally", "dest": "/frontend/vs-tally.html" },
     { "src": "/vs/tally.html", "dest": "/frontend/vs-tally.html" },
+    { "src": "/vs/web3forms", "dest": "/frontend/vs-web3forms.html" },
+    { "src": "/vs/web3forms.html", "dest": "/frontend/vs-web3forms.html" },
     { "src": "/features", "dest": "/frontend/features.html" },
     { "src": "/features.html", "dest": "/frontend/features.html" },
     { "src": "/features/ai-builder", "dest": "/frontend/feature-ai-builder.html" },
