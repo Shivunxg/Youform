@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, ClipboardList, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, ClipboardList, CheckCircle2, XCircle, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -30,6 +30,8 @@ interface Row {
   momNotes: string | null;
   estimateAmount: number | null;
   estimateNotes: string | null;
+  estimateDocumentUrl: string | null;
+  estimateDocumentName: string | null;
   createdAt: string;
 }
 
@@ -45,6 +47,16 @@ interface ComponentOption {
 }
 
 const priorityVariant = { low: "default", medium: "accent", high: "warning", critical: "danger" } as const;
+
+function fmtDateTime(iso: string) {
+  return new Date(iso).toLocaleString(undefined, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 const STAGE_LABEL: Record<string, string> = {
   open: "Open",
@@ -107,7 +119,7 @@ export default function AEJobCardsPage() {
       supabase
         .from("job_cards")
         .select(
-          "id, job_card_number, component, issue_description, priority, status, assigned_engineer, mom_notes, estimate_amount, estimate_notes, created_at, equipment(name)"
+          "id, job_card_number, component, issue_description, priority, status, assigned_engineer, mom_notes, estimate_amount, estimate_notes, estimate_document_url, estimate_document_name, created_at, equipment(name)"
         )
         .eq("substation_id", profile.substation_id)
         .order("created_at", { ascending: false }),
@@ -132,6 +144,8 @@ export default function AEJobCardsPage() {
           momNotes: jc.mom_notes,
           estimateAmount: jc.estimate_amount,
           estimateNotes: jc.estimate_notes,
+          estimateDocumentUrl: jc.estimate_document_url,
+          estimateDocumentName: jc.estimate_document_name,
           createdAt: jc.created_at,
         }))
       );
@@ -207,7 +221,11 @@ export default function AEJobCardsPage() {
 
     await supabase
       .from("job_cards")
-      .update({ status: approvalDecision, approval_notes: approvalNotes || null })
+      .update({
+        status: approvalDecision,
+        approval_notes: approvalNotes || null,
+        [approvalDecision === "approved" ? "approved_at" : "rejected_at"]: new Date().toISOString(),
+      })
       .eq("id", approvalRow.id);
 
     await supabase.from("notifications").insert({
@@ -273,7 +291,7 @@ export default function AEJobCardsPage() {
                   <p className="text-sm text-foreground-secondary mt-1">{jc.issueDescription}</p>
                   <p className="text-xs text-slate-400 mt-1">
                     {jc.equipmentName}
-                    {jc.component ? ` · ${jc.component}` : ""} · {new Date(jc.createdAt).toLocaleDateString()}
+                    {jc.component ? ` · ${jc.component}` : ""} · {fmtDateTime(jc.createdAt)}
                   </p>
                   {jc.assignedEngineer && <p className="text-xs text-accent mt-1">Engineer: {jc.assignedEngineer}</p>}
                   {jc.momNotes && jc.status !== "open" && jc.status !== "assigned" && (
@@ -283,6 +301,16 @@ export default function AEJobCardsPage() {
                     <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
                       <p className="text-xs font-medium text-amber-800">Estimate: ₹{jc.estimateAmount ?? "—"}</p>
                       {jc.estimateNotes && <p className="text-xs text-amber-700 mt-0.5">{jc.estimateNotes}</p>}
+                      {jc.estimateDocumentUrl && (
+                        
+                          href={jc.estimateDocumentUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-accent hover:underline mt-1 inline-flex items-center gap-1"
+                        >
+                          <Paperclip className="h-3 w-3" /> {jc.estimateDocumentName ?? "View attachment"}
+                        </a>
+                      )}
                     </div>
                   )}
                 </div>
@@ -394,6 +422,16 @@ export default function AEJobCardsPage() {
             <div className="rounded-lg border border-border bg-background-secondary px-4 py-3">
               <p className="text-sm font-medium text-foreground">Estimate: ₹{approvalRow?.estimateAmount ?? "—"}</p>
               {approvalRow?.estimateNotes && <p className="text-sm text-foreground-secondary mt-1">{approvalRow.estimateNotes}</p>}
+              {approvalRow?.estimateDocumentUrl && (
+                
+                  href={approvalRow.estimateDocumentUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm text-accent hover:underline mt-2 inline-flex items-center gap-1.5"
+                >
+                  <Paperclip className="h-3.5 w-3.5" /> {approvalRow.estimateDocumentName ?? "View attachment"}
+                </a>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <button
