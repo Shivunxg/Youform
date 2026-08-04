@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { PageToolbar, EmptyState } from "@/components/data-table/toolbar";
+import { JobCardTimeline } from "@/components/job-cards/timeline";
 import { createClient } from "@/lib/supabase/client";
 
 interface Row {
@@ -120,6 +121,7 @@ export default function AEJobCardsPage() {
   const [approvalRow, setApprovalRow] = React.useState<Row | null>(null);
   const [approvalDecision, setApprovalDecision] = React.useState<"approved" | "rejected">("approved");
   const [approvalNotes, setApprovalNotes] = React.useState("");
+  const [detailsRow, setDetailsRow] = React.useState<Row | null>(null);
 
   const loadData = React.useCallback(async () => {
     setLoading(true);
@@ -348,7 +350,7 @@ export default function AEJobCardsPage() {
                   {jc.momNotes && jc.status !== "open" && jc.status !== "assigned" && (
                     <p className="text-xs text-foreground-secondary mt-1">Inspection notes: {jc.momNotes}</p>
                   )}
-                  {jc.status === "estimate_sent" && (
+                  {jc.estimateAmount != null && (
                     <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50/60 overflow-hidden">
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-2 px-3.5 py-3 text-xs">
                         <div>
@@ -363,8 +365,12 @@ export default function AEJobCardsPage() {
                         </div>
                         <div>
                           <p className="text-amber-700/70 font-medium">Status</p>
-                          <Badge variant="warning" dot className="mt-0.5">
-                            Needs your review
+                          <Badge
+                            variant={jc.status === "approved" || jc.status === "closed" ? "success" : jc.status === "rejected" ? "danger" : "warning"}
+                            dot
+                            className="mt-0.5"
+                          >
+                            {jc.status === "approved" ? "Approved" : jc.status === "rejected" ? "Rejected" : jc.status === "closed" ? "Approved & Closed" : "Needs your review"}
                           </Badge>
                         </div>
                         <div>
@@ -396,6 +402,12 @@ export default function AEJobCardsPage() {
                       {jc.estimateNotes && <p className="text-xs text-amber-800 px-3.5 pb-3 -mt-1">{jc.estimateNotes}</p>}
                     </div>
                   )}
+                  <button
+                    onClick={() => setDetailsRow(jc)}
+                    className="flex items-center gap-1 text-[11px] font-medium text-accent hover:underline mt-2"
+                  >
+                    <ClipboardList className="h-3 w-3" /> Job Card Details
+                  </button>
                 </div>
                 {jc.status === "estimate_sent" && (
                   <div className="flex flex-col gap-1.5 shrink-0">
@@ -586,6 +598,96 @@ export default function AEJobCardsPage() {
             </Button>
             <Button onClick={handleApprovalSubmit} disabled={saving}>
               {saving ? "Submitting…" : "Submit decision"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Job Card Details — full history */}
+      <Dialog open={!!detailsRow} onOpenChange={(open) => !open && setDetailsRow(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Job Card Details</DialogTitle>
+            <DialogDescription>{detailsRow?.jobCardNumber}</DialogDescription>
+          </DialogHeader>
+          <div className="px-6 py-5 space-y-5 max-h-[65vh] overflow-y-auto">
+            <div>
+              <p className="text-xs font-medium text-foreground-secondary">Issue reported</p>
+              <p className="text-sm text-foreground mt-1">{detailsRow?.issueDescription}</p>
+            </div>
+            {detailsRow?.momNotes && (
+              <div>
+                <p className="text-xs font-medium text-foreground-secondary">Inspection notes (MOM)</p>
+                <p className="text-sm text-foreground mt-1">{detailsRow.momNotes}</p>
+              </div>
+            )}
+            {detailsRow?.estimateAmount != null && (
+              <div>
+                <p className="text-xs font-medium text-foreground-secondary mb-1.5">Quote</p>
+                <div className="rounded-xl border border-amber-200 bg-amber-50/60 px-3.5 py-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">₹{detailsRow.estimateAmount?.toLocaleString()}</p>
+                    {detailsRow.estimateSentAt && (
+                      <p className="text-xs text-foreground-secondary flex items-center gap-1">
+                        <Clock className="h-3 w-3" /> {fmtDateTime(detailsRow.estimateSentAt)}
+                      </p>
+                    )}
+                  </div>
+                  {detailsRow.estimateNotes && <p className="text-xs text-amber-800 mt-1">{detailsRow.estimateNotes}</p>}
+                  {detailsRow.estimateDocumentUrl && (
+                    <div className="flex items-center gap-1.5 mt-2">
+                      <a
+                        href={detailsRow.estimateDocumentUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-accent px-2.5 py-1 text-xs font-medium hover:bg-blue-100 transition-colors"
+                      >
+                        <Eye className="h-3 w-3" /> View Quote
+                      </a>
+                      <a
+                        href={detailsRow.estimateDocumentUrl}
+                        download={detailsRow.estimateDocumentName ?? undefined}
+                        className="flex h-7 w-7 items-center justify-center rounded-full text-foreground-secondary hover:bg-hover transition-colors"
+                        title="Download"
+                      >
+                        <Download className="h-4 w-4" />
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            {(detailsRow?.status === "approved" || detailsRow?.status === "rejected" || detailsRow?.status === "closed") && (
+              <div>
+                <p className="text-xs font-medium text-foreground-secondary">Your decision</p>
+                <Badge variant={detailsRow?.status === "rejected" ? "danger" : "success"} dot className="mt-1 capitalize">
+                  {detailsRow?.status === "rejected" ? "Rejected" : "Approved"}
+                  {detailsRow?.status === "closed" ? " & Closed" : ""}
+                </Badge>
+              </div>
+            )}
+            <div>
+              <p className="text-xs font-medium text-foreground-secondary mb-1">Full timeline</p>
+              {detailsRow && (
+                <JobCardTimeline
+                  data={{
+                    createdAt: detailsRow.createdAt,
+                    assignedAt: detailsRow.assignedAt,
+                    inspectingAt: detailsRow.inspectingAt,
+                    momLoggedAt: detailsRow.momLoggedAt,
+                    estimateSentAt: detailsRow.estimateSentAt,
+                    approvedAt: detailsRow.approvedAt,
+                    rejectedAt: detailsRow.rejectedAt,
+                    closedAt: detailsRow.closedAt,
+                    status: detailsRow.status,
+                  }}
+                />
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setDetailsRow(null)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
