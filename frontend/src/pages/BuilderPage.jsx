@@ -83,6 +83,24 @@ export default function BuilderPage() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
+      {/* Mobile: desktop-only notice */}
+      <div className="md:hidden flex flex-col items-center justify-center h-screen bg-[#FFFBF2] px-6 text-center">
+        <div className="text-5xl mb-4">🖥️</div>
+        <h1 className="text-2xl font-bold text-[#111] mb-2" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+          Form builder requires a desktop
+        </h1>
+        <p className="text-gray-500 text-sm mb-6 max-w-xs">
+          The form editor needs more screen space. Please open FormFlowX on a laptop or desktop to build and edit forms.
+        </p>
+        <a href="/dashboard"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border-2 border-[#111] text-sm font-bold text-[#111] bg-[#C3F53B] transition-all"
+          style={{ boxShadow: '3px 3px 0 #111', fontFamily: 'Space Grotesk, sans-serif' }}>
+          ← Back to dashboard
+        </a>
+      </div>
+
+      {/* Desktop builder */}
+      <div className="hidden md:flex flex-col flex-1 overflow-hidden">
       {/* Shared form header with tabs */}
       <FormHeader isBuilder />
 
@@ -116,6 +134,7 @@ export default function BuilderPage() {
 
       {/* Preview modal overlay — rendered on top of builder */}
       {previewMode && <FormPreview />}
+      </div>{/* end desktop wrapper */}
     </div>
   );
 }
