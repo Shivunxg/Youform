@@ -122,6 +122,37 @@ export default function AdminJobCardsPage() {
   const [saving, setSaving] = React.useState(false);
   const [uploadError, setUploadError] = React.useState<string | null>(null);
   const [detailsRow, setDetailsRow] = React.useState<Row | null>(null);
+  const [estimateHistory, setEstimateHistory] = React.useState<
+    { id: string; round: number; amount: number | null; notes: string | null; documentUrl: string | null; documentName: string | null; sentAt: string; decision: string; decisionAt: string | null; decisionNotes: string | null }[]
+  >([]);
+
+  React.useEffect(() => {
+    if (!detailsRow) {
+      setEstimateHistory([]);
+      return;
+    }
+    (async () => {
+      const { data } = await supabase
+        .from("job_card_estimates")
+        .select("id, round, amount, notes, document_url, document_name, sent_at, decision, decision_at, decision_notes")
+        .eq("job_card_id", detailsRow.id)
+        .order("round", { ascending: true });
+      setEstimateHistory(
+        (data ?? []).map((e) => ({
+          id: e.id,
+          round: e.round,
+          amount: e.amount,
+          notes: e.notes,
+          documentUrl: e.document_url,
+          documentName: e.document_name,
+          sentAt: e.sent_at,
+          decision: e.decision,
+          decisionAt: e.decision_at,
+          decisionNotes: e.decision_notes,
+        }))
+      );
+    })();
+  }, [detailsRow, supabase]);
 
   const loadData = React.useCallback(async () => {
     setLoading(true);
@@ -212,6 +243,21 @@ export default function AdminJobCardsPage() {
     }
 
     await supabase.from("job_cards").update(update).eq("id", manageRow.id);
+
+    if (pendingAction.nextStatus === "estimate_sent") {
+      const { count } = await supabase
+        .from("job_card_estimates")
+        .select("id", { count: "exact", head: true })
+        .eq("job_card_id", manageRow.id);
+      await supabase.from("job_card_estimates").insert({
+        job_card_id: manageRow.id,
+        round: (count ?? 0) + 1,
+        amount: update.estimate_amount,
+        notes: estimateNotes,
+        document_url: update.estimate_document_url ?? null,
+        document_name: update.estimate_document_name ?? null,
+      });
+    }
 
     let notifTitle = "Job Card Updated";
     let notifDesc = `${manageRow.jobCardNumber} is now ${STAGE_LABEL[pendingAction.nextStatus]}`;
@@ -487,56 +533,60 @@ export default function AdminJobCardsPage() {
                 <p className="text-sm text-foreground mt-1">{detailsRow.momNotes}</p>
               </div>
             )}
-            {detailsRow?.estimateAmount != null && (
+            {estimateHistory.length > 0 && (
               <div>
-                <p className="text-xs font-medium text-foreground-secondary mb-1.5">Quote</p>
-                <div className="rounded-2xl border border-blue-100 bg-blue-50/40 px-3.5 py-3 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-foreground">₹{detailsRow.estimateAmount?.toLocaleString()}</p>
-                    {detailsRow.estimateSentAt && (
-                      <p className="text-xs text-foreground-secondary flex items-center gap-1">
-                        <Clock className="h-3 w-3" /> {fmtDateTime(detailsRow.estimateSentAt)}
-                      </p>
-                    )}
-                  </div>
-                  {detailsRow.estimateNotes && <p className="text-xs text-foreground-secondary mt-1">{detailsRow.estimateNotes}</p>}
-                  {detailsRow.estimateDocumentUrl && (
-                    <div className="flex items-center gap-1.5 mt-2">
-                      <a
-                        href={detailsRow.estimateDocumentUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-accent px-2.5 py-1 text-xs font-medium hover:bg-blue-100 transition-colors"
-                      >
-                        <Eye className="h-3 w-3" /> View Quote
-                      </a>
-                      <a
-                        href={detailsRow.estimateDocumentUrl}
-                        download={detailsRow.estimateDocumentName ?? undefined}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex h-7 w-7 items-center justify-center rounded-full text-foreground-secondary hover:bg-hover transition-colors"
-                        title="Download"
-                      >
-                        <Download className="h-4 w-4" />
-                      </a>
+                <p className="text-xs font-medium text-foreground-secondary mb-1.5">Quote History</p>
+                <div className="space-y-2">
+                  {estimateHistory.map((est) => (
+                    <div key={est.id} className="rounded-2xl border border-blue-100 bg-blue-50/40 px-3.5 py-3 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold text-accent">Round {est.round}</p>
+                        <Badge
+                          variant={est.decision === "approved" ? "success" : est.decision === "rejected" ? "danger" : "warning"}
+                          dot
+                        >
+                          {est.decision === "pending" ? "Awaiting AE" : est.decision === "approved" ? "Approved" : "Rejected"}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between mt-1.5">
+                        <p className="text-sm font-semibold text-foreground">₹{est.amount?.toLocaleString() ?? "—"}</p>
+                        <p className="text-xs text-foreground-secondary flex items-center gap-1">
+                          <Clock className="h-3 w-3" /> Sent {fmtDateTime(est.sentAt)}
+                        </p>
+                      </div>
+                      {est.notes && <p className="text-xs text-foreground-secondary mt-1">{est.notes}</p>}
+                      {est.documentUrl && (
+                        <div className="flex items-center gap-1.5 mt-2">
+                          <a
+                            href={est.documentUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-accent px-2.5 py-1 text-xs font-medium hover:bg-blue-100 transition-colors"
+                          >
+                            <Eye className="h-3 w-3" /> View Quote
+                          </a>
+                          <a
+                            href={est.documentUrl}
+                            download={est.documentName ?? undefined}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex h-7 w-7 items-center justify-center rounded-full text-foreground-secondary hover:bg-hover transition-colors"
+                            title="Download"
+                          >
+                            <Download className="h-4 w-4" />
+                          </a>
+                        </div>
+                      )}
+                      {est.decisionAt && (
+                        <p className="text-xs text-foreground-secondary mt-2 pt-2 border-t border-blue-100/70 flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {est.decision === "approved" ? "Approved" : "Rejected"} on {fmtDateTime(est.decisionAt)}
+                        </p>
+                      )}
+                      {est.decisionNotes && <p className="text-xs text-foreground-secondary mt-1">AE remarks: {est.decisionNotes}</p>}
                     </div>
-                  )}
+                  ))}
                 </div>
-              </div>
-            )}
-            {(detailsRow?.status === "approved" || detailsRow?.status === "rejected" || detailsRow?.status === "closed") && (
-              <div>
-                <p className="text-xs font-medium text-foreground-secondary">AE decision</p>
-                <Badge
-                  variant={detailsRow?.status === "rejected" ? "danger" : "success"}
-                  dot
-                  className="mt-1 capitalize"
-                >
-                  {detailsRow?.status === "rejected" ? "Rejected" : "Approved"}
-                  {detailsRow?.status === "closed" ? " & Closed" : ""}
-                </Badge>
-                {detailsRow?.approvalNotes && <p className="text-sm text-foreground-secondary mt-1.5">{detailsRow.approvalNotes}</p>}
               </div>
             )}
             <div>
