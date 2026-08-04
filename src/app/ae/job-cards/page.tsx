@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, ClipboardList } from "lucide-react";
+import { Plus, ClipboardList, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -26,6 +26,10 @@ interface Row {
   issueDescription: string;
   priority: string;
   status: string;
+  assignedEngineer: string | null;
+  momNotes: string | null;
+  estimateAmount: number | null;
+  estimateNotes: string | null;
   createdAt: string;
 }
 
@@ -41,7 +45,32 @@ interface ComponentOption {
 }
 
 const priorityVariant = { low: "default", medium: "accent", high: "warning", critical: "danger" } as const;
-const statusVariant = { open: "danger", in_progress: "warning", resolved: "success", closed: "default" } as const;
+
+const STAGE_LABEL: Record<string, string> = {
+  open: "Open",
+  assigned: "Assigned",
+  inspecting: "Inspecting",
+  mom_logged: "MOM Logged",
+  estimate_sent: "Estimate Sent",
+  approved: "Approved",
+  rejected: "Rejected",
+  closed: "Closed",
+  in_progress: "In Progress",
+  resolved: "Resolved",
+};
+
+const STAGE_VARIANT: Record<string, "default" | "accent" | "warning" | "danger" | "success"> = {
+  open: "danger",
+  assigned: "accent",
+  inspecting: "accent",
+  mom_logged: "accent",
+  estimate_sent: "warning",
+  approved: "success",
+  rejected: "danger",
+  closed: "default",
+  in_progress: "warning",
+  resolved: "success",
+};
 
 const emptyForm = { equipmentId: "", componentId: "", issueDescription: "", priority: "medium" };
 
@@ -57,6 +86,9 @@ export default function AEJobCardsPage() {
   const [form, setForm] = React.useState(emptyForm);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [approvalRow, setApprovalRow] = React.useState<Row | null>(null);
+  const [approvalDecision, setApprovalDecision] = React.useState<"approved" | "rejected">("approved");
+  const [approvalNotes, setApprovalNotes] = React.useState("");
 
   const loadData = React.useCallback(async () => {
     setLoading(true);
@@ -74,7 +106,9 @@ export default function AEJobCardsPage() {
     const [{ data }, { data: equipmentRows }, { data: componentRows }] = await Promise.all([
       supabase
         .from("job_cards")
-        .select("id, job_card_number, component, issue_description, priority, status, created_at, equipment(name)")
+        .select(
+          "id, job_card_number, component, issue_description, priority, status, assigned_engineer, mom_notes, estimate_amount, estimate_notes, created_at, equipment(name)"
+        )
         .eq("substation_id", profile.substation_id)
         .order("created_at", { ascending: false }),
       supabase.from("equipment").select("id, name").eq("substation_id", profile.substation_id).order("name"),
@@ -94,6 +128,10 @@ export default function AEJobCardsPage() {
           issueDescription: jc.issue_description,
           priority: jc.priority,
           status: jc.status,
+          assignedEngineer: jc.assigned_engineer,
+          momNotes: jc.mom_notes,
+          estimateAmount: jc.estimate_amount,
+          estimateNotes: jc.estimate_notes,
           createdAt: jc.created_at,
         }))
       );
@@ -157,6 +195,34 @@ export default function AEJobCardsPage() {
     loadData();
   }
 
+  function openApproval(row: Row) {
+    setApprovalRow(row);
+    setApprovalDecision("approved");
+    setApprovalNotes("");
+  }
+
+  async function handleApprovalSubmit() {
+    if (!approvalRow || !substationId) return;
+    setSaving(true);
+
+    await supabase
+      .from("job_cards")
+      .update({ status: approvalDecision, approval_notes: approvalNotes || null })
+      .eq("id", approvalRow.id);
+
+    await supabase.from("notifications").insert({
+      title: approvalDecision === "approved" ? "Estimate Approved" : "Estimate Rejected",
+      description: `${approvalRow.jobCardNumber} was ${approvalDecision} by the Assistant Engineer`,
+      type: "job_card",
+      target_role: "spectrum_admin",
+      substation_id: substationId,
+    });
+
+    setSaving(false);
+    setApprovalRow(null);
+    loadData();
+  }
+
   const relevantComponents = componentOptions.filter((c) => c.equipmentId === form.equipmentId);
 
   return (
@@ -200,8 +266,8 @@ export default function AEJobCardsPage() {
                     <Badge variant={priorityVariant[jc.priority as keyof typeof priorityVariant]} className="capitalize">
                       {jc.priority}
                     </Badge>
-                    <Badge variant={statusVariant[jc.status as keyof typeof statusVariant]} dot className="capitalize">
-                      {jc.status.replace("_", " ")}
+                    <Badge variant={STAGE_VARIANT[jc.status] ?? "default"} dot>
+                      {STAGE_LABEL[jc.status] ?? jc.status}
                     </Badge>
                   </div>
                   <p className="text-sm text-foreground-secondary mt-1">{jc.issueDescription}</p>
@@ -209,13 +275,31 @@ export default function AEJobCardsPage() {
                     {jc.equipmentName}
                     {jc.component ? ` · ${jc.component}` : ""} · {new Date(jc.createdAt).toLocaleDateString()}
                   </p>
+                  {jc.assignedEngineer && <p className="text-xs text-accent mt-1">Engineer: {jc.assignedEngineer}</p>}
+                  {jc.momNotes && jc.status !== "open" && jc.status !== "assigned" && (
+                    <p className="text-xs text-foreground-secondary mt-1">Inspection notes: {jc.momNotes}</p>
+                  )}
+                  {jc.status === "estimate_sent" && (
+                    <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                      <p className="text-xs font-medium text-amber-800">Estimate: ₹{jc.estimateAmount ?? "—"}</p>
+                      {jc.estimateNotes && <p className="text-xs text-amber-700 mt-0.5">{jc.estimateNotes}</p>}
+                    </div>
+                  )}
                 </div>
+                {jc.status === "estimate_sent" && (
+                  <div className="flex flex-col gap-1.5 shrink-0">
+                    <Button size="sm" onClick={() => openApproval(jc)}>
+                      Review Estimate
+                    </Button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
         )}
       </Card>
 
+      {/* Raise job card */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -294,6 +378,59 @@ export default function AEJobCardsPage() {
             </Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving ? "Submitting…" : "Raise job card"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Review estimate */}
+      <Dialog open={!!approvalRow} onOpenChange={(open) => !open && setApprovalRow(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Review Estimate</DialogTitle>
+            <DialogDescription>{approvalRow?.jobCardNumber}</DialogDescription>
+          </DialogHeader>
+          <div className="px-6 py-5 space-y-4">
+            <div className="rounded-lg border border-border bg-background-secondary px-4 py-3">
+              <p className="text-sm font-medium text-foreground">Estimate: ₹{approvalRow?.estimateAmount ?? "—"}</p>
+              {approvalRow?.estimateNotes && <p className="text-sm text-foreground-secondary mt-1">{approvalRow.estimateNotes}</p>}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setApprovalDecision("approved")}
+                className={`flex items-center justify-center gap-2 rounded-[10px] border-2 py-2.5 text-sm font-medium transition-colors ${
+                  approvalDecision === "approved" ? "border-success bg-green-50 text-success" : "border-border text-foreground-secondary"
+                }`}
+              >
+                <CheckCircle2 className="h-4 w-4" /> Approve
+              </button>
+              <button
+                onClick={() => setApprovalDecision("rejected")}
+                className={`flex items-center justify-center gap-2 rounded-[10px] border-2 py-2.5 text-sm font-medium transition-colors ${
+                  approvalDecision === "rejected" ? "border-danger bg-red-50 text-danger" : "border-border text-foreground-secondary"
+                }`}
+              >
+                <XCircle className="h-4 w-4" /> Reject
+              </button>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="approvalnotes">Remarks (optional)</Label>
+              <textarea
+                id="approvalnotes"
+                value={approvalNotes}
+                onChange={(e) => setApprovalNotes(e.target.value)}
+                rows={3}
+                placeholder="Any comments for the Admin…"
+                className="flex w-full rounded-[10px] border border-border bg-white px-3.5 py-2 text-sm text-foreground placeholder:text-slate-400 shadow-[0_1px_2px_rgba(15,23,42,0.03)] focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent resize-none"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setApprovalRow(null)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button onClick={handleApprovalSubmit} disabled={saving}>
+              {saving ? "Submitting…" : "Submit decision"}
             </Button>
           </DialogFooter>
         </DialogContent>
