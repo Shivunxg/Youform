@@ -1,10 +1,20 @@
 "use client";
 
 import * as React from "react";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, UserCog } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { PageToolbar, EmptyState } from "@/components/data-table/toolbar";
 import { createClient } from "@/lib/supabase/client";
 
@@ -12,31 +22,80 @@ interface Row {
   id: string;
   jobCardNumber: string;
   substationName: string;
+  substationId: string;
   equipmentName: string;
   component: string | null;
   issueDescription: string;
   priority: string;
   status: string;
   raisedBy: string;
+  assignedEngineer: string | null;
+  momNotes: string | null;
+  estimateAmount: number | null;
+  estimateNotes: string | null;
+  approvalNotes: string | null;
   createdAt: string;
 }
 
 const priorityVariant = { low: "default", medium: "accent", high: "warning", critical: "danger" } as const;
-const statusVariant = { open: "danger", in_progress: "warning", resolved: "success", closed: "default" } as const;
+
+const STAGE_LABEL: Record<string, string> = {
+  open: "Open",
+  assigned: "Assigned",
+  inspecting: "Inspecting",
+  mom_logged: "MOM Logged",
+  estimate_sent: "Estimate Sent",
+  approved: "Approved",
+  rejected: "Rejected",
+  closed: "Closed",
+  in_progress: "In Progress",
+  resolved: "Resolved",
+};
+
+const STAGE_VARIANT: Record<string, "default" | "accent" | "warning" | "danger" | "success"> = {
+  open: "danger",
+  assigned: "accent",
+  inspecting: "accent",
+  mom_logged: "accent",
+  estimate_sent: "warning",
+  approved: "success",
+  rejected: "danger",
+  closed: "default",
+  in_progress: "warning",
+  resolved: "success",
+};
+
+// what the Admin can do next, given the current stage
+const NEXT_ACTIONS: Record<string, { label: string; nextStatus: string }[]> = {
+  open: [{ label: "Assign Engineer", nextStatus: "assigned" }],
+  assigned: [{ label: "Mark Inspecting", nextStatus: "inspecting" }],
+  inspecting: [{ label: "Log MOM", nextStatus: "mom_logged" }],
+  mom_logged: [{ label: "Send Estimate", nextStatus: "estimate_sent" }],
+  estimate_sent: [], // waiting on AE approval
+  approved: [{ label: "Close Job Card", nextStatus: "closed" }],
+  rejected: [{ label: "Re-send Estimate", nextStatus: "estimate_sent" }],
+  closed: [],
+};
 
 export default function AdminJobCardsPage() {
   const supabase = React.useMemo(() => createClient(), []);
   const [rows, setRows] = React.useState<Row[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [search, setSearch] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState("all");
+  const [manageRow, setManageRow] = React.useState<Row | null>(null);
+  const [pendingAction, setPendingAction] = React.useState<{ label: string; nextStatus: string } | null>(null);
+  const [assignedEngineer, setAssignedEngineer] = React.useState("");
+  const [momNotes, setMomNotes] = React.useState("");
+  const [estimateAmount, setEstimateAmount] = React.useState("");
+  const [estimateNotes, setEstimateNotes] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
 
   const loadData = React.useCallback(async () => {
     setLoading(true);
     const { data } = await supabase
       .from("job_cards")
       .select(
-        "id, job_card_number, component, issue_description, priority, status, created_at, substations(name), equipment(name), profiles(name)"
+        "id, job_card_number, component, issue_description, priority, status, assigned_engineer, mom_notes, estimate_amount, estimate_notes, approval_notes, created_at, substations(id, name), equipment(name), profiles(name)"
       )
       .order("created_at", { ascending: false });
 
@@ -45,12 +104,18 @@ export default function AdminJobCardsPage() {
         id: jc.id,
         jobCardNumber: jc.job_card_number,
         substationName: (jc.substations as unknown as { name: string } | null)?.name ?? "—",
+        substationId: (jc.substations as unknown as { id: string } | null)?.id ?? "",
         equipmentName: (jc.equipment as unknown as { name: string } | null)?.name ?? "—",
         component: jc.component,
         issueDescription: jc.issue_description,
         priority: jc.priority,
         status: jc.status,
         raisedBy: (jc.profiles as unknown as { name: string } | null)?.name ?? "—",
+        assignedEngineer: jc.assigned_engineer,
+        momNotes: jc.mom_notes,
+        estimateAmount: jc.estimate_amount,
+        estimateNotes: jc.estimate_notes,
+        approvalNotes: jc.approval_notes,
         createdAt: jc.created_at,
       }))
     );
@@ -61,46 +126,64 @@ export default function AdminJobCardsPage() {
     loadData();
   }, [loadData]);
 
-  async function updateStatus(id: string, status: string) {
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
-    await supabase.from("job_cards").update({ status }).eq("id", id);
+  function openAction(row: Row, action: { label: string; nextStatus: string }) {
+    setManageRow(row);
+    setPendingAction(action);
+    setAssignedEngineer(row.assignedEngineer ?? "");
+    setMomNotes(row.momNotes ?? "");
+    setEstimateAmount(row.estimateAmount != null ? String(row.estimateAmount) : "");
+    setEstimateNotes(row.estimateNotes ?? "");
   }
 
-  const filtered = rows.filter((r) => {
-    const matchesSearch =
+  async function handleConfirm() {
+    if (!manageRow || !pendingAction) return;
+    setSaving(true);
+
+    const update: Record<string, unknown> = { status: pendingAction.nextStatus };
+    if (pendingAction.nextStatus === "assigned") update.assigned_engineer = assignedEngineer;
+    if (pendingAction.nextStatus === "mom_logged") update.mom_notes = momNotes;
+    if (pendingAction.nextStatus === "estimate_sent") {
+      update.estimate_amount = estimateAmount ? Number(estimateAmount) : null;
+      update.estimate_notes = estimateNotes;
+    }
+
+    await supabase.from("job_cards").update(update).eq("id", manageRow.id);
+
+    let notifTitle = "Job Card Updated";
+    let notifDesc = `${manageRow.jobCardNumber} is now ${STAGE_LABEL[pendingAction.nextStatus]}`;
+    if (pendingAction.nextStatus === "estimate_sent") {
+      notifTitle = "Estimate Ready for Review";
+      notifDesc = `${manageRow.jobCardNumber}: estimate ₹${estimateAmount || "0"} — please approve or reject`;
+    }
+    await supabase.from("notifications").insert({
+      title: notifTitle,
+      description: notifDesc,
+      type: "job_card",
+      target_role: "assistant_engineer",
+      substation_id: manageRow.substationId,
+    });
+
+    setSaving(false);
+    setManageRow(null);
+    setPendingAction(null);
+    loadData();
+  }
+
+  const filtered = rows.filter(
+    (r) =>
       r.jobCardNumber.toLowerCase().includes(search.toLowerCase()) ||
       r.issueDescription.toLowerCase().includes(search.toLowerCase()) ||
-      r.substationName.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === "all" || r.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+      r.substationName.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-semibold text-foreground tracking-tight">Job Cards</h1>
-        <p className="text-sm text-foreground-secondary mt-1">Issues raised by Assistant Engineers across all substations</p>
+        <p className="text-sm text-foreground-secondary mt-1">Issues raised by Assistant Engineers, tracked through resolution</p>
       </div>
 
-      <PageToolbar
-        search={search}
-        onSearchChange={setSearch}
-        placeholder="Search job cards…"
-        right={
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="open">Open</SelectItem>
-              <SelectItem value="in_progress">In Progress</SelectItem>
-              <SelectItem value="resolved">Resolved</SelectItem>
-              <SelectItem value="closed">Closed</SelectItem>
-            </SelectContent>
-          </Select>
-        }
-      />
+      <PageToolbar search={search} onSearchChange={setSearch} placeholder="Search job cards…" />
 
       <Card className="overflow-hidden">
         {loading ? (
@@ -120,30 +203,117 @@ export default function AdminJobCardsPage() {
                     <Badge variant={priorityVariant[jc.priority as keyof typeof priorityVariant]} className="capitalize">
                       {jc.priority}
                     </Badge>
+                    <Badge variant={STAGE_VARIANT[jc.status] ?? "default"} dot>
+                      {STAGE_LABEL[jc.status] ?? jc.status}
+                    </Badge>
                   </div>
                   <p className="text-sm text-foreground-secondary mt-1">{jc.issueDescription}</p>
                   <p className="text-xs text-slate-400 mt-1">
                     {jc.substationName} · {jc.equipmentName}
-                    {jc.component ? ` · ${jc.component}` : ""} · Raised by {jc.raisedBy} ·{" "}
-                    {new Date(jc.createdAt).toLocaleDateString()}
+                    {jc.component ? ` · ${jc.component}` : ""} · Raised by {jc.raisedBy} · {new Date(jc.createdAt).toLocaleDateString()}
                   </p>
+                  {jc.assignedEngineer && (
+                    <p className="text-xs text-accent mt-1 flex items-center gap-1">
+                      <UserCog className="h-3 w-3" /> {jc.assignedEngineer}
+                    </p>
+                  )}
+                  {jc.status === "estimate_sent" && (
+                    <p className="text-xs text-warning mt-1">
+                      Estimate ₹{jc.estimateAmount ?? "—"} sent — awaiting AE approval
+                    </p>
+                  )}
+                  {jc.status === "rejected" && jc.approvalNotes && (
+                    <p className="text-xs text-danger mt-1">AE remarks: {jc.approvalNotes}</p>
+                  )}
                 </div>
-                <Select value={jc.status} onValueChange={(v) => updateStatus(jc.id, v)}>
-                  <SelectTrigger className="w-[140px] shrink-0">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="open">Open</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="resolved">Resolved</SelectItem>
-                    <SelectItem value="closed">Closed</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex flex-col gap-1.5 shrink-0">
+                  {(NEXT_ACTIONS[jc.status] ?? []).map((action) => (
+                    <Button key={action.nextStatus} size="sm" variant="secondary" onClick={() => openAction(jc, action)}>
+                      {action.label}
+                    </Button>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
         )}
       </Card>
+
+      <Dialog open={!!manageRow} onOpenChange={(open) => !open && setManageRow(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{pendingAction?.label}</DialogTitle>
+            <DialogDescription>
+              {manageRow?.jobCardNumber} · {manageRow?.substationName}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="px-6 py-5 space-y-4">
+            {pendingAction?.nextStatus === "assigned" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="engineer">Service Engineer</Label>
+                <Input
+                  id="engineer"
+                  value={assignedEngineer}
+                  onChange={(e) => setAssignedEngineer(e.target.value)}
+                  placeholder="e.g. Suresh Kumar"
+                />
+              </div>
+            )}
+            {pendingAction?.nextStatus === "mom_logged" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="mom">Minutes of Meeting (site inspection notes)</Label>
+                <textarea
+                  id="mom"
+                  value={momNotes}
+                  onChange={(e) => setMomNotes(e.target.value)}
+                  rows={4}
+                  placeholder="What the engineer found on site…"
+                  className="flex w-full rounded-[10px] border border-border bg-white px-3.5 py-2 text-sm text-foreground placeholder:text-slate-400 shadow-[0_1px_2px_rgba(15,23,42,0.03)] focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent resize-none"
+                />
+              </div>
+            )}
+            {(pendingAction?.nextStatus === "estimate_sent") && (
+              <>
+                <div className="space-y-1.5">
+                  <Label htmlFor="amount">Estimate amount (₹)</Label>
+                  <Input
+                    id="amount"
+                    type="number"
+                    min={0}
+                    value={estimateAmount}
+                    onChange={(e) => setEstimateAmount(e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="estimatenotes">Estimate details</Label>
+                  <textarea
+                    id="estimatenotes"
+                    value={estimateNotes}
+                    onChange={(e) => setEstimateNotes(e.target.value)}
+                    rows={3}
+                    placeholder="Parts, labor, breakdown…"
+                    className="flex w-full rounded-[10px] border border-border bg-white px-3.5 py-2 text-sm text-foreground placeholder:text-slate-400 shadow-[0_1px_2px_rgba(15,23,42,0.03)] focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent resize-none"
+                  />
+                </div>
+              </>
+            )}
+            {(pendingAction?.nextStatus === "inspecting" || pendingAction?.nextStatus === "closed") && (
+              <p className="text-sm text-foreground-secondary">
+                This will move the job card to <span className="font-medium text-foreground">{STAGE_LABEL[pendingAction.nextStatus]}</span>.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setManageRow(null)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirm} disabled={saving}>
+              {saving ? "Saving…" : "Confirm"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
