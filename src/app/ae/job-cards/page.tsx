@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, ClipboardList, CheckCircle2, XCircle, Paperclip } from "lucide-react";
+import { Plus, ClipboardList, CheckCircle2, XCircle, Clock, Eye, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +34,13 @@ interface Row {
   estimateDocumentUrl: string | null;
   estimateDocumentName: string | null;
   createdAt: string;
+  assignedAt: string | null;
+  inspectingAt: string | null;
+  momLoggedAt: string | null;
+  estimateSentAt: string | null;
+  approvedAt: string | null;
+  rejectedAt: string | null;
+  closedAt: string | null;
 }
 
 interface EquipmentOption {
@@ -49,7 +56,8 @@ interface ComponentOption {
 
 const priorityVariant = { low: "default", medium: "accent", high: "warning", critical: "danger" } as const;
 
-function fmtDateTime(iso: string) {
+function fmtDateTime(iso: string | null) {
+  if (!iso) return null;
   return new Date(iso).toLocaleString(undefined, {
     day: "2-digit",
     month: "2-digit",
@@ -58,6 +66,16 @@ function fmtDateTime(iso: string) {
     minute: "2-digit",
   });
 }
+
+const STAGE_TIMESTAMP_KEY: Record<string, keyof Row> = {
+  assigned: "assignedAt",
+  inspecting: "inspectingAt",
+  mom_logged: "momLoggedAt",
+  estimate_sent: "estimateSentAt",
+  approved: "approvedAt",
+  rejected: "rejectedAt",
+  closed: "closedAt",
+};
 
 const STAGE_LABEL: Record<string, string> = {
   open: "Open",
@@ -120,7 +138,7 @@ export default function AEJobCardsPage() {
       supabase
         .from("job_cards")
         .select(
-          "id, job_card_number, component, issue_description, priority, status, assigned_engineer, mom_notes, estimate_amount, estimate_notes, estimate_document_url, estimate_document_name, created_at, equipment(name)"
+          "id, job_card_number, component, issue_description, priority, status, assigned_engineer, mom_notes, estimate_amount, estimate_notes, estimate_document_url, estimate_document_name, created_at, assigned_at, inspecting_at, mom_logged_at, estimate_sent_at, approved_at, rejected_at, closed_at, equipment(name)"
         )
         .eq("substation_id", profile.substation_id)
         .order("created_at", { ascending: false }),
@@ -148,6 +166,13 @@ export default function AEJobCardsPage() {
           estimateDocumentUrl: jc.estimate_document_url,
           estimateDocumentName: jc.estimate_document_name,
           createdAt: jc.created_at,
+          assignedAt: jc.assigned_at,
+          inspectingAt: jc.inspecting_at,
+          momLoggedAt: jc.mom_logged_at,
+          estimateSentAt: jc.estimate_sent_at,
+          approvedAt: jc.approved_at,
+          rejectedAt: jc.rejected_at,
+          closedAt: jc.closed_at,
         }))
       );
     }
@@ -306,30 +331,69 @@ export default function AEJobCardsPage() {
                     <Badge variant={STAGE_VARIANT[jc.status] ?? "default"} dot>
                       {STAGE_LABEL[jc.status] ?? jc.status}
                     </Badge>
+                    {STAGE_TIMESTAMP_KEY[jc.status] && fmtDateTime(jc[STAGE_TIMESTAMP_KEY[jc.status]] as string | null) && (
+                      <span className="flex items-center gap-1 text-[11px] text-slate-400">
+                        <Clock className="h-3 w-3" /> {fmtDateTime(jc[STAGE_TIMESTAMP_KEY[jc.status]] as string | null)}
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm text-foreground-secondary mt-1">{jc.issueDescription}</p>
                   <p className="text-xs text-slate-400 mt-1">
                     {jc.equipmentName}
-                    {jc.component ? ` · ${jc.component}` : ""} · {fmtDateTime(jc.createdAt)}
+                    {jc.component ? ` · ${jc.component}` : ""} · Raised {fmtDateTime(jc.createdAt)}
                   </p>
-                  {jc.assignedEngineer && <p className="text-xs text-accent mt-1">Engineer: {jc.assignedEngineer}</p>}
+                  {jc.assignedEngineer && (
+                    <p className="text-xs text-accent mt-1">Service Engineer (Spectrum): {jc.assignedEngineer}</p>
+                  )}
                   {jc.momNotes && jc.status !== "open" && jc.status !== "assigned" && (
                     <p className="text-xs text-foreground-secondary mt-1">Inspection notes: {jc.momNotes}</p>
                   )}
                   {jc.status === "estimate_sent" && (
-                    <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-                      <p className="text-xs font-medium text-amber-800">Estimate: ₹{jc.estimateAmount ?? "—"}</p>
-                      {jc.estimateNotes && <p className="text-xs text-amber-700 mt-0.5">{jc.estimateNotes}</p>}
-                      {jc.estimateDocumentUrl && (
-                      <a
-                          href={jc.estimateDocumentUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs text-accent hover:underline mt-1 inline-flex items-center gap-1"
-                        >
-                          <Paperclip className="h-3 w-3" /> {jc.estimateDocumentName ?? "View attachment"}
-                        </a>
-                      )}
+                    <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50/60 overflow-hidden">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-2 px-3.5 py-3 text-xs">
+                        <div>
+                          <p className="text-amber-700/70 font-medium">Amount</p>
+                          <p className="text-foreground font-semibold mt-0.5">₹{jc.estimateAmount?.toLocaleString() ?? "—"}</p>
+                        </div>
+                        <div>
+                          <p className="text-amber-700/70 font-medium">Date Sent</p>
+                          <p className="text-foreground mt-0.5 flex items-center gap-1">
+                            <Clock className="h-3 w-3" /> {fmtDateTime(jc.estimateSentAt) ?? "—"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-amber-700/70 font-medium">Status</p>
+                          <Badge variant="warning" dot className="mt-0.5">
+                            Needs your review
+                          </Badge>
+                        </div>
+                        <div>
+                          <p className="text-amber-700/70 font-medium">Quote</p>
+                          {jc.estimateDocumentUrl ? (
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <a
+                                href={jc.estimateDocumentUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-accent px-2.5 py-1 text-[11px] font-medium hover:bg-blue-100 transition-colors"
+                              >
+                                <Eye className="h-3 w-3" /> View
+                              </a>
+                              <a
+                                href={jc.estimateDocumentUrl}
+                                download={jc.estimateDocumentName ?? undefined}
+                                className="flex h-6 w-6 items-center justify-center rounded-full text-foreground-secondary hover:bg-hover transition-colors"
+                                title="Download"
+                              >
+                                <Download className="h-3.5 w-3.5" />
+                              </a>
+                            </div>
+                          ) : (
+                            <p className="text-foreground-secondary mt-0.5">No file</p>
+                          )}
+                        </div>
+                      </div>
+                      {jc.estimateNotes && <p className="text-xs text-amber-800 px-3.5 pb-3 -mt-1">{jc.estimateNotes}</p>}
                     </div>
                   )}
                 </div>
@@ -452,18 +516,38 @@ export default function AEJobCardsPage() {
             <DialogDescription>{approvalRow?.jobCardNumber}</DialogDescription>
           </DialogHeader>
           <div className="px-6 py-5 space-y-4">
-            <div className="rounded-lg border border-border bg-background-secondary px-4 py-3">
-              <p className="text-sm font-medium text-foreground">Estimate: ₹{approvalRow?.estimateAmount ?? "—"}</p>
-              {approvalRow?.estimateNotes && <p className="text-sm text-foreground-secondary mt-1">{approvalRow.estimateNotes}</p>}
+            <div className="rounded-lg border border-border bg-background-secondary px-4 py-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-foreground-secondary">Amount</p>
+                  <p className="text-lg font-semibold text-foreground">₹{approvalRow?.estimateAmount?.toLocaleString() ?? "—"}</p>
+                </div>
+                {approvalRow?.estimateSentAt && (
+                  <p className="text-xs text-foreground-secondary flex items-center gap-1">
+                    <Clock className="h-3 w-3" /> {fmtDateTime(approvalRow.estimateSentAt)}
+                  </p>
+                )}
+              </div>
+              {approvalRow?.estimateNotes && <p className="text-sm text-foreground-secondary">{approvalRow.estimateNotes}</p>}
               {approvalRow?.estimateDocumentUrl && (
-               <a 
-                  href={approvalRow.estimateDocumentUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-sm text-accent hover:underline mt-2 inline-flex items-center gap-1.5"
-                >
-                  <Paperclip className="h-3.5 w-3.5" /> {approvalRow.estimateDocumentName ?? "View attachment"}
-                </a>
+                <div className="flex items-center gap-1.5 pt-1">
+                  <a
+                    href={approvalRow.estimateDocumentUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-accent px-3 py-1 text-xs font-medium hover:bg-blue-100 transition-colors"
+                  >
+                    <Eye className="h-3.5 w-3.5" /> View Quote
+                  </a>
+                  <a
+                    href={approvalRow.estimateDocumentUrl}
+                    download={approvalRow.estimateDocumentName ?? undefined}
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-foreground-secondary hover:bg-hover transition-colors"
+                    title="Download"
+                  >
+                    <Download className="h-4 w-4" />
+                  </a>
+                </div>
               )}
             </div>
             <div className="grid grid-cols-2 gap-3">
