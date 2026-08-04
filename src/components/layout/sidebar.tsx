@@ -104,7 +104,7 @@ const aeNavGroups: NavGroup[] = [
   },
 ];
 
-export function Sidebar({ variant = "admin" }: { variant?: "admin" | "ae" }) {
+export function Sidebar({ variant = "admin", badges = {} }: { variant?: "admin" | "ae"; badges?: Record<string, number> }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = React.useState(false);
   const navGroups = variant === "admin" ? adminNavGroups : aeNavGroups;
@@ -158,9 +158,9 @@ export function Sidebar({ variant = "admin" }: { variant?: "admin" | "ae" }) {
                   >
                     <Icon className={cn("h-[18px] w-[18px] shrink-0", active ? "text-accent" : "text-slate-400 group-hover:text-foreground-secondary")} />
                     {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
-                    {!collapsed && item.badge ? (
+                    {!collapsed && (badges[item.href] ?? item.badge) ? (
                       <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[11px] font-semibold text-white">
-                        {item.badge}
+                        {badges[item.href] ?? item.badge}
                       </span>
                     ) : null}
                   </Link>
