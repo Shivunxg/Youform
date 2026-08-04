@@ -321,8 +321,7 @@ export default function AEJobCardsPage() {
                       <p className="text-xs font-medium text-amber-800">Estimate: ₹{jc.estimateAmount ?? "—"}</p>
                       {jc.estimateNotes && <p className="text-xs text-amber-700 mt-0.5">{jc.estimateNotes}</p>}
                       {jc.estimateDocumentUrl && (
-                        
-                          href={jc.estimateDocumentUrl}
+                      <a href={jc.estimateDocumentUrl}
                           target="_blank"
                           rel="noreferrer"
                           className="text-xs text-accent hover:underline mt-1 inline-flex items-center gap-1"
