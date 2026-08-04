@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Plus, ClipboardList, CheckCircle2, XCircle, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -84,7 +85,7 @@ const STAGE_VARIANT: Record<string, "default" | "accent" | "warning" | "danger" 
   resolved: "success",
 };
 
-const emptyForm = { equipmentId: "", componentId: "", issueDescription: "", priority: "medium" };
+const emptyForm = { equipmentId: "", componentId: "", newComponentName: "", issueDescription: "", priority: "medium" };
 
 export default function AEJobCardsPage() {
   const supabase = React.useMemo(() => createClient(), []);
@@ -171,6 +172,10 @@ export default function AEJobCardsPage() {
 
   async function handleSave() {
     if (!substationId || !form.issueDescription.trim()) return;
+    if (form.componentId === "__new__" && !form.newComponentName.trim()) {
+      setError("Please enter a name for the new component.");
+      return;
+    }
     setSaving(true);
     setError(null);
 
@@ -178,7 +183,21 @@ export default function AEJobCardsPage() {
       data: { user },
     } = await supabase.auth.getUser();
 
-    const componentName = componentOptions.find((c) => c.id === form.componentId)?.name ?? null;
+    let componentName = componentOptions.find((c) => c.id === form.componentId)?.name ?? null;
+
+    if (form.componentId === "__new__" && form.newComponentName.trim() && form.equipmentId) {
+      const { data: newComponent, error: compError } = await supabase
+        .from("components")
+        .insert({ name: form.newComponentName.trim(), equipment_id: form.equipmentId, min_qty: 0 })
+        .select("id, name")
+        .single();
+      if (compError) {
+        setError(compError.message);
+        setSaving(false);
+        return;
+      }
+      componentName = newComponent?.name ?? form.newComponentName.trim();
+    }
 
     const { error: insertError } = await supabase.from("job_cards").insert({
       substation_id: substationId,
@@ -358,7 +377,11 @@ export default function AEJobCardsPage() {
             </div>
             <div className="space-y-1.5">
               <Label>Component</Label>
-              <Select value={form.componentId} onValueChange={(v) => setForm({ ...form, componentId: v })} disabled={!form.equipmentId}>
+              <Select
+                value={form.componentId}
+                onValueChange={(v) => setForm({ ...form, componentId: v })}
+                disabled={!form.equipmentId}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder={relevantComponents.length ? "Select component" : "None registered"} />
                 </SelectTrigger>
@@ -368,8 +391,18 @@ export default function AEJobCardsPage() {
                       {c.name}
                     </SelectItem>
                   ))}
+                  <SelectItem value="__new__">+ Register new component</SelectItem>
                 </SelectContent>
               </Select>
+              {form.componentId === "__new__" && (
+                <Input
+                  value={form.newComponentName}
+                  onChange={(e) => setForm({ ...form, newComponentName: e.target.value })}
+                  placeholder="e.g. Cooling Fan"
+                  className="mt-1.5"
+                  autoFocus
+                />
+              )}
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="issue">
