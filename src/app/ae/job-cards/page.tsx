@@ -391,6 +391,8 @@ export default function AEJobCardsPage() {
                               <a
                                 href={jc.estimateDocumentUrl}
                                 download={jc.estimateDocumentName ?? undefined}
+                                target="_blank"
+                                rel="noreferrer"
                                 className="flex h-6 w-6 items-center justify-center rounded-full text-foreground-secondary hover:bg-hover transition-colors"
                                 title="Download"
                               >
@@ -557,6 +559,8 @@ export default function AEJobCardsPage() {
                   <a
                     href={approvalRow.estimateDocumentUrl}
                     download={approvalRow.estimateDocumentName ?? undefined}
+                    target="_blank"
+                    rel="noreferrer"
                     className="flex h-7 w-7 items-center justify-center rounded-full text-foreground-secondary hover:bg-hover transition-colors"
                     title="Download"
                   >
@@ -650,6 +654,8 @@ export default function AEJobCardsPage() {
                       <a
                         href={detailsRow.estimateDocumentUrl}
                         download={detailsRow.estimateDocumentName ?? undefined}
+                        target="_blank"
+                        rel="noreferrer"
                         className="flex h-7 w-7 items-center justify-center rounded-full text-foreground-secondary hover:bg-hover transition-colors"
                         title="Download"
                       >
