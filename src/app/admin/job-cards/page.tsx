@@ -286,7 +286,7 @@ export default function AdminJobCardsPage() {
                       <div className="mt-1 flex items-center gap-2 flex-wrap">
                         <p className="text-xs text-warning">Estimate ₹{jc.estimateAmount ?? "—"} — awaiting AE approval</p>
                         {jc.estimateDocumentUrl && (
-                          
+                          <a
                             href={jc.estimateDocumentUrl}
                             target="_blank"
                             rel="noreferrer"
