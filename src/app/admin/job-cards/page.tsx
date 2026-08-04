@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ClipboardList, UserCog, Eye, Download, Clock, Paperclip } from "lucide-react";
+import { ClipboardList, UserCog, Eye, Download, Clock, Paperclip, Receipt } from "lucide-react";
 import { JobCardTimeline } from "@/components/job-cards/timeline";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -289,20 +289,23 @@ export default function AdminJobCardsPage() {
                       </p>
                     )}
                     {jc.estimateAmount != null && (
-                      <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50/60 overflow-hidden">
+                      <div className="mt-2 rounded-2xl border border-blue-100 bg-blue-50/40 overflow-hidden shadow-sm">
+                        <div className="flex items-center gap-1.5 px-3.5 pt-3 text-xs font-semibold text-accent">
+                          <Receipt className="h-3.5 w-3.5" /> Quote &amp; Estimate
+                        </div>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-2 px-3.5 py-3 text-xs">
                           <div>
-                            <p className="text-amber-700/70 font-medium">Amount</p>
+                            <p className="text-foreground-secondary font-medium">Amount</p>
                             <p className="text-foreground font-semibold mt-0.5">₹{jc.estimateAmount?.toLocaleString() ?? "—"}</p>
                           </div>
                           <div>
-                            <p className="text-amber-700/70 font-medium">Date Sent</p>
+                            <p className="text-foreground-secondary font-medium">Date Sent</p>
                             <p className="text-foreground mt-0.5 flex items-center gap-1">
                               <Clock className="h-3 w-3" /> {fmtDateTime(jc.estimateSentAt) ?? "—"}
                             </p>
                           </div>
                           <div>
-                            <p className="text-amber-700/70 font-medium">Status</p>
+                            <p className="text-foreground-secondary font-medium">Status</p>
                             <Badge
                               variant={jc.status === "approved" || jc.status === "closed" ? "success" : jc.status === "rejected" ? "danger" : "warning"}
                               dot
@@ -312,7 +315,7 @@ export default function AdminJobCardsPage() {
                             </Badge>
                           </div>
                           <div>
-                            <p className="text-amber-700/70 font-medium">Quote</p>
+                            <p className="text-foreground-secondary font-medium">Quote</p>
                             {jc.estimateDocumentUrl ? (
                               <div className="flex items-center gap-1.5 mt-0.5">
                                 <a
@@ -338,7 +341,7 @@ export default function AdminJobCardsPage() {
                           </div>
                         </div>
                         {jc.estimateNotes && (
-                          <p className="text-xs text-amber-800 px-3.5 pb-3 -mt-1">{jc.estimateNotes}</p>
+                          <p className="text-xs text-foreground-secondary px-3.5 pb-3 -mt-1">{jc.estimateNotes}</p>
                         )}
                       </div>
                     )}
@@ -485,7 +488,7 @@ export default function AdminJobCardsPage() {
             {detailsRow?.estimateAmount != null && (
               <div>
                 <p className="text-xs font-medium text-foreground-secondary mb-1.5">Quote</p>
-                <div className="rounded-xl border border-amber-200 bg-amber-50/60 px-3.5 py-3">
+                <div className="rounded-2xl border border-blue-100 bg-blue-50/40 px-3.5 py-3 shadow-sm">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-foreground">₹{detailsRow.estimateAmount?.toLocaleString()}</p>
                     {detailsRow.estimateSentAt && (
@@ -494,7 +497,7 @@ export default function AdminJobCardsPage() {
                       </p>
                     )}
                   </div>
-                  {detailsRow.estimateNotes && <p className="text-xs text-amber-800 mt-1">{detailsRow.estimateNotes}</p>}
+                  {detailsRow.estimateNotes && <p className="text-xs text-foreground-secondary mt-1">{detailsRow.estimateNotes}</p>}
                   {detailsRow.estimateDocumentUrl && (
                     <div className="flex items-center gap-1.5 mt-2">
                       <a
