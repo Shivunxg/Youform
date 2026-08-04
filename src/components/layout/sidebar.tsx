@@ -93,10 +93,7 @@ const aeNavGroups: NavGroup[] = [
   },
   {
     title: "Operations",
-    items: [
-      { label: "Job Cards", href: "/ae/job-cards", icon: ClipboardList },
-      { label: "Service Requests", href: "/ae/service-requests", icon: Wrench },
-    ],
+    items: [{ label: "Job Cards", href: "/ae/job-cards", icon: ClipboardList }],
   },
   {
     title: "Insights",
