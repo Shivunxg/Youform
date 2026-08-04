@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CheckCircle2, Circle } from "lucide-react";
+import { CheckCircle2, XCircle, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface TimelineData {
@@ -44,16 +44,19 @@ export function JobCardTimeline({ data }: { data: TimelineData }) {
     <div className="mt-2 pl-1">
       {steps.map((step, i) => {
         const reached = !!step.time;
+        const isRejected = step.label === "Rejected by AE" && reached;
         const isLast = i === steps.length - 1;
         return (
           <div key={step.label} className="flex gap-2.5">
             <div className="flex flex-col items-center">
-              {reached ? (
+              {isRejected ? (
+                <XCircle className="h-3.5 w-3.5 text-danger shrink-0" />
+              ) : reached ? (
                 <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
               ) : (
                 <Circle className="h-3.5 w-3.5 text-slate-300 shrink-0" />
               )}
-              {!isLast && <div className={cn("w-px flex-1 min-h-[14px]", reached ? "bg-success/40" : "bg-slate-200")} />}
+              {!isLast && <div className={cn("w-px flex-1 min-h-[14px]", reached ? (isRejected ? "bg-danger/40" : "bg-success/40") : "bg-slate-200")} />}
             </div>
             <div className={cn("pb-2.5 text-xs", reached ? "text-foreground" : "text-slate-300")}>
               <span className="font-medium">{step.label}</span>
