@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ClipboardList, UserCog, Paperclip, FileText } from "lucide-react";
+import { ClipboardList, UserCog, Paperclip, Eye, Download, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -270,7 +270,11 @@ export default function AdminJobCardsPage() {
                       <Badge variant={STAGE_VARIANT[jc.status] ?? "default"} dot>
                         {STAGE_LABEL[jc.status] ?? jc.status}
                       </Badge>
-                      {stageTs && <span className="text-[11px] text-slate-400">{stageTs}</span>}
+                      {stageTs && (
+                        <span className="flex items-center gap-1 text-[11px] text-slate-400">
+                          <Clock className="h-3 w-3" /> {stageTs}
+                        </span>
+                      )}
                     </div>
                     <p className="text-sm text-foreground-secondary mt-1">{jc.issueDescription}</p>
                     <p className="text-xs text-slate-400 mt-1">
@@ -279,21 +283,56 @@ export default function AdminJobCardsPage() {
                     </p>
                     {jc.assignedEngineer && (
                       <p className="text-xs text-accent mt-1 flex items-center gap-1">
-                        <UserCog className="h-3 w-3" /> {jc.assignedEngineer}
+                        <UserCog className="h-3 w-3" /> Service Engineer (Spectrum): {jc.assignedEngineer}
                       </p>
                     )}
                     {jc.status === "estimate_sent" && (
-                      <div className="mt-1 flex items-center gap-2 flex-wrap">
-                        <p className="text-xs text-warning">Estimate ₹{jc.estimateAmount ?? "—"} — awaiting AE approval</p>
-                        {jc.estimateDocumentUrl && (
-                          <a
-                            href={jc.estimateDocumentUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-xs text-accent hover:underline flex items-center gap-1"
-                          >
-                            <FileText className="h-3 w-3" /> {jc.estimateDocumentName ?? "View document"}
-                          </a>
+                      <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50/60 overflow-hidden">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-2 px-3.5 py-3 text-xs">
+                          <div>
+                            <p className="text-amber-700/70 font-medium">Amount</p>
+                            <p className="text-foreground font-semibold mt-0.5">₹{jc.estimateAmount?.toLocaleString() ?? "—"}</p>
+                          </div>
+                          <div>
+                            <p className="text-amber-700/70 font-medium">Date Sent</p>
+                            <p className="text-foreground mt-0.5 flex items-center gap-1">
+                              <Clock className="h-3 w-3" /> {fmtDateTime(jc.estimateSentAt) ?? "—"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-amber-700/70 font-medium">Status</p>
+                            <Badge variant="warning" dot className="mt-0.5">
+                              Awaiting AE
+                            </Badge>
+                          </div>
+                          <div>
+                            <p className="text-amber-700/70 font-medium">Quote</p>
+                            {jc.estimateDocumentUrl ? (
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <a
+                                  href={jc.estimateDocumentUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-accent px-2.5 py-1 text-[11px] font-medium hover:bg-blue-100 transition-colors"
+                                >
+                                  <Eye className="h-3 w-3" /> View
+                                </a>
+                                <a
+                                  href={jc.estimateDocumentUrl}
+                                  download={jc.estimateDocumentName ?? undefined}
+                                  className="flex h-6 w-6 items-center justify-center rounded-full text-foreground-secondary hover:bg-hover transition-colors"
+                                  title="Download"
+                                >
+                                  <Download className="h-3.5 w-3.5" />
+                                </a>
+                              </div>
+                            ) : (
+                              <p className="text-foreground-secondary mt-0.5">No file</p>
+                            )}
+                          </div>
+                        </div>
+                        {jc.estimateNotes && (
+                          <p className="text-xs text-amber-800 px-3.5 pb-3 -mt-1">{jc.estimateNotes}</p>
                         )}
                       </div>
                     )}
