@@ -321,7 +321,7 @@ export default function AEJobCardsPage() {
                       <p className="text-xs font-medium text-amber-800">Estimate: ₹{jc.estimateAmount ?? "—"}</p>
                       {jc.estimateNotes && <p className="text-xs text-amber-700 mt-0.5">{jc.estimateNotes}</p>}
                       {jc.estimateDocumentUrl && (
-                        
+                      <a
                           href={jc.estimateDocumentUrl}
                           target="_blank"
                           rel="noreferrer"
@@ -456,7 +456,7 @@ export default function AEJobCardsPage() {
               <p className="text-sm font-medium text-foreground">Estimate: ₹{approvalRow?.estimateAmount ?? "—"}</p>
               {approvalRow?.estimateNotes && <p className="text-sm text-foreground-secondary mt-1">{approvalRow.estimateNotes}</p>}
               {approvalRow?.estimateDocumentUrl && (
-                
+               <a 
                   href={approvalRow.estimateDocumentUrl}
                   target="_blank"
                   rel="noreferrer"
