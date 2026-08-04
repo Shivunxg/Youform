@@ -203,4 +203,213 @@ export default function AdminJobCardsPage() {
           setSaving(false);
           return;
         }
-        const { data: publicUrlData } = supabase.storage.from("job-attachments")
+        const { data: publicUrlData } = supabase.storage.from("job-attachments").getPublicUrl(filePath);
+        update.estimate_document_url = publicUrlData.publicUrl;
+        update.estimate_document_name = estimateFile.name;
+      }
+    }
+
+    await supabase.from("job_cards").update(update).eq("id", manageRow.id);
+
+    let notifTitle = "Job Card Updated";
+    let notifDesc = `${manageRow.jobCardNumber} is now ${STAGE_LABEL[pendingAction.nextStatus]}`;
+    if (pendingAction.nextStatus === "estimate_sent") {
+      notifTitle = "Estimate Ready for Review";
+      notifDesc = `${manageRow.jobCardNumber}: estimate ₹${estimateAmount || "0"} — please approve or reject`;
+    }
+    await supabase.from("notifications").insert({
+      title: notifTitle,
+      description: notifDesc,
+      type: "job_card",
+      target_role: "assistant_engineer",
+      substation_id: manageRow.substationId,
+    });
+
+    setSaving(false);
+    setManageRow(null);
+    setPendingAction(null);
+    loadData();
+  }
+
+  const filtered = rows.filter(
+    (r) =>
+      r.jobCardNumber.toLowerCase().includes(search.toLowerCase()) ||
+      r.issueDescription.toLowerCase().includes(search.toLowerCase()) ||
+      r.substationName.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div>
+        <h1 className="text-2xl font-semibold text-foreground tracking-tight">Job Cards</h1>
+        <p className="text-sm text-foreground-secondary mt-1">Issues raised by Assistant Engineers, tracked through resolution</p>
+      </div>
+
+      <PageToolbar search={search} onSearchChange={setSearch} placeholder="Search job cards…" />
+
+      <Card className="overflow-hidden">
+        {loading ? (
+          <EmptyState title="Loading job cards…" description="Fetching data from your database." />
+        ) : filtered.length === 0 ? (
+          <EmptyState title="No job cards found" description="They'll appear here as soon as an Assistant Engineer raises one." />
+        ) : (
+          <div className="divide-y divide-border">
+            {filtered.map((jc) => {
+              const stageTs = STAGE_TIMESTAMP_KEY[jc.status] ? fmtDateTime(jc[STAGE_TIMESTAMP_KEY[jc.status]] as string | null) : null;
+              return (
+                <div key={jc.id} className="flex items-start gap-4 px-5 py-4">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-accent">
+                    <ClipboardList className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-medium text-foreground">{jc.jobCardNumber}</p>
+                      <Badge variant={priorityVariant[jc.priority as keyof typeof priorityVariant]} className="capitalize">
+                        {jc.priority}
+                      </Badge>
+                      <Badge variant={STAGE_VARIANT[jc.status] ?? "default"} dot>
+                        {STAGE_LABEL[jc.status] ?? jc.status}
+                      </Badge>
+                      {stageTs && <span className="text-[11px] text-slate-400">{stageTs}</span>}
+                    </div>
+                    <p className="text-sm text-foreground-secondary mt-1">{jc.issueDescription}</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      {jc.substationName} · {jc.equipmentName}
+                      {jc.component ? ` · ${jc.component}` : ""} · Raised by {jc.raisedBy} on {fmtDateTime(jc.createdAt)}
+                    </p>
+                    {jc.assignedEngineer && (
+                      <p className="text-xs text-accent mt-1 flex items-center gap-1">
+                        <UserCog className="h-3 w-3" /> {jc.assignedEngineer}
+                      </p>
+                    )}
+                    {jc.status === "estimate_sent" && (
+                      <div className="mt-1 flex items-center gap-2 flex-wrap">
+                        <p className="text-xs text-warning">Estimate ₹{jc.estimateAmount ?? "—"} — awaiting AE approval</p>
+                        {jc.estimateDocumentUrl && (
+                          
+                            href={jc.estimateDocumentUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs text-accent hover:underline flex items-center gap-1"
+                          >
+                            <FileText className="h-3 w-3" /> {jc.estimateDocumentName ?? "View document"}
+                          </a>
+                        )}
+                      </div>
+                    )}
+                    {jc.status === "rejected" && jc.approvalNotes && (
+                      <p className="text-xs text-danger mt-1">AE remarks: {jc.approvalNotes}</p>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1.5 shrink-0">
+                    {(NEXT_ACTIONS[jc.status] ?? []).map((action) => (
+                      <Button key={action.nextStatus} size="sm" variant="secondary" onClick={() => openAction(jc, action)}>
+                        {action.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
+
+      <Dialog open={!!manageRow} onOpenChange={(open) => !open && setManageRow(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{pendingAction?.label}</DialogTitle>
+            <DialogDescription>
+              {manageRow?.jobCardNumber} · {manageRow?.substationName}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="px-6 py-5 space-y-4">
+            {pendingAction?.nextStatus === "assigned" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="engineer">Service Engineer</Label>
+                <Input
+                  id="engineer"
+                  value={assignedEngineer}
+                  onChange={(e) => setAssignedEngineer(e.target.value)}
+                  placeholder="e.g. Suresh Kumar"
+                />
+              </div>
+            )}
+            {pendingAction?.nextStatus === "mom_logged" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="mom">Minutes of Meeting (site inspection notes)</Label>
+                <textarea
+                  id="mom"
+                  value={momNotes}
+                  onChange={(e) => setMomNotes(e.target.value)}
+                  rows={4}
+                  placeholder="What the engineer found on site…"
+                  className="flex w-full rounded-[10px] border border-border bg-white px-3.5 py-2 text-sm text-foreground placeholder:text-slate-400 shadow-[0_1px_2px_rgba(15,23,42,0.03)] focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent resize-none"
+                />
+              </div>
+            )}
+            {pendingAction?.nextStatus === "estimate_sent" && (
+              <>
+                <div className="space-y-1.5">
+                  <Label htmlFor="amount">Estimate amount (₹)</Label>
+                  <Input
+                    id="amount"
+                    type="number"
+                    min={0}
+                    value={estimateAmount}
+                    onChange={(e) => setEstimateAmount(e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="estimatenotes">Estimate details</Label>
+                  <textarea
+                    id="estimatenotes"
+                    value={estimateNotes}
+                    onChange={(e) => setEstimateNotes(e.target.value)}
+                    rows={3}
+                    placeholder="Parts, labor, breakdown…"
+                    className="flex w-full rounded-[10px] border border-border bg-white px-3.5 py-2 text-sm text-foreground placeholder:text-slate-400 shadow-[0_1px_2px_rgba(15,23,42,0.03)] focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent resize-none"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="file">Attach document (optional)</Label>
+                  <div className="flex items-center gap-2">
+                    <label
+                      htmlFor="file"
+                      className="flex items-center gap-2 rounded-[10px] border border-border bg-white px-3.5 py-2 text-sm text-foreground-secondary cursor-pointer hover:bg-hover transition-colors"
+                    >
+                      <Paperclip className="h-4 w-4" />
+                      {estimateFile ? estimateFile.name : "Choose file (PDF, image)"}
+                    </label>
+                    <input
+                      id="file"
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      className="hidden"
+                      onChange={(e) => setEstimateFile(e.target.files?.[0] ?? null)}
+                    />
+                  </div>
+                  {uploadError && <p className="text-xs text-danger">{uploadError}</p>}
+                </div>
+              </>
+            )}
+            {(pendingAction?.nextStatus === "inspecting" || pendingAction?.nextStatus === "closed") && (
+              <p className="text-sm text-foreground-secondary">
+                This will move the job card to <span className="font-medium text-foreground">{STAGE_LABEL[pendingAction.nextStatus]}</span>.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setManageRow(null)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirm} disabled={saving}>
+              {saving ? "Saving…" : "Confirm"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
