@@ -32,6 +32,9 @@ interface Row {
   raisedBy: string;
   assignedEngineer: string | null;
   momNotes: string | null;
+  momDocumentUrl: string | null;
+  momDocumentName: string | null;
+  momViewedAt: string | null;
   estimateAmount: number | null;
   estimateNotes: string | null;
   estimateDocumentUrl: string | null;
@@ -116,6 +119,7 @@ export default function AdminJobCardsPage() {
   const [pendingAction, setPendingAction] = React.useState<{ label: string; nextStatus: string } | null>(null);
   const [assignedEngineer, setAssignedEngineer] = React.useState("");
   const [momNotes, setMomNotes] = React.useState("");
+  const [momFile, setMomFile] = React.useState<File | null>(null);
   const [estimateAmount, setEstimateAmount] = React.useState("");
   const [estimateNotes, setEstimateNotes] = React.useState("");
   const [estimateFile, setEstimateFile] = React.useState<File | null>(null);
@@ -159,7 +163,7 @@ export default function AdminJobCardsPage() {
     const { data } = await supabase
       .from("job_cards")
       .select(
-        "id, job_card_number, component, issue_description, priority, status, assigned_engineer, mom_notes, estimate_amount, estimate_notes, estimate_document_url, estimate_document_name, approval_notes, created_at, assigned_at, inspecting_at, mom_logged_at, estimate_sent_at, approved_at, rejected_at, closed_at, substations(id, name), equipment(name), profiles(name)"
+        "id, job_card_number, component, issue_description, priority, status, assigned_engineer, mom_notes, mom_document_url, mom_document_name, mom_viewed_at, estimate_amount, estimate_notes, estimate_document_url, estimate_document_name, approval_notes, created_at, assigned_at, inspecting_at, mom_logged_at, estimate_sent_at, approved_at, rejected_at, closed_at, substations(id, name), equipment(name), profiles(name)"
       )
       .order("created_at", { ascending: false });
 
@@ -177,6 +181,9 @@ export default function AdminJobCardsPage() {
         raisedBy: (jc.profiles as unknown as { name: string } | null)?.name ?? "—",
         assignedEngineer: jc.assigned_engineer,
         momNotes: jc.mom_notes,
+        momDocumentUrl: jc.mom_document_url,
+        momDocumentName: jc.mom_document_name,
+        momViewedAt: jc.mom_viewed_at,
         estimateAmount: jc.estimate_amount,
         estimateNotes: jc.estimate_notes,
         estimateDocumentUrl: jc.estimate_document_url,
@@ -204,6 +211,7 @@ export default function AdminJobCardsPage() {
     setPendingAction(action);
     setAssignedEngineer(row.assignedEngineer ?? "");
     setMomNotes(row.momNotes ?? "");
+    setMomFile(null);
     setEstimateAmount(row.estimateAmount != null ? String(row.estimateAmount) : "");
     setEstimateNotes(row.estimateNotes ?? "");
     setEstimateFile(null);
@@ -223,7 +231,21 @@ export default function AdminJobCardsPage() {
       update[dbColumn] = nowIso;
     }
     if (pendingAction.nextStatus === "assigned") update.assigned_engineer = assignedEngineer;
-    if (pendingAction.nextStatus === "mom_logged") update.mom_notes = momNotes;
+    if (pendingAction.nextStatus === "mom_logged") {
+      update.mom_notes = momNotes;
+      if (momFile) {
+        const filePath = `${manageRow.id}/mom-${Date.now()}-${momFile.name}`;
+        const { error: uploadErr } = await supabase.storage.from("job-attachments").upload(filePath, momFile);
+        if (uploadErr) {
+          setUploadError(uploadErr.message);
+          setSaving(false);
+          return;
+        }
+        const { data: publicUrlData } = supabase.storage.from("job-attachments").getPublicUrl(filePath);
+        update.mom_document_url = publicUrlData.publicUrl;
+        update.mom_document_name = momFile.name;
+      }
+    }
     if (pendingAction.nextStatus === "estimate_sent") {
       update.estimate_amount = estimateAmount ? Number(estimateAmount) : null;
       update.estimate_notes = estimateNotes;
@@ -438,16 +460,38 @@ export default function AdminJobCardsPage() {
               </div>
             )}
             {pendingAction?.nextStatus === "mom_logged" && (
-              <div className="space-y-1.5">
-                <Label htmlFor="mom">Minutes of Meeting (site inspection notes)</Label>
-                <textarea
-                  id="mom"
-                  value={momNotes}
-                  onChange={(e) => setMomNotes(e.target.value)}
-                  rows={4}
-                  placeholder="What the engineer found on site…"
-                  className="flex w-full rounded-[10px] border border-border bg-white px-3.5 py-2 text-sm text-foreground placeholder:text-slate-400 shadow-[0_1px_2px_rgba(15,23,42,0.03)] focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent resize-none"
-                />
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="mom">Minutes of Meeting (site inspection notes)</Label>
+                  <textarea
+                    id="mom"
+                    value={momNotes}
+                    onChange={(e) => setMomNotes(e.target.value)}
+                    rows={4}
+                    placeholder="What the engineer found on site…"
+                    className="flex w-full rounded-[10px] border border-border bg-white px-3.5 py-2 text-sm text-foreground placeholder:text-slate-400 shadow-[0_1px_2px_rgba(15,23,42,0.03)] focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent resize-none"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="momfile">Attach MOM document (optional)</Label>
+                  <div className="flex items-center gap-2">
+                    <label
+                      htmlFor="momfile"
+                      className="flex items-center gap-2 rounded-[10px] border border-border bg-white px-3.5 py-2 text-sm text-foreground-secondary cursor-pointer hover:bg-hover transition-colors"
+                    >
+                      <Paperclip className="h-4 w-4" />
+                      {momFile ? momFile.name : "Choose file (PDF, image, document)"}
+                    </label>
+                    <input
+                      id="momfile"
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                      className="hidden"
+                      onChange={(e) => setMomFile(e.target.files?.[0] ?? null)}
+                    />
+                  </div>
+                  {uploadError && <p className="text-xs text-danger">{uploadError}</p>}
+                </div>
               </div>
             )}
             {pendingAction?.nextStatus === "estimate_sent" && (
@@ -531,6 +575,35 @@ export default function AdminJobCardsPage() {
               <div>
                 <p className="text-xs font-medium text-foreground-secondary">Inspection notes (MOM)</p>
                 <p className="text-sm text-foreground mt-1">{detailsRow.momNotes}</p>
+                {detailsRow.momDocumentUrl && (
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <a
+                      href={detailsRow.momDocumentUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-accent px-2.5 py-1 text-xs font-medium hover:bg-blue-100 transition-colors"
+                    >
+                      <Eye className="h-3 w-3" /> View MOM
+                    </a>
+                    <a
+                      href={detailsRow.momDocumentUrl}
+                      download={detailsRow.momDocumentName ?? undefined}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex h-7 w-7 items-center justify-center rounded-full text-foreground-secondary hover:bg-hover transition-colors"
+                      title="Download"
+                    >
+                      <Download className="h-4 w-4" />
+                    </a>
+                  </div>
+                )}
+                {detailsRow.momViewedAt ? (
+                  <p className="text-xs text-success mt-1.5 flex items-center gap-1">
+                    <Clock className="h-3 w-3" /> Viewed by AE on {fmtDateTime(detailsRow.momViewedAt)}
+                  </p>
+                ) : detailsRow.momDocumentUrl ? (
+                  <p className="text-xs text-foreground-secondary mt-1.5">Not yet viewed by AE</p>
+                ) : null}
               </div>
             )}
             {estimateHistory.length > 0 && (
@@ -598,6 +671,7 @@ export default function AdminJobCardsPage() {
                     assignedAt: detailsRow.assignedAt,
                     inspectingAt: detailsRow.inspectingAt,
                     momLoggedAt: detailsRow.momLoggedAt,
+                    momViewedAt: detailsRow.momViewedAt,
                     estimateSentAt: detailsRow.estimateSentAt,
                     approvedAt: detailsRow.approvedAt,
                     rejectedAt: detailsRow.rejectedAt,
