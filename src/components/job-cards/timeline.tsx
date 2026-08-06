@@ -9,6 +9,7 @@ export interface TimelineData {
   assignedAt: string | null;
   inspectingAt: string | null;
   momLoggedAt: string | null;
+  momViewedAt: string | null;
   estimateSentAt: string | null;
   approvedAt: string | null;
   rejectedAt: string | null;
@@ -33,6 +34,7 @@ export function JobCardTimeline({ data }: { data: TimelineData }) {
     { label: "Assigned", time: data.assignedAt },
     { label: "Inspecting", time: data.inspectingAt },
     { label: "MOM Logged", time: data.momLoggedAt },
+    { label: "MOM Viewed by AE", time: data.momViewedAt },
     { label: "Estimate Sent", time: data.estimateSentAt },
     data.rejectedAt
       ? { label: "Rejected by AE", time: data.rejectedAt }
