@@ -30,6 +30,9 @@ interface Row {
   status: string;
   assignedEngineer: string | null;
   momNotes: string | null;
+  momDocumentUrl: string | null;
+  momDocumentName: string | null;
+  momViewedAt: string | null;
   estimateAmount: number | null;
   estimateNotes: string | null;
   estimateDocumentUrl: string | null;
@@ -171,7 +174,7 @@ export default function AEJobCardsPage() {
       supabase
         .from("job_cards")
         .select(
-          "id, job_card_number, component, issue_description, priority, status, assigned_engineer, mom_notes, estimate_amount, estimate_notes, estimate_document_url, estimate_document_name, created_at, assigned_at, inspecting_at, mom_logged_at, estimate_sent_at, approved_at, rejected_at, closed_at, equipment(name)"
+          "id, job_card_number, component, issue_description, priority, status, assigned_engineer, mom_notes, mom_document_url, mom_document_name, mom_viewed_at, estimate_amount, estimate_notes, estimate_document_url, estimate_document_name, created_at, assigned_at, inspecting_at, mom_logged_at, estimate_sent_at, approved_at, rejected_at, closed_at, equipment(name)"
         )
         .eq("substation_id", profile.substation_id)
         .order("created_at", { ascending: false }),
@@ -194,6 +197,9 @@ export default function AEJobCardsPage() {
           status: jc.status,
           assignedEngineer: jc.assigned_engineer,
           momNotes: jc.mom_notes,
+          momDocumentUrl: jc.mom_document_url,
+          momDocumentName: jc.mom_document_name,
+          momViewedAt: jc.mom_viewed_at,
           estimateAmount: jc.estimate_amount,
           estimateNotes: jc.estimate_notes,
           estimateDocumentUrl: jc.estimate_document_url,
@@ -284,6 +290,15 @@ export default function AEJobCardsPage() {
     setSaving(false);
     setDialogOpen(false);
     loadData();
+  }
+
+  async function handleViewMom(row: Row) {
+    if (!row.momViewedAt) {
+      const now = new Date().toISOString();
+      await supabase.from("job_cards").update({ mom_viewed_at: now }).eq("id", row.id);
+      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, momViewedAt: now } : r)));
+      setDetailsRow((prev) => (prev && prev.id === row.id ? { ...prev, momViewedAt: now } : prev));
+    }
   }
 
   function openApproval(row: Row) {
@@ -398,7 +413,20 @@ export default function AEJobCardsPage() {
                     <p className="text-xs text-accent mt-1">Service Engineer (Spectrum): {jc.assignedEngineer}</p>
                   )}
                   {jc.momNotes && jc.status !== "open" && jc.status !== "assigned" && (
-                    <p className="text-xs text-foreground-secondary mt-1">Inspection notes: {jc.momNotes}</p>
+                    <div className="mt-1">
+                      <p className="text-xs text-foreground-secondary">Inspection notes: {jc.momNotes}</p>
+                      {jc.momDocumentUrl && (
+                        <a
+                          href={jc.momDocumentUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={() => handleViewMom(jc)}
+                          className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-accent px-2.5 py-1 text-[11px] font-medium hover:bg-blue-100 transition-colors mt-1"
+                        >
+                          <Eye className="h-3 w-3" /> {jc.momViewedAt ? "View MOM again" : "View MOM"}
+                        </a>
+                      )}
+                    </div>
                   )}
                   {jc.estimateAmount != null && (
                     <div className="mt-2 rounded-2xl border border-blue-100 bg-blue-50/40 overflow-hidden shadow-sm">
@@ -676,6 +704,22 @@ export default function AEJobCardsPage() {
               <div>
                 <p className="text-xs font-medium text-foreground-secondary">Inspection notes (MOM)</p>
                 <p className="text-sm text-foreground mt-1">{detailsRow.momNotes}</p>
+                {detailsRow.momDocumentUrl && (
+                  <a
+                    href={detailsRow.momDocumentUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => handleViewMom(detailsRow)}
+                    className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-accent px-2.5 py-1 text-xs font-medium hover:bg-blue-100 transition-colors mt-2"
+                  >
+                    <Eye className="h-3 w-3" /> View MOM
+                  </a>
+                )}
+                {detailsRow.momViewedAt && (
+                  <p className="text-xs text-success mt-1.5 flex items-center gap-1">
+                    <Clock className="h-3 w-3" /> You viewed this on {fmtDateTime(detailsRow.momViewedAt)}
+                  </p>
+                )}
               </div>
             )}
             {estimateHistory.length > 0 && (
@@ -742,6 +786,7 @@ export default function AEJobCardsPage() {
                     assignedAt: detailsRow.assignedAt,
                     inspectingAt: detailsRow.inspectingAt,
                     momLoggedAt: detailsRow.momLoggedAt,
+                    momViewedAt: detailsRow.momViewedAt,
                     estimateSentAt: detailsRow.estimateSentAt,
                     approvedAt: detailsRow.approvedAt,
                     rejectedAt: detailsRow.rejectedAt,
