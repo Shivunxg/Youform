@@ -34,6 +34,7 @@
     { "src": "/icon-192.png", "dest": "/frontend/icon-192.png" },
     { "src": "/robots.txt", "dest": "/frontend/robots.txt" },
     { "src": "/sitemap.xml", "dest": "/frontend/sitemap.xml" },
+    { "src": "/llms.txt", "dest": "/frontend/llms.txt" },
     { "src": "/privacy", "dest": "/frontend/privacy.html" },
     { "src": "/privacy.html", "dest": "/frontend/privacy.html" },
     { "src": "/404", "dest": "/frontend/404.html" },
