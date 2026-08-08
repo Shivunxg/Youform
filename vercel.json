@@ -89,6 +89,8 @@
     { "src": "/blog/how-to-build-a-contact-form", "dest": "/frontend/blog-how-to-build-a-contact-form.html" },
     { "src": "/blog/form-completion-rate", "dest": "/frontend/blog-form-completion-rate.html" },
     { "src": "/blog/what-are-partial-form-submissions", "dest": "/frontend/blog-what-are-partial-form-submissions.html" },
+    { "src": "/blog/nps-survey-template", "dest": "/frontend/blog-nps-survey-template.html" },
+    { "src": "/blog/market-research-survey-templates", "dest": "/frontend/blog-market-research-survey-templates.html" },
     { "src": "/", "dest": "/frontend/marketing.html" },
     { "src": "/marketing", "dest": "/frontend/marketing.html" },
     { "src": "/marketing.html", "dest": "/frontend/marketing.html" },
