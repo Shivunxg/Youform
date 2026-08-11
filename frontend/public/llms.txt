@@ -50,6 +50,7 @@ Every form is self-hosted on FormFlowX's infrastructure. Responses are stored se
 - [What Are Partial Form Submissions?](https://formflowx.com/blog/what-are-partial-form-submissions): How to recover leads from people who started but didn't finish
 - [Free NPS Survey Template — Net Promoter Score Guide](https://formflowx.com/blog/nps-survey-template): NPS questions, scoring formula, benchmarks, and conditional follow-up logic
 - [Market Research Survey Templates — Free Complete Guide](https://formflowx.com/blog/market-research-survey-templates): Four survey templates for audience research, product validation, competitor analysis, and brand awareness
+- [How to Create a Free Online Form — Complete Beginner's Guide](https://formflowx.com/blog/free-online-form-builder-guide): Step-by-step guide to building a free online form with no code, covering fields, logic, design, and common mistakes
 
 ## About
 
