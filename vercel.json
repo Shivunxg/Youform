@@ -92,6 +92,7 @@
     { "src": "/blog/nps-survey-template", "dest": "/frontend/blog-nps-survey-template.html" },
     { "src": "/blog/market-research-survey-templates", "dest": "/frontend/blog-market-research-survey-templates.html" },
     { "src": "/blog/free-online-form-builder-guide", "dest": "/frontend/blog-free-online-form-builder-guide.html" },
+    { "src": "/blog/typeform-alternative-free-guide", "dest": "/frontend/blog-typeform-alternative-free-guide.html" },
     { "src": "/", "dest": "/frontend/marketing.html" },
     { "src": "/marketing", "dest": "/frontend/marketing.html" },
     { "src": "/marketing.html", "dest": "/frontend/marketing.html" },
