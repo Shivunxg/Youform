@@ -26,7 +26,7 @@ const STATUS_LABEL: Record<string, string> = {
   offer_dropped: "Offer Dropped",
   order_lost: "Order Lost",
   supply_service_given: "Supply / Service Given",
-  bills_submitted: "Bills Submitted",
+  bills_submitted: "Bills Submitted & Work Completed",
   payment_received: "Payment Received",
 };
 
@@ -69,6 +69,7 @@ interface Row {
 
 interface VoltageClass { id: string; name: string }
 interface EquipmentType { id: string; voltage_class_id: string; name: string }
+interface Component { id: string; equipment_type_id: string; name: string }
 
 export default function AEJobCardsPage() {
   const supabase = React.useMemo(() => createClient(), []);
@@ -82,9 +83,11 @@ export default function AEJobCardsPage() {
   const [newDialog, setNewDialog] = React.useState(false);
   const [voltageClasses, setVoltageClasses] = React.useState<VoltageClass[]>([]);
   const [equipmentTypes, setEquipmentTypes] = React.useState<EquipmentType[]>([]);
+  const [components, setComponents] = React.useState<Component[]>([]);
   const [form, setForm] = React.useState({
     voltageClassId: "",
     equipmentTypeId: "",
+    componentId: "",
     componentDescription: "",
     issueDescription: "",
     priority: "medium",
@@ -172,6 +175,15 @@ export default function AEJobCardsPage() {
       .select("id, voltage_class_id, name")
       .eq("voltage_class_id", vcId);
     setEquipmentTypes(data ?? []);
+    setComponents([]);
+  }
+
+  async function loadComponents(etId: string) {
+    const { data } = await supabase
+      .from("equipment_components")
+      .select("id, equipment_type_id, name")
+      .eq("equipment_type_id", etId);
+    setComponents(data ?? []);
   }
 
   async function handleCreate() {
@@ -184,7 +196,8 @@ export default function AEJobCardsPage() {
       station_id: stationId,
       voltage_class_id: form.voltageClassId || null,
       equipment_type_id: form.equipmentTypeId || null,
-      component_description: form.componentDescription || null,
+      component_id: form.componentId || null,
+      component_description: form.componentId ? null : (form.componentDescription || null),
       issue_description: form.issueDescription,
       priority: form.priority,
       quotation_amount: form.quotationAmount ? parseFloat(form.quotationAmount) : null,
@@ -197,6 +210,7 @@ export default function AEJobCardsPage() {
     setForm({
       voltageClassId: "",
       equipmentTypeId: "",
+      componentId: "",
       componentDescription: "",
       issueDescription: "",
       priority: "medium",
@@ -381,9 +395,9 @@ export default function AEJobCardsPage() {
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                 value={form.voltageClassId}
                 onChange={(e) => {
-                  setForm((f) => ({ ...f, voltageClassId: e.target.value, equipmentTypeId: "" }));
+                  setForm((f) => ({ ...f, voltageClassId: e.target.value, equipmentTypeId: "", componentId: "" }));
                   if (e.target.value) loadEquipmentTypes(e.target.value);
-                  else setEquipmentTypes([]);
+                  else { setEquipmentTypes([]); setComponents([]); }
                 }}
               >
                 <option value="">— select —</option>
@@ -400,9 +414,11 @@ export default function AEJobCardsPage() {
                 <select
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                   value={form.equipmentTypeId}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, equipmentTypeId: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    setForm((f) => ({ ...f, equipmentTypeId: e.target.value, componentId: "" }));
+                    if (e.target.value) loadComponents(e.target.value);
+                    else setComponents([]);
+                  }}
                 >
                   <option value="">— select —</option>
                   {equipmentTypes.map((et) => (
@@ -413,16 +429,31 @@ export default function AEJobCardsPage() {
                 </select>
               </div>
             )}
-            <div className="space-y-1.5">
-              <Label>Component (optional)</Label>
-              <Input
-                value={form.componentDescription}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, componentDescription: e.target.value }))
-                }
-                placeholder="e.g. Bushing, CT, PT…"
-              />
-            </div>
+            {components.length > 0 && (
+              <div className="space-y-1.5">
+                <Label>Component</Label>
+                <select
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  value={form.componentId}
+                  onChange={(e) => setForm((f) => ({ ...f, componentId: e.target.value }))}
+                >
+                  <option value="">— select —</option>
+                  {components.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {components.length === 0 && (
+              <div className="space-y-1.5">
+                <Label>Component (optional)</Label>
+                <Input
+                  value={form.componentDescription}
+                  onChange={(e) => setForm((f) => ({ ...f, componentDescription: e.target.value }))}
+                  placeholder="e.g. Bushing, CT, PT…"
+                />
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label>Issue Description *</Label>
               <Input

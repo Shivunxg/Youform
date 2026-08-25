@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { ClipboardList, Plus, Clock } from "lucide-react";
+import { Clock, UserPlus, Users } from "lucide-react";
 import { JobCardTimeline, type TimelineData } from "@/components/job-cards/timeline";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -27,14 +27,11 @@ const STATUS_LABEL: Record<string, string> = {
   offer_dropped: "Offer Dropped",
   order_lost: "Order Lost",
   supply_service_given: "Supply / Service Given",
-  bills_submitted: "Bills Submitted",
+  bills_submitted: "Bills Submitted & Work Completed",
   payment_received: "Payment Received",
 };
 
-const STATUS_VARIANT: Record<
-  string,
-  "default" | "accent" | "warning" | "danger" | "success"
-> = {
+const STATUS_VARIANT: Record<string, "default" | "accent" | "warning" | "danger" | "success"> = {
   quotation_shared: "accent",
   order_received: "warning",
   offer_dropped: "danger",
@@ -51,7 +48,6 @@ const PRIORITY_VARIANT = {
   critical: "danger",
 } as const;
 
-// Valid transitions from each status
 const TRANSITIONS: Record<string, string[]> = {
   quotation_shared: ["order_received", "offer_dropped", "order_lost"],
   order_received: ["supply_service_given"],
@@ -61,6 +57,11 @@ const TRANSITIONS: Record<string, string[]> = {
   order_lost: [],
   payment_received: [],
 };
+
+const CLOSED_STATUSES = ["payment_received", "offer_dropped", "order_lost"];
+const OPEN_STATUSES = ["quotation_shared", "order_received", "supply_service_given"];
+
+interface EngineerRef { id: string; name: string }
 
 interface Row {
   id: string;
@@ -78,6 +79,20 @@ interface Row {
   remarks: string | null;
   createdAt: string;
   history: TimelineData["history"];
+  engineers: EngineerRef[];
+}
+
+function ageBadgeColor(days: number, threshold: number) {
+  if (days <= threshold) return "bg-green-50 border-green-200 text-green-700";
+  if (days <= threshold * 2) return "bg-amber-50 border-amber-200 text-amber-700";
+  return "bg-red-50 border-red-200 text-red-700";
+}
+
+function ageRowHighlight(days: number, threshold: number, isOpen: boolean) {
+  if (!isOpen) return "";
+  if (days <= threshold) return "";
+  if (days <= threshold * 2) return "border-l-2 border-l-amber-400";
+  return "border-l-2 border-l-red-500";
 }
 
 export default function AdminJobCardsPage() {
@@ -95,31 +110,40 @@ export default function AdminJobCardsPage() {
   const [statusNote, setStatusNote] = React.useState("");
   const [changingStatus, setChangingStatus] = React.useState(false);
 
-  React.useEffect(() => {
-    load();
-  }, []);
+  // Engineer assignment
+  const [allEngineers, setAllEngineers] = React.useState<EngineerRef[]>([]);
+  const [engDialog, setEngDialog] = React.useState(false);
+  const [selectedEngs, setSelectedEngs] = React.useState<Set<string>>(new Set());
+  const [savingEngs, setSavingEngs] = React.useState(false);
+
+  React.useEffect(() => { load(); }, []);
 
   async function load() {
     setLoading(true);
-    const [{ data: jcData }, { data: histData }, { data: settingsData }] = await Promise.all([
-      supabase
-        .from("job_cards")
-        .select(
-          "id, job_card_number, station_id, current_status, priority, issue_description, component_description, quotation_amount, order_amount, remarks, created_at, hierarchy_nodes!station_id(name), voltage_classes(name), equipment_types(name)"
-        )
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("status_history")
-        .select("job_card_id, to_status, created_at, note, profiles!changed_by(name)")
-        .order("created_at", { ascending: true }),
-      supabase.from("app_settings").select("key, value"),
-    ]);
+    const [{ data: jcData }, { data: histData }, { data: settingsData }, { data: jceData }, { data: engData }] =
+      await Promise.all([
+        supabase
+          .from("job_cards")
+          .select(
+            "id, job_card_number, station_id, current_status, priority, issue_description, component_description, quotation_amount, order_amount, remarks, created_at, hierarchy_nodes!station_id(name), voltage_classes(name), equipment_types(name)"
+          )
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("status_history")
+          .select("job_card_id, to_status, created_at, note, profiles!changed_by(name)")
+          .order("created_at", { ascending: true }),
+        supabase.from("app_settings").select("key, value"),
+        supabase.from("job_card_engineers").select("job_card_id, engineer_id, profiles!engineer_id(name)"),
+        supabase.from("profiles").select("id, name").eq("role", "service_engineer").eq("status", "active"),
+      ]);
 
     if (settingsData) {
       const m: Record<string, string> = {};
       for (const s of settingsData) m[s.key] = s.value;
       if (m["ageing_threshold_days"]) setAgeingThreshold(parseInt(m["ageing_threshold_days"], 10));
     }
+
+    setAllEngineers((engData ?? []).map((e) => ({ id: e.id, name: e.name })));
 
     const histByCard = new Map<string, Row["history"]>();
     for (const h of histData ?? []) {
@@ -128,10 +152,16 @@ export default function AdminJobCardsPage() {
         toStatus: h.to_status,
         createdAt: h.created_at,
         note: h.note,
-        changedByName:
-          (h.profiles as unknown as { name: string } | null)?.name ?? null,
+        changedByName: (h.profiles as { name: string } | null)?.name ?? null,
       });
       histByCard.set(h.job_card_id, list);
+    }
+
+    const engsByCard = new Map<string, EngineerRef[]>();
+    for (const jce of jceData ?? []) {
+      const list = engsByCard.get(jce.job_card_id) ?? [];
+      list.push({ id: jce.engineer_id, name: (jce.profiles as { name: string } | null)?.name ?? jce.engineer_id });
+      engsByCard.set(jce.job_card_id, list);
     }
 
     setRows(
@@ -139,12 +169,9 @@ export default function AdminJobCardsPage() {
         id: jc.id,
         jobCardNumber: jc.job_card_number,
         stationId: jc.station_id,
-        stationName:
-          (jc.hierarchy_nodes as unknown as { name: string } | null)?.name ?? "—",
-        voltageClass:
-          (jc.voltage_classes as unknown as { name: string } | null)?.name ?? null,
-        equipmentType:
-          (jc.equipment_types as unknown as { name: string } | null)?.name ?? null,
+        stationName: (jc.hierarchy_nodes as { name: string } | null)?.name ?? "—",
+        voltageClass: (jc.voltage_classes as { name: string } | null)?.name ?? null,
+        equipmentType: (jc.equipment_types as { name: string } | null)?.name ?? null,
         componentDescription: jc.component_description,
         issueDescription: jc.issue_description,
         priority: jc.priority,
@@ -154,6 +181,7 @@ export default function AdminJobCardsPage() {
         remarks: jc.remarks,
         createdAt: jc.created_at,
         history: histByCard.get(jc.id) ?? [],
+        engineers: engsByCard.get(jc.id) ?? [],
       }))
     );
     setLoading(false);
@@ -174,9 +202,7 @@ export default function AdminJobCardsPage() {
   async function changeStatus() {
     if (!selectedId || !nextStatus) return;
     setChangingStatus(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
     await supabase.rpc("change_job_card_status", {
       p_job_card_id: selectedId,
       p_to_status: nextStatus,
@@ -190,17 +216,76 @@ export default function AdminJobCardsPage() {
     load();
   }
 
+  function openEngDialog() {
+    if (!selected) return;
+    setSelectedEngs(new Set(selected.engineers.map((e) => e.id)));
+    setEngDialog(true);
+  }
+
+  async function saveEngineers() {
+    if (!selectedId) return;
+    setSavingEngs(true);
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const prev = new Set((selected?.engineers ?? []).map((e) => e.id));
+    const next = selectedEngs;
+
+    const toAdd = [...next].filter((id) => !prev.has(id));
+    const toRemove = [...prev].filter((id) => !next.has(id));
+
+    // Remove de-assigned engineers
+    if (toRemove.length > 0) {
+      await supabase
+        .from("job_card_engineers")
+        .delete()
+        .eq("job_card_id", selectedId)
+        .in("engineer_id", toRemove);
+    }
+
+    // Add newly assigned engineers
+    if (toAdd.length > 0) {
+      await supabase.from("job_card_engineers").insert(
+        toAdd.map((eid) => ({ job_card_id: selectedId, engineer_id: eid }))
+      );
+      // In-app notifications for newly assigned engineers
+      await supabase.from("notifications_queue").insert(
+        toAdd.map((eid) => ({
+          target_user_id: eid,
+          title: `Assigned to Job Card ${selected?.jobCardNumber ?? ""}`,
+          body: `You have been assigned to job card ${selected?.jobCardNumber ?? ""} at ${selected?.stationName ?? ""}${selected?.voltageClass ? " · " + selected.voltageClass : ""}${selected?.equipmentType ? " · " + selected.equipmentType : ""}. Please review the details.`,
+          is_read: false,
+          created_by: user?.id ?? null,
+        }))
+      );
+    }
+
+    // Notify removed engineers
+    if (toRemove.length > 0) {
+      await supabase.from("notifications_queue").insert(
+        toRemove.map((eid) => ({
+          target_user_id: eid,
+          title: `Removed from Job Card ${selected?.jobCardNumber ?? ""}`,
+          body: `You have been removed from job card ${selected?.jobCardNumber ?? ""} at ${selected?.stationName ?? ""}.`,
+          is_read: false,
+          created_by: user?.id ?? null,
+        }))
+      );
+    }
+
+    setSavingEngs(false);
+    setEngDialog(false);
+    load();
+  }
+
   const transitions = selected ? TRANSITIONS[selected.currentStatus] ?? [] : [];
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground tracking-tight">Job Cards</h1>
-          <p className="text-sm text-foreground-secondary mt-1">
-            Service management requests across all stations
-          </p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-semibold text-foreground tracking-tight">Job Cards</h1>
+        <p className="text-sm text-foreground-secondary mt-1">
+          Service management requests across all stations
+        </p>
       </div>
 
       <PageToolbar
@@ -214,15 +299,14 @@ export default function AdminJobCardsPage() {
           >
             <option value="all">All statuses</option>
             {Object.entries(STATUS_LABEL).map(([v, l]) => (
-              <option key={v} value={v}>
-                {l}
-              </option>
+              <option key={v} value={v}>{l}</option>
             ))}
           </select>
         }
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* List */}
         <Card>
           <CardHeader>
             <CardTitle>Job Cards ({filtered.length})</CardTitle>
@@ -231,41 +315,30 @@ export default function AdminJobCardsPage() {
             {loading ? (
               <p className="text-sm text-foreground-secondary py-6 text-center">Loading…</p>
             ) : filtered.length === 0 ? (
-              <EmptyState
-                title="No job cards"
-                description="No job cards match your filters."
-              />
+              <EmptyState title="No job cards" description="No job cards match your filters." />
             ) : (
               <div className="space-y-1">
                 {filtered.map((row) => {
                   const days = ageingDays(row.createdAt);
-                  const isAgeing =
-                    !["payment_received", "offer_dropped", "order_lost"].includes(
-                      row.currentStatus
-                    ) && days > ageingThreshold;
+                  const isOpen = OPEN_STATUSES.includes(row.currentStatus);
+                  const isAgeing = isOpen && days > ageingThreshold;
+                  const rowHighlight = ageRowHighlight(days, ageingThreshold, isOpen);
                   return (
                     <button
                       key={row.id}
                       onClick={() => setSelectedId(row.id === selectedId ? null : row.id)}
-                      className={`w-full text-left flex items-center gap-3 py-2.5 border-b border-border last:border-0 hover:bg-hover/50 -mx-2 px-2 rounded-lg transition-colors ${selectedId === row.id ? "bg-blue-50" : ""}`}
+                      className={`w-full text-left flex items-start gap-3 py-2.5 border-b border-border last:border-0 hover:bg-hover/50 -mx-2 px-2 rounded-lg transition-colors ${selectedId === row.id ? "bg-blue-50" : ""} ${rowHighlight}`}
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-medium text-foreground">
-                            {row.jobCardNumber}
-                          </p>
-                          <Badge
-                            variant={
-                              PRIORITY_VARIANT[row.priority as keyof typeof PRIORITY_VARIANT]
-                            }
-                            className="capitalize"
-                          >
+                          <p className="text-sm font-medium text-foreground">{row.jobCardNumber}</p>
+                          <Badge variant={PRIORITY_VARIANT[row.priority as keyof typeof PRIORITY_VARIANT]} className="capitalize">
                             {row.priority}
                           </Badge>
                           {isAgeing && (
-                            <Badge variant="danger" className="gap-1">
+                            <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-1.5 py-0.5 rounded border ${ageBadgeColor(days, ageingThreshold)}`}>
                               <Clock className="h-2.5 w-2.5" /> {days}d
-                            </Badge>
+                            </span>
                           )}
                         </div>
                         <p className="text-xs text-foreground-secondary mt-0.5 truncate">
@@ -275,12 +348,18 @@ export default function AdminJobCardsPage() {
                           {" · "}
                           {fmtDateIST(row.createdAt)}
                         </p>
+                        {row.engineers.length > 0 && (
+                          <div className="flex items-center gap-1 mt-1 flex-wrap">
+                            <Users className="h-3 w-3 text-foreground-secondary shrink-0" />
+                            {row.engineers.map((e) => (
+                              <span key={e.id} className="text-[11px] text-foreground-secondary bg-slate-100 rounded px-1.5 py-0.5">
+                                {e.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      <Badge
-                        variant={STATUS_VARIANT[row.currentStatus] ?? "default"}
-                        dot
-                        className="shrink-0"
-                      >
+                      <Badge variant={STATUS_VARIANT[row.currentStatus] ?? "default"} dot className="shrink-0 mt-0.5">
                         {STATUS_LABEL[row.currentStatus] ?? row.currentStatus}
                       </Badge>
                     </button>
@@ -291,6 +370,7 @@ export default function AdminJobCardsPage() {
           </CardContent>
         </Card>
 
+        {/* Detail */}
         {selected && (
           <Card>
             <CardHeader>
@@ -303,68 +383,65 @@ export default function AdminJobCardsPage() {
             </CardHeader>
             <CardContent className="pt-0 space-y-4">
               <div>
-                <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-1">
-                  Issue
-                </p>
+                <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-1">Issue</p>
                 <p className="text-sm text-foreground">{selected.issueDescription}</p>
                 {selected.componentDescription && (
-                  <p className="text-xs text-foreground-secondary mt-1">
-                    Component: {selected.componentDescription}
-                  </p>
+                  <p className="text-xs text-foreground-secondary mt-1">Component: {selected.componentDescription}</p>
                 )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 {selected.quotationAmount != null && (
                   <div>
-                    <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-1">
-                      Quotation
-                    </p>
-                    <p className="text-sm font-medium text-foreground">
-                      ₹{selected.quotationAmount.toLocaleString("en-IN")}
-                    </p>
+                    <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-1">Quotation</p>
+                    <p className="text-sm font-medium text-foreground">₹{selected.quotationAmount.toLocaleString("en-IN")}</p>
                   </div>
                 )}
                 {selected.orderAmount != null && (
                   <div>
-                    <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-1">
-                      Order Value
-                    </p>
-                    <p className="text-sm font-medium text-foreground">
-                      ₹{selected.orderAmount.toLocaleString("en-IN")}
-                    </p>
+                    <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-1">Order Value</p>
+                    <p className="text-sm font-medium text-foreground">₹{selected.orderAmount.toLocaleString("en-IN")}</p>
                   </div>
                 )}
               </div>
 
               {selected.remarks && (
                 <div>
-                  <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-1">
-                    Remarks
-                  </p>
+                  <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-1">Remarks</p>
                   <p className="text-sm text-foreground">{selected.remarks}</p>
                 </div>
               )}
 
+              {/* Engineer assignment */}
               <div>
-                <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-1">
-                  Raised
-                </p>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold">Assigned Engineers</p>
+                  <Button variant="outline" size="sm" onClick={openEngDialog} className="h-6 px-2 text-xs gap-1">
+                    <UserPlus className="h-3 w-3" /> Assign
+                  </Button>
+                </div>
+                {selected.engineers.length === 0 ? (
+                  <p className="text-xs text-foreground-secondary italic">No engineers assigned yet.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {selected.engineers.map((e) => (
+                      <span key={e.id} className="inline-flex items-center gap-1 text-xs bg-indigo-50 border border-indigo-200 text-indigo-700 rounded px-2 py-0.5">
+                        <Users className="h-3 w-3" /> {e.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-1">Raised</p>
                 <p className="text-sm text-foreground">{fmtIST(selected.createdAt)}</p>
               </div>
 
               {transitions.length > 0 && (
                 <div className="flex gap-2 flex-wrap pt-1">
                   {transitions.map((t) => (
-                    <Button
-                      key={t}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setNextStatus(t);
-                        setStatusDialog(true);
-                      }}
-                    >
+                    <Button key={t} variant="outline" size="sm" onClick={() => { setNextStatus(t); setStatusDialog(true); }}>
                       → {STATUS_LABEL[t]}
                     </Button>
                   ))}
@@ -372,18 +449,15 @@ export default function AdminJobCardsPage() {
               )}
 
               <div>
-                <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-2">
-                  Progress
-                </p>
-                <JobCardTimeline
-                  data={{ currentStatus: selected.currentStatus, history: selected.history }}
-                />
+                <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-2">Progress</p>
+                <JobCardTimeline data={{ currentStatus: selected.currentStatus, history: selected.history }} />
               </div>
             </CardContent>
           </Card>
         )}
       </div>
 
+      {/* Status change dialog */}
       <Dialog open={statusDialog} onOpenChange={setStatusDialog}>
         <DialogContent>
           <DialogHeader>
@@ -395,20 +469,60 @@ export default function AdminJobCardsPage() {
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
-              <Label>Note (optional)</Label>
+              <Label>Remarks (optional)</Label>
               <Input
                 value={statusNote}
                 onChange={(e) => setStatusNote(e.target.value)}
-                placeholder="Add a note about this status change…"
+                placeholder="Add remarks about this status change…"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setStatusDialog(false)}>
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={() => setStatusDialog(false)}>Cancel</Button>
             <Button onClick={changeStatus} disabled={changingStatus}>
               {changingStatus ? "Saving…" : "Confirm"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Engineer assignment dialog */}
+      <Dialog open={engDialog} onOpenChange={setEngDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Service Engineers</DialogTitle>
+            <DialogDescription>
+              Select engineers for <strong>{selected?.jobCardNumber}</strong>. They will be notified automatically.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2 max-h-64 overflow-y-auto space-y-2">
+            {allEngineers.length === 0 ? (
+              <p className="text-sm text-foreground-secondary text-center py-4">No service engineers found. Create users with the Service Engineer role first.</p>
+            ) : (
+              allEngineers.map((eng) => (
+                <label key={eng.id} className="flex items-center gap-3 cursor-pointer hover:bg-hover/40 rounded-lg px-2 py-1.5">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-border text-accent focus:ring-accent/40"
+                    checked={selectedEngs.has(eng.id)}
+                    onChange={(e) => {
+                      setSelectedEngs((prev) => {
+                        const next = new Set(prev);
+                        if (e.target.checked) next.add(eng.id);
+                        else next.delete(eng.id);
+                        return next;
+                      });
+                    }}
+                  />
+                  <span className="text-sm text-foreground">{eng.name}</span>
+                </label>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEngDialog(false)}>Cancel</Button>
+            <Button onClick={saveEngineers} disabled={savingEngs}>
+              {savingEngs ? "Saving…" : "Save Assignment"}
             </Button>
           </DialogFooter>
         </DialogContent>

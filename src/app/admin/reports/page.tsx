@@ -1,10 +1,11 @@
 // @ts-nocheck
-import { createClient } from "@/lib/supabase/server";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { fmtDateIST, ageingDays } from "@/lib/ist";
+"use client";
 
-export const dynamic = "force-dynamic";
+import * as React from "react";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/client";
+import { fmtDateIST, ageingDays } from "@/lib/ist";
 
 const STATUS_LABEL: Record<string, string> = {
   quotation_shared: "Quotation Shared",
@@ -12,14 +13,11 @@ const STATUS_LABEL: Record<string, string> = {
   offer_dropped: "Offer Dropped",
   order_lost: "Order Lost",
   supply_service_given: "Supply / Service Given",
-  bills_submitted: "Bills Submitted",
+  bills_submitted: "Bills Submitted & Work Completed",
   payment_received: "Payment Received",
 };
 
-const STATUS_VARIANT: Record<
-  string,
-  "default" | "accent" | "warning" | "danger" | "success"
-> = {
+const STATUS_VARIANT: Record<string, "default" | "accent" | "warning" | "danger" | "success"> = {
   quotation_shared: "accent",
   order_received: "warning",
   offer_dropped: "danger",
@@ -29,145 +27,300 @@ const STATUS_VARIANT: Record<
   payment_received: "success",
 };
 
-function fmtRupee(n: number) {
-  return "₹" + n.toLocaleString("en-IN", { maximumFractionDigits: 0 });
+interface JobCard {
+  id: string;
+  job_card_number: string;
+  station_id: string;
+  current_status: string;
+  created_at: string;
+  stationName: string;
+  voltageClass: string | null;
+  equipmentType: string | null;
+  hasEngineers: boolean;
+  hasMom: boolean;
 }
 
-export default async function AdminReportsPage() {
-  const supabase = await createClient();
+interface HNode { id: string; name: string; level: number; parent_id: string | null }
 
-  const [jobCardsRes, settingsRes] = await Promise.all([
-    supabase
-      .from("job_cards")
-      .select(
-        "id, job_card_number, current_status, priority, order_amount, quotation_amount, created_at, hierarchy_nodes!station_id(name), voltage_classes(name), equipment_types(name)"
-      )
-      .order("created_at", { ascending: false }),
-    supabase.from("app_settings").select("key, value"),
-  ]);
+type TileKey = "open" | "completed" | "mom" | "assigned" | "not_assigned";
 
-  const all = jobCardsRes.data ?? [];
-  const settings: Record<string, string> = {};
-  for (const s of settingsRes.data ?? []) settings[s.key] = s.value;
-  const threshold = parseInt(settings["ageing_threshold_days"] ?? "30", 10);
+const TILES: { key: TileKey; label: string; color: string; desc: string }[] = [
+  { key: "open", label: "Open Jobs", color: "text-amber-600", desc: "Quotation Shared + Order Received + Supply/Service Given" },
+  { key: "completed", label: "Orders Completed", color: "text-green-600", desc: "Payment Received" },
+  { key: "mom", label: "MOM Logged", color: "text-blue-600", desc: "Job cards with at least one MOM entry" },
+  { key: "assigned", label: "Engineer Assigned", color: "text-indigo-600", desc: "Job cards with at least one assigned engineer" },
+  { key: "not_assigned", label: "Not Assigned", color: "text-rose-600", desc: "Job cards with no engineer assigned" },
+];
 
-  const open = ["quotation_shared", "order_received", "supply_service_given"];
-  const won = ["order_received", "supply_service_given", "bills_submitted", "payment_received"];
-  const lost = ["offer_dropped", "order_lost"];
+export default function AdminReportsPage() {
+  const supabase = React.useMemo(() => createClient(), []);
+  const [allCards, setAllCards] = React.useState<JobCard[]>([]);
+  const [nodes, setNodes] = React.useState<HNode[]>([]);
+  const [threshold, setThreshold] = React.useState(30);
+  const [loading, setLoading] = React.useState(true);
 
-  const totalDecided = all.filter(
-    (jc) => won.includes(jc.current_status) || lost.includes(jc.current_status)
-  ).length;
-  const totalWon = all.filter((jc) => won.includes(jc.current_status)).length;
-  const winRate = totalDecided === 0 ? 0 : Math.round((totalWon / totalDecided) * 100);
+  // Filters
+  const [zone, setZone] = React.useState("");
+  const [circle, setCircle] = React.useState("");
+  const [division, setDivision] = React.useState("");
+  const [station, setStation] = React.useState("");
+  const [dateFrom, setDateFrom] = React.useState("");
+  const [dateTo, setDateTo] = React.useState("");
 
-  const revenueBilled = all
-    .filter((jc) => ["bills_submitted", "payment_received"].includes(jc.current_status))
-    .reduce((s, jc) => s + (jc.order_amount ?? 0), 0);
-  const revenueCollected = all
-    .filter((jc) => jc.current_status === "payment_received")
-    .reduce((s, jc) => s + (jc.order_amount ?? 0), 0);
+  // Drill-down
+  const [activeTile, setActiveTile] = React.useState<TileKey | null>(null);
 
-  const ageing = all.filter(
-    (jc) => open.includes(jc.current_status) && ageingDays(jc.created_at) > threshold
-  );
+  React.useEffect(() => { load(); }, []);
 
-  const byStatus = new Map<string, number>();
-  for (const jc of all) byStatus.set(jc.current_status, (byStatus.get(jc.current_status) ?? 0) + 1);
+  async function load() {
+    setLoading(true);
+    const [jcRes, jceRes, momRes, nodeRes, settingsRes] = await Promise.all([
+      supabase
+        .from("job_cards")
+        .select("id, job_card_number, station_id, current_status, created_at, hierarchy_nodes!station_id(name), voltage_classes(name), equipment_types(name)")
+        .order("created_at", { ascending: false }),
+      supabase.from("job_card_engineers").select("job_card_id"),
+      supabase.from("mom_logs").select("job_card_id"),
+      supabase.from("hierarchy_nodes").select("id, name, level, parent_id").order("level").order("name"),
+      supabase.from("app_settings").select("key, value"),
+    ]);
+
+    const engineeredSet = new Set((jceRes.data ?? []).map((r) => r.job_card_id));
+    const momSet = new Set((momRes.data ?? []).map((r) => r.job_card_id));
+    const settings: Record<string, string> = {};
+    for (const s of settingsRes.data ?? []) settings[s.key] = s.value;
+    if (settings["ageing_threshold_days"]) setThreshold(parseInt(settings["ageing_threshold_days"], 10));
+
+    setNodes(nodeRes.data ?? []);
+    setAllCards(
+      (jcRes.data ?? []).map((jc) => ({
+        id: jc.id,
+        job_card_number: jc.job_card_number,
+        station_id: jc.station_id,
+        current_status: jc.current_status,
+        created_at: jc.created_at,
+        stationName: (jc.hierarchy_nodes as { name: string } | null)?.name ?? "—",
+        voltageClass: (jc.voltage_classes as { name: string } | null)?.name ?? null,
+        equipmentType: (jc.equipment_types as { name: string } | null)?.name ?? null,
+        hasEngineers: engineeredSet.has(jc.id),
+        hasMom: momSet.has(jc.id),
+      }))
+    );
+    setLoading(false);
+  }
+
+  // Cascade helpers
+  const zones = nodes.filter((n) => n.level === 1);
+  const circles = nodes.filter((n) => n.level === 2 && (!zone || n.parent_id === zone));
+  const divisions = nodes.filter((n) => n.level === 3 && (!circle ? (!zone || nodes.find((z) => z.id === zone) ? true : false) : n.parent_id === circle));
+  const stations = nodes.filter((n) => n.level === 4 && (!division ? true : n.parent_id === division));
+
+  // Determine which station_ids pass the hierarchy filter
+  const validStationIds = React.useMemo(() => {
+    if (station) return new Set([station]);
+    if (division) {
+      return new Set(nodes.filter((n) => n.level === 4 && n.parent_id === division).map((n) => n.id));
+    }
+    if (circle) {
+      const divIds = new Set(nodes.filter((n) => n.level === 3 && n.parent_id === circle).map((n) => n.id));
+      return new Set(nodes.filter((n) => n.level === 4 && divIds.has(n.parent_id!)).map((n) => n.id));
+    }
+    if (zone) {
+      const circleIds = new Set(nodes.filter((n) => n.level === 2 && n.parent_id === zone).map((n) => n.id));
+      const divIds = new Set(nodes.filter((n) => n.level === 3 && circleIds.has(n.parent_id!)).map((n) => n.id));
+      return new Set(nodes.filter((n) => n.level === 4 && divIds.has(n.parent_id!)).map((n) => n.id));
+    }
+    return null; // no filter
+  }, [zone, circle, division, station, nodes]);
+
+  const filtered = React.useMemo(() => {
+    return allCards.filter((jc) => {
+      if (validStationIds && !validStationIds.has(jc.station_id)) return false;
+      if (dateFrom && jc.created_at < dateFrom) return false;
+      if (dateTo && jc.created_at > dateTo + "T23:59:59") return false;
+      return true;
+    });
+  }, [allCards, validStationIds, dateFrom, dateTo]);
+
+  const OPEN_STATUSES = ["quotation_shared", "order_received", "supply_service_given"];
+
+  const kpis: Record<TileKey, JobCard[]> = React.useMemo(() => ({
+    open: filtered.filter((jc) => OPEN_STATUSES.includes(jc.current_status)),
+    completed: filtered.filter((jc) => jc.current_status === "payment_received"),
+    mom: filtered.filter((jc) => jc.hasMom),
+    assigned: filtered.filter((jc) => jc.hasEngineers),
+    not_assigned: filtered.filter((jc) => !jc.hasEngineers),
+  }), [filtered]);
+
+  function ageColor(days: number) {
+    if (days <= threshold) return "text-green-600";
+    if (days <= threshold * 2) return "text-amber-600";
+    return "text-red-600";
+  }
+
+  const drillList = activeTile ? kpis[activeTile] : null;
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-semibold text-foreground tracking-tight">Reports</h1>
         <p className="text-sm text-foreground-secondary mt-1">
-          Service management metrics · {all.length} total job cards
+          Service management metrics · {filtered.length} job cards
         </p>
       </div>
 
-      {/* Summary tiles */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
-        {[
-          { label: "Open", value: all.filter((jc) => open.includes(jc.current_status)).length, cls: "text-amber-600" },
-          { label: "Bills Submitted", value: all.filter((jc) => jc.current_status === "bills_submitted").length, cls: "text-amber-600" },
-          { label: "Win Rate", value: `${winRate}%`, cls: "text-green-600" },
-          { label: "Revenue Billed", value: fmtRupee(revenueBilled), cls: "text-foreground" },
-          { label: "Collected", value: fmtRupee(revenueCollected), cls: "text-green-600" },
-        ].map((t) => (
-          <div key={t.label} className="rounded-xl border border-border bg-background p-4">
-            <p className="text-xs text-foreground-secondary">{t.label}</p>
-            <p className={`text-xl font-bold mt-1 ${t.cls}`}>{t.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Status breakdown */}
+      {/* Filters */}
       <Card>
-        <CardHeader>
-          <CardTitle>Status Breakdown</CardTitle>
-          <CardDescription>All job cards by current status</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="space-y-2">
-            {Object.entries(STATUS_LABEL).map(([status, label]) => {
-              const count = byStatus.get(status) ?? 0;
-              const pct = all.length === 0 ? 0 : Math.round((count / all.length) * 100);
-              return (
-                <div key={status} className="flex items-center gap-3">
-                  <div className="w-36 shrink-0">
-                    <Badge variant={STATUS_VARIANT[status]} dot>
-                      {label}
-                    </Badge>
-                  </div>
-                  <div className="flex-1 rounded-full bg-slate-100 h-2">
-                    <div
-                      className="rounded-full h-2 bg-accent"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                  <span className="text-sm font-semibold text-foreground w-8 text-right">{count}</span>
-                </div>
-              );
-            })}
+        <CardContent className="pt-4 pb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div>
+              <p className="text-[11px] font-semibold text-foreground-secondary uppercase mb-1">Zone</p>
+              <select
+                className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+                value={zone}
+                onChange={(e) => { setZone(e.target.value); setCircle(""); setDivision(""); setStation(""); }}
+              >
+                <option value="">All</option>
+                {zones.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold text-foreground-secondary uppercase mb-1">Circle</p>
+              <select
+                className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+                value={circle}
+                onChange={(e) => { setCircle(e.target.value); setDivision(""); setStation(""); }}
+              >
+                <option value="">All</option>
+                {circles.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold text-foreground-secondary uppercase mb-1">Division</p>
+              <select
+                className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+                value={division}
+                onChange={(e) => { setDivision(e.target.value); setStation(""); }}
+              >
+                <option value="">All</option>
+                {divisions.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold text-foreground-secondary uppercase mb-1">Station</p>
+              <select
+                className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+                value={station}
+                onChange={(e) => setStation(e.target.value)}
+              >
+                <option value="">All</option>
+                {stations.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold text-foreground-secondary uppercase mb-1">From</p>
+              <input
+                type="date"
+                className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold text-foreground-secondary uppercase mb-1">To</p>
+              <input
+                type="date"
+                className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Ageing list */}
-      {ageing.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Ageing Job Cards</CardTitle>
-            <CardDescription>
-              Open more than {threshold} days · {ageing.length} card{ageing.length !== 1 ? "s" : ""}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="space-y-1">
-              {ageing.map((jc) => {
-                const days = ageingDays(jc.created_at);
-                return (
-                  <div
-                    key={jc.id}
-                    className="flex items-center gap-3 py-2.5 border-b border-border last:border-0"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-foreground">{jc.job_card_number}</p>
-                      <p className="text-xs text-foreground-secondary mt-0.5 truncate">
-                        {(jc.hierarchy_nodes as unknown as { name: string } | null)?.name ?? "—"}
-                        {" · "}
-                        {fmtDateIST(jc.created_at)}
-                      </p>
-                    </div>
-                    <Badge variant="danger">{days}d old</Badge>
-                    <Badge variant={STATUS_VARIANT[jc.current_status] ?? "default"} dot>
-                      {STATUS_LABEL[jc.current_status] ?? jc.current_status}
-                    </Badge>
+      {/* KPI tiles */}
+      {loading ? (
+        <p className="text-sm text-foreground-secondary text-center py-8">Loading…</p>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
+            {TILES.map((t) => {
+              const count = kpis[t.key].length;
+              const isActive = activeTile === t.key;
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => setActiveTile(isActive ? null : t.key)}
+                  className={`rounded-xl border bg-background p-4 text-left transition-all hover:shadow-sm ${
+                    isActive ? "border-accent ring-2 ring-accent/20 shadow-sm" : "border-border"
+                  }`}
+                >
+                  <p className="text-xs text-foreground-secondary">{t.label}</p>
+                  <p className={`text-2xl font-bold mt-1 ${t.color}`}>{count}</p>
+                  <p className="text-[11px] text-foreground-secondary mt-1 leading-tight">{t.desc}</p>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Drill-down list */}
+          {activeTile && drillList && (
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  {TILES.find((t) => t.key === activeTile)?.label} — {drillList.length} record{drillList.length !== 1 ? "s" : ""}
+                </CardTitle>
+                <CardDescription>
+                  {TILES.find((t) => t.key === activeTile)?.desc}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                {drillList.length === 0 ? (
+                  <p className="text-sm text-foreground-secondary py-4 text-center">No records for this filter.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-left">
+                          <th className="pb-2 pr-4 text-xs font-semibold text-foreground-secondary uppercase">Job Card</th>
+                          <th className="pb-2 pr-4 text-xs font-semibold text-foreground-secondary uppercase">Station</th>
+                          <th className="pb-2 pr-4 text-xs font-semibold text-foreground-secondary uppercase">Status</th>
+                          <th className="pb-2 pr-4 text-xs font-semibold text-foreground-secondary uppercase">Raised</th>
+                          <th className="pb-2 text-xs font-semibold text-foreground-secondary uppercase">Age</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {drillList.map((jc) => {
+                          const days = ageingDays(jc.created_at);
+                          const isOpen = OPEN_STATUSES.includes(jc.current_status);
+                          return (
+                            <tr key={jc.id} className="border-b border-border last:border-0 hover:bg-hover/40">
+                              <td className="py-2 pr-4 font-medium">{jc.job_card_number}</td>
+                              <td className="py-2 pr-4 text-foreground-secondary">
+                                {jc.stationName}
+                                {jc.voltageClass ? <span className="ml-1 text-[11px]">· {jc.voltageClass}</span> : null}
+                              </td>
+                              <td className="py-2 pr-4">
+                                <Badge variant={STATUS_VARIANT[jc.current_status] ?? "default"} dot>
+                                  {STATUS_LABEL[jc.current_status] ?? jc.current_status}
+                                </Badge>
+                              </td>
+                              <td className="py-2 pr-4 text-foreground-secondary">{fmtDateIST(jc.created_at)}</td>
+                              <td className={`py-2 font-semibold ${isOpen ? ageColor(days) : "text-foreground-secondary"}`}>
+                                {days}d
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
     </div>
   );
