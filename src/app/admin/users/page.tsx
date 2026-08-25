@@ -309,7 +309,7 @@ export default function AdminUsersPage() {
             <DialogTitle>Assign Station</DialogTitle>
             <DialogDescription>Choose which station {editing?.name} is assigned to.</DialogDescription>
           </DialogHeader>
-          <div className="py-4 space-y-1.5">
+          <div className="px-6 py-5 space-y-1.5">
             <Label>Station</Label>
             <Select value={editStation} onValueChange={setEditStation}>
               <SelectTrigger>
@@ -343,87 +343,97 @@ export default function AdminUsersPage() {
           </DialogHeader>
 
           {inviteSuccess ? (
-            <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
+            <div className="flex flex-col items-center justify-center px-6 py-10 gap-3 text-center">
               <CheckCircle2 className="h-10 w-10 text-green-500" />
               <p className="text-sm font-medium text-foreground">Invitation sent to {inviteEmail}</p>
               <p className="text-xs text-foreground-secondary">The user will receive an email to set their password.</p>
             </div>
           ) : (
-            <form onSubmit={handleInvite} className="space-y-4 py-2">
-              {inviteError && (
-                <div className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">
-                  {inviteError}
-                </div>
-              )}
+            <>
+              <form id="invite-form" onSubmit={handleInvite} className="px-6 py-5 space-y-4">
+                {inviteError && (
+                  <div className="rounded-lg border border-red-100 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+                    {inviteError}
+                  </div>
+                )}
 
-              <div className="space-y-1.5">
-                <Label>Full Name <span className="text-danger">*</span></Label>
-                <Input
-                  value={inviteName}
-                  onChange={(e) => setInviteName(e.target.value)}
-                  placeholder="e.g. Rajan Kumar"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Email Address <span className="text-danger">*</span></Label>
-                <Input
-                  type="email"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder="e.g. rajan@kptcl.gov.in"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Role <span className="text-danger">*</span></Label>
-                <Select value={inviteRole} onValueChange={setInviteRole}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(ROLE_LABEL).map(([v, l]) => (
-                      <SelectItem key={v} value={v}>{l}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {needsStation && (
                 <div className="space-y-1.5">
-                  <Label>Assigned Station</Label>
-                  <Select value={inviteStation} onValueChange={setInviteStation}>
+                  <Label htmlFor="invite-name">Full Name <span className="text-danger">*</span></Label>
+                  <Input
+                    id="invite-name"
+                    value={inviteName}
+                    onChange={(e) => setInviteName(e.target.value)}
+                    placeholder="e.g. Rajan Kumar"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="invite-email">Email Address <span className="text-danger">*</span></Label>
+                  <Input
+                    id="invite-email"
+                    type="email"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    placeholder="e.g. rajan@kptcl.gov.in"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Role <span className="text-danger">*</span></Label>
+                  <Select value={inviteRole} onValueChange={setInviteRole}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a station…" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Unassigned</SelectItem>
-                      {stations.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      {Object.entries(ROLE_LABEL).map(([v, l]) => (
+                        <SelectItem key={v} value={v}>{l}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-              )}
 
-              <div className="space-y-1.5">
-                <Label>Employee ID <span className="text-foreground-secondary text-xs">(optional)</span></Label>
-                <Input
-                  value={inviteEmpId}
-                  onChange={(e) => setInviteEmpId(e.target.value)}
-                  placeholder="e.g. EMP-0042"
-                />
-              </div>
+                {needsStation && (
+                  <div className="space-y-1.5">
+                    <Label>Assigned Station</Label>
+                    <Select value={inviteStation} onValueChange={setInviteStation}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a station…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Unassigned</SelectItem>
+                        {stations.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="invite-empid">
+                    Employee ID{" "}
+                    <span className="text-foreground-secondary text-xs font-normal">(optional)</span>
+                  </Label>
+                  <Input
+                    id="invite-empid"
+                    value={inviteEmpId}
+                    onChange={(e) => setInviteEmpId(e.target.value)}
+                    placeholder="e.g. EMP-0042"
+                  />
+                </div>
+              </form>
 
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setInviteDialog(false)}>Cancel</Button>
-                <Button type="submit" disabled={inviting} className="gap-2">
+                <Button type="button" variant="outline" onClick={() => setInviteDialog(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" form="invite-form" disabled={inviting} className="gap-2">
                   {inviting ? "Sending…" : <><UserPlus className="h-4 w-4" /> Send Invitation</>}
                 </Button>
               </DialogFooter>
-            </form>
+            </>
           )}
         </DialogContent>
       </Dialog>
