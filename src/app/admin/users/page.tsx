@@ -2,9 +2,11 @@
 "use client";
 
 import * as React from "react";
-import { UserCircle, MoreHorizontal, Ban, CheckCircle2, Pencil } from "lucide-react";
+import { UserCircle, MoreHorizontal, Ban, CheckCircle2, Pencil, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -14,100 +16,194 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import { PageToolbar, EmptyState } from "@/components/data-table/toolbar";
 import { createClient } from "@/lib/supabase/client";
-import type { DbSubstation } from "@/lib/supabase/types";
+
+const ROLE_LABEL: Record<string, string> = {
+  spectrum_admin:    "Spectrum Admin",
+  account_executive: "Account Executive",
+  service_engineer:  "Service Engineer",
+  kptcl_engineer:    "KPTCL Engineer",
+};
+
+const ROLE_VARIANT: Record<string, "accent" | "warning" | "default"> = {
+  spectrum_admin:    "accent",
+  account_executive: "warning",
+  service_engineer:  "default",
+  kptcl_engineer:    "default",
+};
+
+const STATION_ROLES = ["account_executive", "service_engineer", "kptcl_engineer"];
+
+interface Station { id: string; name: string; level: number }
 
 interface Row {
   id: string;
   name: string;
   email: string | null;
   role: string;
-  substationId: string | null;
-  substationName: string | null;
+  stationId: string | null;
+  stationName: string | null;
+  employeeId: string | null;
   status: string;
 }
 
 export default function AdminUsersPage() {
   const supabase = React.useMemo(() => createClient(), []);
-  const [rows, setRows] = React.useState<Row[]>([]);
-  const [substations, setSubstations] = React.useState<DbSubstation[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [search, setSearch] = React.useState("");
+  const [rows, setRows]         = React.useState<Row[]>([]);
+  const [stations, setStations] = React.useState<Station[]>([]);
+  const [loading, setLoading]   = React.useState(true);
+  const [search, setSearch]     = React.useState("");
   const [roleFilter, setRoleFilter] = React.useState("all");
-  const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [editing, setEditing] = React.useState<Row | null>(null);
-  const [assignSubstation, setAssignSubstation] = React.useState<string>("none");
+
+  // Edit station dialog
+  const [editDialog, setEditDialog]     = React.useState(false);
+  const [editing, setEditing]           = React.useState<Row | null>(null);
+  const [editStation, setEditStation]   = React.useState("none");
+  const [savingEdit, setSavingEdit]     = React.useState(false);
+
+  // Invite user dialog
+  const [inviteDialog, setInviteDialog] = React.useState(false);
+  const [inviteName, setInviteName]     = React.useState("");
+  const [inviteEmail, setInviteEmail]   = React.useState("");
+  const [inviteRole, setInviteRole]     = React.useState("account_executive");
+  const [inviteStation, setInviteStation] = React.useState("none");
+  const [inviteEmpId, setInviteEmpId]   = React.useState("");
+  const [inviting, setInviting]         = React.useState(false);
+  const [inviteError, setInviteError]   = React.useState<string | null>(null);
+  const [inviteSuccess, setInviteSuccess] = React.useState(false);
 
   const loadData = React.useCallback(async () => {
     setLoading(true);
-    const [{ data: profileRows }, { data: substationRows }] = await Promise.all([
-      supabase.from("profiles").select("id, name, email, role, substation_id, status, substations(name)").order("name"),
-      supabase.from("substations").select("*").order("name"),
+    const [{ data: profileRows }, { data: stationRows }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, name, email, role, station_id, employee_id, status, hierarchy_nodes!station_id(name)")
+        .order("name"),
+      supabase
+        .from("hierarchy_nodes")
+        .select("id, name, level")
+        .eq("level", 4)   // stations only
+        .eq("status", "active")
+        .order("name"),
     ]);
 
-    setSubstations(substationRows ?? []);
+    setStations((stationRows ?? []).map((s) => ({ id: s.id, name: s.name, level: s.level })));
     setRows(
       (profileRows ?? []).map((p) => ({
         id: p.id,
-        name: p.name,
+        name: p.name ?? p.email ?? "—",
         email: p.email,
         role: p.role,
-        substationId: p.substation_id,
-        substationName: (p.substations as unknown as { name: string } | null)?.name ?? null,
+        stationId: p.station_id,
+        stationName: (p.hierarchy_nodes as any)?.name ?? null,
+        employeeId: p.employee_id,
         status: p.status,
       }))
     );
     setLoading(false);
   }, [supabase]);
 
-  React.useEffect(() => {
-    loadData();
-  }, [loadData]);
+  React.useEffect(() => { loadData(); }, [loadData]);
 
   const filtered = rows.filter((r) => {
-    const matchesSearch = r.name.toLowerCase().includes(search.toLowerCase()) || (r.email ?? "").toLowerCase().includes(search.toLowerCase());
-    const matchesRole = roleFilter === "all" || r.role === roleFilter;
-    return matchesSearch && matchesRole;
+    const matchSearch =
+      r.name.toLowerCase().includes(search.toLowerCase()) ||
+      (r.email ?? "").toLowerCase().includes(search.toLowerCase());
+    const matchRole = roleFilter === "all" || r.role === roleFilter;
+    return matchSearch && matchRole;
   });
 
-  function openAssign(r: Row) {
+  function openEdit(r: Row) {
     setEditing(r);
-    setAssignSubstation(r.substationId ?? "none");
-    setDialogOpen(true);
+    setEditStation(r.stationId ?? "none");
+    setEditDialog(true);
   }
 
-  async function handleSaveAssignment() {
+  async function saveEdit() {
     if (!editing) return;
+    setSavingEdit(true);
     await supabase
       .from("profiles")
-      .update({ substation_id: assignSubstation === "none" ? null : assignSubstation })
+      .update({ station_id: editStation === "none" ? null : editStation })
       .eq("id", editing.id);
-    setDialogOpen(false);
+    setSavingEdit(false);
+    setEditDialog(false);
     loadData();
   }
 
   async function toggleStatus(r: Row) {
-    const newStatus = r.status === "active" ? "inactive" : "active";
-    await supabase.from("profiles").update({ status: newStatus }).eq("id", r.id);
+    await supabase
+      .from("profiles")
+      .update({ status: r.status === "active" ? "inactive" : "active" })
+      .eq("id", r.id);
     loadData();
   }
+
+  function openInvite() {
+    setInviteName(""); setInviteEmail(""); setInviteRole("account_executive");
+    setInviteStation("none"); setInviteEmpId("");
+    setInviteError(null); setInviteSuccess(false);
+    setInviteDialog(true);
+  }
+
+  async function handleInvite(e: React.FormEvent) {
+    e.preventDefault();
+    setInviting(true);
+    setInviteError(null);
+
+    const res = await fetch("/api/admin/invite-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: inviteName,
+        email: inviteEmail,
+        role: inviteRole,
+        station_id: inviteStation === "none" ? null : inviteStation,
+        employee_id: inviteEmpId || null,
+      }),
+    });
+
+    const json = await res.json();
+    setInviting(false);
+
+    if (!res.ok) {
+      setInviteError(json.error ?? "Failed to invite user.");
+      return;
+    }
+
+    setInviteSuccess(true);
+    loadData();
+    setTimeout(() => setInviteDialog(false), 2000);
+  }
+
+  const needsStation = STATION_ROLES.includes(inviteRole);
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-foreground tracking-tight">Users</h1>
-          <p className="text-sm text-foreground-secondary mt-1">{rows.length} accounts across Spectrum Admin &amp; Assistant Engineers</p>
+          <p className="text-sm text-foreground-secondary mt-1">
+            {rows.length} account{rows.length !== 1 ? "s" : ""} across all roles
+          </p>
         </div>
-      </div>
-
-      <div className="rounded-2xl border border-blue-100 bg-blue-50/60 px-4 py-3 text-sm text-accent">
-        To create a new login, add the user in your Supabase project (Authentication → Users), setting their role in User Metadata.
-        Once created, they&apos;ll appear here for substation assignment.
+        <Button onClick={openInvite} className="gap-2 shrink-0">
+          <UserPlus className="h-4 w-4" /> Invite User
+        </Button>
       </div>
 
       <PageToolbar
@@ -116,13 +212,14 @@ export default function AdminUsersPage() {
         placeholder="Search by name or email…"
         right={
           <Select value={roleFilter} onValueChange={setRoleFilter}>
-            <SelectTrigger className="w-[190px]">
+            <SelectTrigger className="w-[200px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All roles</SelectItem>
-              <SelectItem value="spectrum_admin">Spectrum Admin</SelectItem>
-              <SelectItem value="assistant_engineer">Assistant Engineer</SelectItem>
+              {Object.entries(ROLE_LABEL).map(([v, l]) => (
+                <SelectItem key={v} value={v}>{l}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         }
@@ -130,9 +227,9 @@ export default function AdminUsersPage() {
 
       <Card className="overflow-hidden">
         {loading ? (
-          <EmptyState title="Loading users…" description="Fetching accounts from your database." />
+          <EmptyState title="Loading users…" description="Fetching accounts from the database." />
         ) : filtered.length === 0 ? (
-          <EmptyState title="No users found" description="Create accounts in Supabase Authentication to see them here." />
+          <EmptyState title="No users found" description="Invite users using the button above." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -141,7 +238,7 @@ export default function AdminUsersPage() {
                   <th className="text-left font-medium text-foreground-secondary px-5 py-3">Name</th>
                   <th className="text-left font-medium text-foreground-secondary px-5 py-3">Email</th>
                   <th className="text-left font-medium text-foreground-secondary px-5 py-3">Role</th>
-                  <th className="text-left font-medium text-foreground-secondary px-5 py-3">Substation</th>
+                  <th className="text-left font-medium text-foreground-secondary px-5 py-3">Station</th>
                   <th className="text-left font-medium text-foreground-secondary px-5 py-3">Status</th>
                   <th className="px-5 py-3 w-10" />
                 </tr>
@@ -154,17 +251,22 @@ export default function AdminUsersPage() {
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-accent">
                           <UserCircle className="h-4 w-4" />
                         </div>
-                        <p className="font-medium text-foreground">{u.name}</p>
+                        <div>
+                          <p className="font-medium text-foreground">{u.name}</p>
+                          {u.employeeId && <p className="text-[11px] text-foreground-secondary">{u.employeeId}</p>}
+                        </div>
                       </div>
                     </td>
                     <td className="px-5 py-3.5 text-foreground-secondary">{u.email ?? "—"}</td>
                     <td className="px-5 py-3.5">
-                      <Badge variant={u.role === "spectrum_admin" ? "accent" : "default"}>
-                        {u.role === "spectrum_admin" ? "Spectrum Admin" : "Assistant Engineer"}
+                      <Badge variant={ROLE_VARIANT[u.role] ?? "default"}>
+                        {ROLE_LABEL[u.role] ?? u.role}
                       </Badge>
                     </td>
                     <td className="px-5 py-3.5 text-foreground-secondary">
-                      {u.role === "assistant_engineer" ? u.substationName ?? <span className="text-slate-400">Unassigned</span> : "—"}
+                      {STATION_ROLES.includes(u.role)
+                        ? (u.stationName ?? <span className="text-slate-400 italic">Unassigned</span>)
+                        : <span className="text-slate-400">—</span>}
                     </td>
                     <td className="px-5 py-3.5">
                       <Badge variant={u.status === "active" ? "success" : "default"} dot className="capitalize">
@@ -179,21 +281,15 @@ export default function AdminUsersPage() {
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {u.role === "assistant_engineer" && (
-                            <DropdownMenuItem onClick={() => openAssign(u)}>
-                              <Pencil /> Assign substation
+                          {STATION_ROLES.includes(u.role) && (
+                            <DropdownMenuItem onClick={() => openEdit(u)}>
+                              <Pencil className="h-4 w-4" /> Assign Station
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuItem onClick={() => toggleStatus(u)}>
-                            {u.status === "active" ? (
-                              <>
-                                <Ban /> Disable account
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle2 /> Enable account
-                              </>
-                            )}
+                            {u.status === "active"
+                              ? <><Ban className="h-4 w-4" /> Disable account</>
+                              : <><CheckCircle2 className="h-4 w-4" /> Enable account</>}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -206,34 +302,129 @@ export default function AdminUsersPage() {
         )}
       </Card>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      {/* Assign Station dialog */}
+      <Dialog open={editDialog} onOpenChange={setEditDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Assign Substation</DialogTitle>
-            <DialogDescription>Choose which substation {editing?.name} manages.</DialogDescription>
+            <DialogTitle>Assign Station</DialogTitle>
+            <DialogDescription>Choose which station {editing?.name} is assigned to.</DialogDescription>
           </DialogHeader>
-          <div className="px-6 py-5 space-y-1.5">
-            <Label>Substation</Label>
-            <Select value={assignSubstation} onValueChange={setAssignSubstation}>
+          <div className="py-4 space-y-1.5">
+            <Label>Station</Label>
+            <Select value={editStation} onValueChange={setEditStation}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Unassigned</SelectItem>
-                {substations.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}
-                  </SelectItem>
+                {stations.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setDialogOpen(false)}>
-              Cancel
+            <Button variant="outline" onClick={() => setEditDialog(false)}>Cancel</Button>
+            <Button onClick={saveEdit} disabled={savingEdit}>
+              {savingEdit ? "Saving…" : "Save"}
             </Button>
-            <Button onClick={handleSaveAssignment}>Save assignment</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Invite User dialog */}
+      <Dialog open={inviteDialog} onOpenChange={setInviteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invite User</DialogTitle>
+            <DialogDescription>
+              An invitation email will be sent so the user can set their own password.
+            </DialogDescription>
+          </DialogHeader>
+
+          {inviteSuccess ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
+              <CheckCircle2 className="h-10 w-10 text-green-500" />
+              <p className="text-sm font-medium text-foreground">Invitation sent to {inviteEmail}</p>
+              <p className="text-xs text-foreground-secondary">The user will receive an email to set their password.</p>
+            </div>
+          ) : (
+            <form onSubmit={handleInvite} className="space-y-4 py-2">
+              {inviteError && (
+                <div className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {inviteError}
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <Label>Full Name <span className="text-danger">*</span></Label>
+                <Input
+                  value={inviteName}
+                  onChange={(e) => setInviteName(e.target.value)}
+                  placeholder="e.g. Rajan Kumar"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Email Address <span className="text-danger">*</span></Label>
+                <Input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="e.g. rajan@kptcl.gov.in"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Role <span className="text-danger">*</span></Label>
+                <Select value={inviteRole} onValueChange={setInviteRole}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(ROLE_LABEL).map(([v, l]) => (
+                      <SelectItem key={v} value={v}>{l}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {needsStation && (
+                <div className="space-y-1.5">
+                  <Label>Assigned Station</Label>
+                  <Select value={inviteStation} onValueChange={setInviteStation}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a station…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Unassigned</SelectItem>
+                      {stations.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <Label>Employee ID <span className="text-foreground-secondary text-xs">(optional)</span></Label>
+                <Input
+                  value={inviteEmpId}
+                  onChange={(e) => setInviteEmpId(e.target.value)}
+                  placeholder="e.g. EMP-0042"
+                />
+              </div>
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setInviteDialog(false)}>Cancel</Button>
+                <Button type="submit" disabled={inviting} className="gap-2">
+                  {inviting ? "Sending…" : <><UserPlus className="h-4 w-4" /> Send Invitation</>}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>
