@@ -54,7 +54,7 @@ export default function ProposalViewPage() {
   React.useEffect(() => {
     supabase
       .from("proposals")
-      .select("*, job_cards(job_card_number), profiles!created_by(name), hierarchy_nodes(contact_email)")
+      .select("*, job_cards(job_card_number), profiles!created_by(name), hierarchy_nodes!station_id(contact_email)")
       .eq("id", id)
       .single()
       .then(({ data }) => {
