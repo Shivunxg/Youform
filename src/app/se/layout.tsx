@@ -14,7 +14,7 @@ export default async function SELayout({ children }: { children: React.ReactNode
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("name, role, station_id")
+    .select("name, role, station_id, email")
     .eq("id", user.id)
     .single();
 
@@ -37,9 +37,13 @@ export default async function SELayout({ children }: { children: React.ReactNode
 
   return (
     <div className="flex min-h-screen bg-background-secondary">
-      <Sidebar variant="se" badges={badges} />
+      <Sidebar
+        variant="se"
+        badges={badges}
+        user={{ name: profile.name, email: profile.email ?? user.email ?? "", role: "Service Engineer", profileHref: "/se/profile" }}
+      />
       <div className="flex-1 flex flex-col min-w-0">
-        <Header role="Service Engineer" name={profile.name} notifications={notifications ?? []} />
+        <Header notifications={notifications ?? []} />
         <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>

@@ -37,9 +37,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="flex min-h-screen bg-background-secondary">
-      <Sidebar badges={badges} />
+      <Sidebar
+        variant="admin"
+        badges={badges}
+        user={{ name: profile.name, email: profile.email ?? user.email ?? "", role: "Spectrum Admin", profileHref: "/admin/settings" }}
+      />
       <div className="flex-1 flex flex-col min-w-0">
-        <Header role="Spectrum Admin" name={profile.name} email={profile.email ?? user.email ?? ""} notifications={notifications ?? []} />
+        <Header notifications={notifications ?? []} />
         <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>

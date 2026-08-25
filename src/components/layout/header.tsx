@@ -1,60 +1,22 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
-import { Search, Bell, ChevronDown, LogOut, Settings, UserCircle } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
+import { Search, Bell } from "lucide-react";
 import { NotificationsPanel } from "@/components/layout/notifications-panel";
-import { createClient } from "@/lib/supabase/client";
 import type { DbNotification } from "@/lib/supabase/types";
 
 export function Header({
-  role = "Spectrum Admin",
-  name = "",
-  email = "",
   notifications = [],
 }: {
-  role?: string;
-  name?: string;
-  email?: string;
   notifications?: DbNotification[];
 }) {
-  const router = useRouter();
   const [panelOpen, setPanelOpen] = React.useState(false);
-  const unread = notifications.filter((n) => !n.read).length;
-
-  const isAdmin = role === "Spectrum Admin";
-
-  async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  }
-
-  const displayName = name && !name.includes("@") ? name : (email || name || "User");
-  const displayEmail = email || (name?.includes("@") ? name : "");
-
-  const initials = displayName
-    .split(" ")
-    .map((n) => n[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase() || "U";
+  const unread = notifications.filter((n) => !(n as any).is_read).length;
 
   return (
     <>
       <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-white/90 backdrop-blur px-4 lg:px-6">
-        <div className="flex-1 flex items-center max-w-md">
+        <div className="flex-1 flex items-center max-w-lg">
           <div className="relative w-full">
             <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
@@ -67,62 +29,15 @@ export function Header({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setPanelOpen(true)}
-            className="relative flex h-9 w-9 items-center justify-center rounded-[10px] text-foreground-secondary hover:bg-hover hover:text-foreground transition-colors"
-          >
-            <Bell className="h-[18px] w-[18px]" />
-            {unread > 0 && (
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-danger ring-2 ring-white" />
-            )}
-          </button>
-
-          <div className="h-6 w-px bg-border mx-1" />
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2.5 rounded-[10px] pl-1.5 pr-2.5 py-1.5 hover:bg-hover transition-colors">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback>{initials}</AvatarFallback>
-                </Avatar>
-                <div className="hidden md:flex flex-col items-start leading-none">
-                  <span className="text-sm font-medium text-foreground">{displayName}</span>
-                  <span className="text-[11px] text-foreground-secondary mt-0.5">{role}</span>
-                </div>
-                <ChevronDown className="hidden md:block h-3.5 w-3.5 text-slate-400" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>
-                <p className="font-medium text-foreground">{displayName}</p>
-                {displayEmail && <p className="text-[11px] text-foreground-secondary font-normal truncate mt-0.5">{displayEmail}</p>}
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="gap-2 cursor-pointer"
-                onClick={() => router.push(isAdmin ? "/admin/settings" : "/ae/profile")}
-              >
-                <UserCircle className="h-4 w-4 shrink-0" />
-                <span>Profile</span>
-              </DropdownMenuItem>
-              {isAdmin && (
-                <DropdownMenuItem
-                  className="gap-2 cursor-pointer"
-                  onClick={() => router.push("/admin/settings")}
-                >
-                  <Settings className="h-4 w-4 shrink-0" />
-                  <span>Settings</span>
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="gap-2 text-danger focus:bg-red-50 cursor-pointer" onClick={handleSignOut}>
-                <LogOut className="h-4 w-4 shrink-0" />
-                <span>Sign out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <button
+          onClick={() => setPanelOpen(true)}
+          className="relative flex h-9 w-9 items-center justify-center rounded-[10px] text-foreground-secondary hover:bg-hover hover:text-foreground transition-colors"
+        >
+          <Bell className="h-[18px] w-[18px]" />
+          {unread > 0 && (
+            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-danger ring-2 ring-white" />
+          )}
+        </button>
       </header>
 
       <NotificationsPanel open={panelOpen} onClose={() => setPanelOpen(false)} notifications={notifications} />
