@@ -1,94 +1,107 @@
-export type Role = "spectrum_admin" | "assistant_engineer";
+export type Role = "spectrum_admin" | "account_executive" | "service_engineer";
 
-export type HealthStatus = "healthy" | "service_required" | "replacement_required";
+export type JobCardStatus =
+  | "quotation_shared"
+  | "order_received"
+  | "offer_dropped"
+  | "order_lost"
+  | "supply_service_given"
+  | "bills_submitted"
+  | "payment_received";
 
-export type JobCardStatus = "open" | "in_progress" | "resolved" | "closed";
 export type Priority = "low" | "medium" | "high" | "critical";
-export type ServiceRequestStatus = "pending" | "approved" | "in_progress" | "completed" | "rejected";
+export type ActiveStatus = "active" | "inactive";
 
-export interface Region {
+export interface HierarchyNode {
   id: string;
   name: string;
-  substationCount: number;
-  status: "active" | "inactive";
+  code: string | null;
+  level: 1 | 2 | 3 | 4;
+  parentId: string | null;
+  address: string | null;
+  status: ActiveStatus;
+  createdAt: string;
 }
 
-export interface Substation {
+export interface VoltageClass {
   id: string;
-  code: string;
+  stationId: string;
   name: string;
-  regionId: string;
-  regionName: string;
-  address: string;
-  assistantEngineer: string;
-  status: "active" | "inactive";
-  equipmentCount: number;
-  healthScore: number; // 0-100
+  status: ActiveStatus;
 }
 
-export interface Equipment {
+export interface EquipmentType {
   id: string;
+  voltageClassId: string;
   name: string;
-  category: string;
-  manufacturer: string;
-  model: string;
-  serialNumber: string;
-  substationId: string;
-  substationName: string;
-  installationDate: string;
-  warrantyUntil: string;
-  status: HealthStatus;
+  status: ActiveStatus;
 }
 
 export interface JobCard {
   id: string;
   jobCardNumber: string;
-  date: string;
-  regionName: string;
-  substationName: string;
-  equipment: string;
-  component: string;
+  stationId: string;
+  stationName: string;
+  voltageClassName: string | null;
+  equipmentTypeName: string | null;
+  componentDescription: string | null;
   issueDescription: string;
+  currentStatus: JobCardStatus;
   priority: Priority;
-  status: JobCardStatus;
-  raisedBy: string;
+  quotationAmount: number | null;
+  orderAmount: number | null;
+  remarks: string | null;
+  raisedBy: string | null;
+  assignedAe: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface ServiceRequest {
+export interface StatusHistoryEntry {
   id: string;
-  requestNumber: string;
-  date: string;
-  substationName: string;
-  equipment: string;
-  type: "preventive" | "corrective" | "replacement";
-  status: ServiceRequestStatus;
-  requestedBy: string;
+  jobCardId: string;
+  fromStatus: string | null;
+  toStatus: string;
+  changedBy: string | null;
+  note: string | null;
+  createdAt: string;
 }
 
-export interface InventoryItem {
+export interface MomLog {
   id: string;
-  componentName: string;
-  equipment: string;
-  substationName: string;
-  availableQty: number;
-  minQty: number;
-  unit: string;
+  jobCardId: string;
+  content: string;
+  attachmentPath: string | null;
+  loggedBy: string | null;
+  createdAt: string;
 }
 
 export interface NotificationItem {
   id: string;
   title: string;
-  description: string;
-  type: "job_card" | "service_request" | "inventory" | "system";
-  date: string;
+  body: string | null;
+  targetRole: Role | null;
+  targetUserId: string | null;
+  jobCardId: string | null;
   read: boolean;
+  createdAt: string;
 }
 
 export interface User {
   id: string;
   name: string;
   role: Role;
-  email: string;
-  substationName?: string;
-  regionName?: string;
+  email: string | null;
+  mobile: string | null;
+  employeeId: string | null;
+  stationId: string | null;
+  status: ActiveStatus;
+}
+
+export interface AppSettings {
+  level1Label: string;
+  level2Label: string;
+  level3Label: string;
+  level4Label: string;
+  ageingThresholdDays: number;
 }

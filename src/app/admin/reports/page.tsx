@@ -1,163 +1,172 @@
-"use client";
-
-import * as React from "react";
+import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { InventoryDistributionChart, MaintenanceTrendChart, EquipmentHealthChart } from "@/components/dashboard/charts";
-import { createClient } from "@/lib/supabase/client";
+import { Badge } from "@/components/ui/badge";
+import { fmtDateIST, ageingDays } from "@/lib/ist";
 
-interface DashboardData {
-  kpis: {
-    totalRegions: number;
-    totalSubstations: number;
-    totalEquipment: number;
-    totalComponents: number;
-    availableInventory: number;
-    lowStockItems: number;
-    openJobCards: number;
-    pendingServices: number;
-    completedServices: number;
-    replacementRequests: number;
-    upcomingMaintenance: number;
-  };
-  inventoryDistribution: { region: string; value: number }[];
-  equipmentHealthDistribution: { name: string; value: number; color: string }[];
-  maintenanceTrend: { month: string; preventive: number; corrective: number }[];
-  lowStock: unknown[];
-  jobCards: unknown[];
-  serviceRequests: unknown[];
+export const dynamic = "force-dynamic";
+
+const STATUS_LABEL: Record<string, string> = {
+  quotation_shared: "Quotation Shared",
+  order_received: "Order Received",
+  offer_dropped: "Offer Dropped",
+  order_lost: "Order Lost",
+  supply_service_given: "Supply / Service Given",
+  bills_submitted: "Bills Submitted",
+  payment_received: "Payment Received",
+};
+
+const STATUS_VARIANT: Record<
+  string,
+  "default" | "accent" | "warning" | "danger" | "success"
+> = {
+  quotation_shared: "accent",
+  order_received: "warning",
+  offer_dropped: "danger",
+  order_lost: "danger",
+  supply_service_given: "warning",
+  bills_submitted: "warning",
+  payment_received: "success",
+};
+
+function fmtRupee(n: number) {
+  return "₹" + n.toLocaleString("en-IN", { maximumFractionDigits: 0 });
 }
 
-export default function AdminReportsPage() {
-  const supabase = React.useMemo(() => createClient(), []);
-  const [data, setData] = React.useState<DashboardData | null>(null);
-  const [loading, setLoading] = React.useState(true);
+export default async function AdminReportsPage() {
+  const supabase = await createClient();
 
-  React.useEffect(() => {
-    (async () => {
-      setLoading(true);
-      // Client-side equivalent aggregation (reuses the same shape as the admin dashboard query)
-      const [regionsRes, substationsRes, equipmentRes, inventoryRes, serviceRequestsRes] = await Promise.all([
-        supabase.from("regions").select("id, name"),
-        supabase.from("substations").select("id, name, region_id"),
-        supabase.from("equipment").select("id, status"),
-        supabase.from("inventory").select("id, available_qty, min_qty, substation_id"),
-        supabase.from("service_requests").select("id, type, status, created_at"),
-      ]);
+  const [jobCardsRes, settingsRes] = await Promise.all([
+    supabase
+      .from("job_cards")
+      .select(
+        "id, job_card_number, current_status, priority, order_amount, quotation_amount, created_at, hierarchy_nodes!station_id(name), voltage_classes(name), equipment_types(name)"
+      )
+      .order("created_at", { ascending: false }),
+    supabase.from("app_settings").select("key, value"),
+  ]);
 
-      const regions = regionsRes.data ?? [];
-      const substations = substationsRes.data ?? [];
-      const equipment = equipmentRes.data ?? [];
-      const inventory = inventoryRes.data ?? [];
-      const serviceRequests = serviceRequestsRes.data ?? [];
+  const all = jobCardsRes.data ?? [];
+  const settings: Record<string, string> = {};
+  for (const s of settingsRes.data ?? []) settings[s.key] = s.value;
+  const threshold = parseInt(settings["ageing_threshold_days"] ?? "30", 10);
 
-      const regionMap = new Map(regions.map((r) => [r.id, r.name]));
-      const substationRegionMap = new Map(substations.map((s) => [s.id, s.region_id]));
-      const invByRegion = new Map<string, number>();
-      for (const item of inventory) {
-        const regionId = substationRegionMap.get(item.substation_id);
-        const regionName = regionId ? regionMap.get(regionId) : undefined;
-        if (!regionName) continue;
-        invByRegion.set(regionName, (invByRegion.get(regionName) ?? 0) + item.available_qty);
-      }
+  const open = ["quotation_shared", "order_received", "supply_service_given"];
+  const won = ["order_received", "supply_service_given", "bills_submitted", "payment_received"];
+  const lost = ["offer_dropped", "order_lost"];
 
-      const healthCounts = { healthy: 0, service_required: 0, replacement_required: 0 };
-      for (const e of equipment) {
-        if (e.status in healthCounts) healthCounts[e.status as keyof typeof healthCounts]++;
-      }
+  const totalDecided = all.filter(
+    (jc) => won.includes(jc.current_status) || lost.includes(jc.current_status)
+  ).length;
+  const totalWon = all.filter((jc) => won.includes(jc.current_status)).length;
+  const winRate = totalDecided === 0 ? 0 : Math.round((totalWon / totalDecided) * 100);
 
-      const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      const now = new Date();
-      const months: { key: string; month: string }[] = [];
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        months.push({ key: `${d.getFullYear()}-${d.getMonth()}`, month: monthLabels[d.getMonth()] });
-      }
-      const trendMap = new Map(months.map((m) => [m.key, { month: m.month, preventive: 0, corrective: 0 }]));
-      for (const sr of serviceRequests) {
-        const d = new Date(sr.created_at);
-        const key = `${d.getFullYear()}-${d.getMonth()}`;
-        const bucket = trendMap.get(key);
-        if (!bucket) continue;
-        if (sr.type === "preventive") bucket.preventive++;
-        else if (sr.type === "corrective") bucket.corrective++;
-      }
+  const revenueBilled = all
+    .filter((jc) => ["bills_submitted", "payment_received"].includes(jc.current_status))
+    .reduce((s, jc) => s + (jc.order_amount ?? 0), 0);
+  const revenueCollected = all
+    .filter((jc) => jc.current_status === "payment_received")
+    .reduce((s, jc) => s + (jc.order_amount ?? 0), 0);
 
-      setData({
-        kpis: {
-          totalRegions: regions.length,
-          totalSubstations: substations.length,
-          totalEquipment: equipment.length,
-          totalComponents: 0,
-          availableInventory: inventory.reduce((s, i) => s + i.available_qty, 0),
-          lowStockItems: inventory.filter((i) => i.available_qty < i.min_qty).length,
-          openJobCards: 0,
-          pendingServices: serviceRequests.filter((s) => s.status === "pending" || s.status === "in_progress").length,
-          completedServices: serviceRequests.filter((s) => s.status === "completed").length,
-          replacementRequests: serviceRequests.filter((s) => s.type === "replacement").length,
-          upcomingMaintenance: serviceRequests.filter((s) => s.status === "approved").length,
-        },
-        inventoryDistribution: Array.from(invByRegion.entries()).map(([region, value]) => ({ region, value })),
-        equipmentHealthDistribution: [
-          { name: "Healthy", value: healthCounts.healthy, color: "#22C55E" },
-          { name: "Service Required", value: healthCounts.service_required, color: "#F59E0B" },
-          { name: "Replacement Required", value: healthCounts.replacement_required, color: "#EF4444" },
-        ],
-        maintenanceTrend: Array.from(trendMap.values()),
-        lowStock: [],
-        jobCards: [],
-        serviceRequests: [],
-      });
-      setLoading(false);
-    })();
-  }, [supabase]);
+  const ageing = all.filter(
+    (jc) => open.includes(jc.current_status) && ageingDays(jc.created_at) > threshold
+  );
+
+  const byStatus = new Map<string, number>();
+  for (const jc of all) byStatus.set(jc.current_status, (byStatus.get(jc.current_status) ?? 0) + 1);
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-semibold text-foreground tracking-tight">Reports</h1>
-        <p className="text-sm text-foreground-secondary mt-1">Network-wide analytics computed live from your data</p>
+        <p className="text-sm text-foreground-secondary mt-1">
+          Service management metrics · {all.length} total job cards
+        </p>
       </div>
 
-      {loading || !data ? (
-        <Card>
-          <CardContent className="py-16 text-center text-sm text-foreground-secondary">Loading reports…</CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>Preventive vs Corrective Maintenance Trend</CardTitle>
-              <CardDescription>Last 6 months</CardDescription>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <MaintenanceTrendChart data={data.maintenanceTrend} />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Equipment Health Status</CardTitle>
-              <CardDescription>Network-wide distribution</CardDescription>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <EquipmentHealthChart data={data.equipmentHealthDistribution} />
-            </CardContent>
-          </Card>
-          <Card className="lg:col-span-3">
-            <CardHeader>
-              <CardTitle>Region-wise Inventory Distribution</CardTitle>
-              <CardDescription>Total available stock by region</CardDescription>
-            </CardHeader>
-            <CardContent className="pt-0">
-              {data.inventoryDistribution.length === 0 ? (
-                <div className="flex h-[220px] items-center justify-center text-sm text-foreground-secondary">
-                  No inventory recorded yet
+      {/* Summary tiles */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
+        {[
+          { label: "Open", value: all.filter((jc) => open.includes(jc.current_status)).length, cls: "text-amber-600" },
+          { label: "Bills Submitted", value: all.filter((jc) => jc.current_status === "bills_submitted").length, cls: "text-amber-600" },
+          { label: "Win Rate", value: `${winRate}%`, cls: "text-green-600" },
+          { label: "Revenue Billed", value: fmtRupee(revenueBilled), cls: "text-foreground" },
+          { label: "Collected", value: fmtRupee(revenueCollected), cls: "text-green-600" },
+        ].map((t) => (
+          <div key={t.label} className="rounded-xl border border-border bg-background p-4">
+            <p className="text-xs text-foreground-secondary">{t.label}</p>
+            <p className={`text-xl font-bold mt-1 ${t.cls}`}>{t.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Status breakdown */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Status Breakdown</CardTitle>
+          <CardDescription>All job cards by current status</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="space-y-2">
+            {Object.entries(STATUS_LABEL).map(([status, label]) => {
+              const count = byStatus.get(status) ?? 0;
+              const pct = all.length === 0 ? 0 : Math.round((count / all.length) * 100);
+              return (
+                <div key={status} className="flex items-center gap-3">
+                  <div className="w-36 shrink-0">
+                    <Badge variant={STATUS_VARIANT[status]} dot>
+                      {label}
+                    </Badge>
+                  </div>
+                  <div className="flex-1 rounded-full bg-slate-100 h-2">
+                    <div
+                      className="rounded-full h-2 bg-accent"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <span className="text-sm font-semibold text-foreground w-8 text-right">{count}</span>
                 </div>
-              ) : (
-                <InventoryDistributionChart data={data.inventoryDistribution} />
-              )}
-            </CardContent>
-          </Card>
-        </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Ageing list */}
+      {ageing.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Ageing Job Cards</CardTitle>
+            <CardDescription>
+              Open more than {threshold} days · {ageing.length} card{ageing.length !== 1 ? "s" : ""}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-1">
+              {ageing.map((jc) => {
+                const days = ageingDays(jc.created_at);
+                return (
+                  <div
+                    key={jc.id}
+                    className="flex items-center gap-3 py-2.5 border-b border-border last:border-0"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground">{jc.job_card_number}</p>
+                      <p className="text-xs text-foreground-secondary mt-0.5 truncate">
+                        {(jc.hierarchy_nodes as unknown as { name: string } | null)?.name ?? "—"}
+                        {" · "}
+                        {fmtDateIST(jc.created_at)}
+                      </p>
+                    </div>
+                    <Badge variant="danger">{days}d old</Badge>
+                    <Badge variant={STATUS_VARIANT[jc.current_status] ?? "default"} dot>
+                      {STATUS_LABEL[jc.current_status] ?? jc.current_status}
+                    </Badge>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

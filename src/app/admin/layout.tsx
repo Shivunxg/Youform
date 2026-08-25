@@ -21,23 +21,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!profile || profile.role !== "spectrum_admin") redirect("/login");
 
   const { data: notifications } = await supabase
-    .from("notifications")
+    .from("notifications_queue")
     .select("*")
-    .eq("target_role", "spectrum_admin")
+    .or(`target_role.eq.spectrum_admin,target_user_id.eq.${user.id}`)
     .order("created_at", { ascending: false })
     .limit(20);
 
-  const [{ count: jobCardCount }, { count: serviceRequestCount }] = await Promise.all([
-    supabase
-      .from("job_cards")
-      .select("id", { count: "exact", head: true })
-      .in("status", ["open", "assigned", "inspecting", "mom_logged"]),
-    supabase.from("service_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
-  ]);
+  const { count: openCount } = await supabase
+    .from("job_cards")
+    .select("id", { count: "exact", head: true })
+    .in("current_status", ["quotation_shared", "order_received", "supply_service_given"]);
 
   const badges: Record<string, number> = {};
-  if (jobCardCount) badges["/admin/job-cards"] = jobCardCount;
-  if (serviceRequestCount) badges["/admin/service-requests"] = serviceRequestCount;
+  if (openCount) badges["/admin/job-cards"] = openCount;
 
   return (
     <div className="flex min-h-screen bg-background-secondary">

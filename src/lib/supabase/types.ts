@@ -1,113 +1,116 @@
-export type Role = "spectrum_admin" | "assistant_engineer";
-export type HealthStatus = "healthy" | "service_required" | "replacement_required";
-export type JobCardStatus = "open" | "in_progress" | "resolved" | "closed";
+export type Role = "spectrum_admin" | "account_executive" | "service_engineer";
+
+export type JobCardStatus =
+  | "quotation_shared"
+  | "order_received"
+  | "offer_dropped"
+  | "order_lost"
+  | "supply_service_given"
+  | "bills_submitted"
+  | "payment_received";
+
 export type Priority = "low" | "medium" | "high" | "critical";
-export type ServiceRequestStatus = "pending" | "approved" | "in_progress" | "completed" | "rejected";
-export type ServiceRequestType = "preventive" | "corrective" | "replacement";
 export type ActiveStatus = "active" | "inactive";
 
-export interface Profile {
+export interface DbProfile {
   id: string;
   role: Role;
   name: string;
   email: string | null;
   mobile: string | null;
   employee_id: string | null;
-  substation_id: string | null;
-  region_id: string | null;
+  station_id: string | null;
   status: ActiveStatus;
   created_at: string;
 }
 
-export interface DbRegion {
+export interface DbHierarchyNode {
   id: string;
   name: string;
-  status: ActiveStatus;
-  created_at: string;
-}
-
-export interface DbSubstation {
-  id: string;
-  code: string;
-  name: string;
-  region_id: string;
+  code: string | null;
+  level: number;
+  parent_id: string | null;
   address: string | null;
-  assistant_engineer_id: string | null;
   status: ActiveStatus;
   created_at: string;
 }
 
-export interface DbEquipment {
+export interface DbVoltageClass {
   id: string;
+  station_id: string;
   name: string;
-  category: string;
-  manufacturer: string | null;
-  model: string | null;
-  serial_number: string | null;
-  substation_id: string;
-  installation_date: string | null;
-  warranty_until: string | null;
-  status: HealthStatus;
-  created_at: string;
-}
-
-export interface DbComponent {
-  id: string;
-  name: string;
-  equipment_id: string;
-  min_qty: number;
   status: ActiveStatus;
   created_at: string;
 }
 
-export interface DbInventory {
+export interface DbEquipmentType {
   id: string;
-  component_id: string;
-  substation_id: string;
-  available_qty: number;
-  min_qty: number;
-  unit: string;
-  updated_by: string | null;
-  updated_at: string;
+  voltage_class_id: string;
+  name: string;
+  status: ActiveStatus;
+  created_at: string;
 }
 
 export interface DbJobCard {
   id: string;
   job_card_number: string;
-  substation_id: string;
-  equipment_id: string | null;
-  component: string | null;
+  station_id: string;
+  voltage_class_id: string | null;
+  equipment_type_id: string | null;
+  component_description: string | null;
   issue_description: string;
+  current_status: JobCardStatus;
   priority: Priority;
-  status: JobCardStatus;
+  quotation_amount: number | null;
+  order_amount: number | null;
   remarks: string | null;
   raised_by: string | null;
+  assigned_ae: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbJobCardEngineer {
+  job_card_id: string;
+  engineer_id: string;
+  assigned_at: string;
+}
+
+export interface DbStatusHistory {
+  id: string;
+  job_card_id: string;
+  from_status: string | null;
+  to_status: string;
+  changed_by: string | null;
+  note: string | null;
   created_at: string;
 }
 
-export interface DbServiceRequest {
+export interface DbMomLog {
   id: string;
-  request_number: string;
-  substation_id: string;
-  equipment_id: string | null;
-  type: ServiceRequestType;
-  status: ServiceRequestStatus;
-  requested_by: string | null;
+  job_card_id: string;
+  content: string;
+  attachment_path: string | null;
+  logged_by: string | null;
   created_at: string;
 }
 
 export interface DbNotification {
   id: string;
+  job_card_id: string | null;
   title: string;
-  description: string | null;
-  type: "job_card" | "service_request" | "inventory" | "system";
+  body: string | null;
   target_role: Role | null;
-  substation_id: string | null;
+  target_user_id: string | null;
   read: boolean;
   created_at: string;
 }
 
-// Loose Database type — keeps @supabase/ssr generics happy without
-// hand-writing the full generated schema.
+export interface DbAppSettings {
+  key: string;
+  value: string;
+  updated_at: string;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Database = any;

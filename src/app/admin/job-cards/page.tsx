@@ -1,10 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { ClipboardList, UserCog, Eye, Download, Clock, Paperclip, Receipt } from "lucide-react";
-import { JobCardTimeline } from "@/components/job-cards/timeline";
+import { ClipboardList, Plus, Clock } from "lucide-react";
+import { JobCardTimeline, type TimelineData } from "@/components/job-cards/timeline";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,101 +13,70 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { PageToolbar, EmptyState } from "@/components/data-table/toolbar";
 import { createClient } from "@/lib/supabase/client";
+import { fmtDateIST, fmtIST, ageingDays } from "@/lib/ist";
+
+const STATUS_LABEL: Record<string, string> = {
+  quotation_shared: "Quotation Shared",
+  order_received: "Order Received",
+  offer_dropped: "Offer Dropped",
+  order_lost: "Order Lost",
+  supply_service_given: "Supply / Service Given",
+  bills_submitted: "Bills Submitted",
+  payment_received: "Payment Received",
+};
+
+const STATUS_VARIANT: Record<
+  string,
+  "default" | "accent" | "warning" | "danger" | "success"
+> = {
+  quotation_shared: "accent",
+  order_received: "warning",
+  offer_dropped: "danger",
+  order_lost: "danger",
+  supply_service_given: "warning",
+  bills_submitted: "warning",
+  payment_received: "success",
+};
+
+const PRIORITY_VARIANT = {
+  low: "default",
+  medium: "accent",
+  high: "warning",
+  critical: "danger",
+} as const;
+
+// Valid transitions from each status
+const TRANSITIONS: Record<string, string[]> = {
+  quotation_shared: ["order_received", "offer_dropped", "order_lost"],
+  order_received: ["supply_service_given"],
+  supply_service_given: ["bills_submitted"],
+  bills_submitted: ["payment_received"],
+  offer_dropped: [],
+  order_lost: [],
+  payment_received: [],
+};
 
 interface Row {
   id: string;
   jobCardNumber: string;
-  substationName: string;
-  substationId: string;
-  equipmentName: string;
-  component: string | null;
+  stationId: string;
+  stationName: string;
+  voltageClass: string | null;
+  equipmentType: string | null;
+  componentDescription: string | null;
   issueDescription: string;
   priority: string;
-  status: string;
-  raisedBy: string;
-  assignedEngineer: string | null;
-  momNotes: string | null;
-  momDocumentUrl: string | null;
-  momDocumentName: string | null;
-  momViewedAt: string | null;
-  estimateAmount: number | null;
-  estimateNotes: string | null;
-  estimateDocumentUrl: string | null;
-  estimateDocumentName: string | null;
-  approvalNotes: string | null;
+  currentStatus: string;
+  quotationAmount: number | null;
+  orderAmount: number | null;
+  remarks: string | null;
   createdAt: string;
-  assignedAt: string | null;
-  inspectingAt: string | null;
-  momLoggedAt: string | null;
-  estimateSentAt: string | null;
-  approvedAt: string | null;
-  rejectedAt: string | null;
-  closedAt: string | null;
-}
-
-const priorityVariant = { low: "default", medium: "accent", high: "warning", critical: "danger" } as const;
-
-const STAGE_LABEL: Record<string, string> = {
-  open: "Open",
-  assigned: "Assigned",
-  inspecting: "Inspecting",
-  mom_logged: "MOM Logged",
-  estimate_sent: "Estimate Sent",
-  approved: "Approved",
-  rejected: "Rejected",
-  closed: "Closed",
-  in_progress: "In Progress",
-  resolved: "Resolved",
-};
-
-const STAGE_VARIANT: Record<string, "default" | "accent" | "warning" | "danger" | "success"> = {
-  open: "danger",
-  assigned: "accent",
-  inspecting: "accent",
-  mom_logged: "accent",
-  estimate_sent: "warning",
-  approved: "success",
-  rejected: "danger",
-  closed: "default",
-  in_progress: "warning",
-  resolved: "success",
-};
-
-const STAGE_TIMESTAMP_KEY: Record<string, keyof Row> = {
-  assigned: "assignedAt",
-  inspecting: "inspectingAt",
-  mom_logged: "momLoggedAt",
-  estimate_sent: "estimateSentAt",
-  approved: "approvedAt",
-  rejected: "rejectedAt",
-  closed: "closedAt",
-};
-
-const NEXT_ACTIONS: Record<string, { label: string; nextStatus: string }[]> = {
-  open: [{ label: "Assign Engineer", nextStatus: "assigned" }],
-  assigned: [{ label: "Mark Inspecting", nextStatus: "inspecting" }],
-  inspecting: [{ label: "Log MOM", nextStatus: "mom_logged" }],
-  mom_logged: [{ label: "Send Estimate", nextStatus: "estimate_sent" }],
-  estimate_sent: [],
-  approved: [{ label: "Close Job Card", nextStatus: "closed" }],
-  rejected: [{ label: "Re-send Estimate", nextStatus: "estimate_sent" }],
-  closed: [],
-};
-
-function fmtDateTime(iso: string | null) {
-  if (!iso) return null;
-  return new Date(iso).toLocaleString(undefined, {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  history: TimelineData["history"];
 }
 
 export default function AdminJobCardsPage() {
@@ -115,576 +84,331 @@ export default function AdminJobCardsPage() {
   const [rows, setRows] = React.useState<Row[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [search, setSearch] = React.useState("");
-  const [manageRow, setManageRow] = React.useState<Row | null>(null);
-  const [pendingAction, setPendingAction] = React.useState<{ label: string; nextStatus: string } | null>(null);
-  const [assignedEngineer, setAssignedEngineer] = React.useState("");
-  const [momNotes, setMomNotes] = React.useState("");
-  const [momFile, setMomFile] = React.useState<File | null>(null);
-  const [estimateAmount, setEstimateAmount] = React.useState("");
-  const [estimateNotes, setEstimateNotes] = React.useState("");
-  const [estimateFile, setEstimateFile] = React.useState<File | null>(null);
-  const [saving, setSaving] = React.useState(false);
-  const [uploadError, setUploadError] = React.useState<string | null>(null);
-  const [detailsRow, setDetailsRow] = React.useState<Row | null>(null);
-  const [estimateHistory, setEstimateHistory] = React.useState<
-    { id: string; round: number; amount: number | null; notes: string | null; documentUrl: string | null; documentName: string | null; sentAt: string; decision: string; decisionAt: string | null; decisionNotes: string | null }[]
-  >([]);
+  const [filterStatus, setFilterStatus] = React.useState("all");
+  const [selectedId, setSelectedId] = React.useState<string | null>(null);
+  const [ageingThreshold, setAgeingThreshold] = React.useState(30);
+
+  // Status change dialog
+  const [statusDialog, setStatusDialog] = React.useState(false);
+  const [nextStatus, setNextStatus] = React.useState("");
+  const [statusNote, setStatusNote] = React.useState("");
+  const [changingStatus, setChangingStatus] = React.useState(false);
 
   React.useEffect(() => {
-    if (!detailsRow) {
-      setEstimateHistory([]);
-      return;
-    }
-    (async () => {
-      const { data } = await supabase
-        .from("job_card_estimates")
-        .select("id, round, amount, notes, document_url, document_name, sent_at, decision, decision_at, decision_notes")
-        .eq("job_card_id", detailsRow.id)
-        .order("round", { ascending: true });
-      setEstimateHistory(
-        (data ?? []).map((e) => ({
-          id: e.id,
-          round: e.round,
-          amount: e.amount,
-          notes: e.notes,
-          documentUrl: e.document_url,
-          documentName: e.document_name,
-          sentAt: e.sent_at,
-          decision: e.decision,
-          decisionAt: e.decision_at,
-          decisionNotes: e.decision_notes,
-        }))
-      );
-    })();
-  }, [detailsRow, supabase]);
+    load();
+  }, []);
 
-  const loadData = React.useCallback(async () => {
+  async function load() {
     setLoading(true);
-    const { data } = await supabase
-      .from("job_cards")
-      .select(
-        "id, job_card_number, component, issue_description, priority, status, assigned_engineer, mom_notes, mom_document_url, mom_document_name, mom_viewed_at, estimate_amount, estimate_notes, estimate_document_url, estimate_document_name, approval_notes, created_at, assigned_at, inspecting_at, mom_logged_at, estimate_sent_at, approved_at, rejected_at, closed_at, substations(id, name), equipment(name), profiles(name)"
-      )
-      .order("created_at", { ascending: false });
+    const [{ data: jcData }, { data: histData }, { data: settingsData }] = await Promise.all([
+      supabase
+        .from("job_cards")
+        .select(
+          "id, job_card_number, station_id, current_status, priority, issue_description, component_description, quotation_amount, order_amount, remarks, created_at, hierarchy_nodes!station_id(name), voltage_classes(name), equipment_types(name)"
+        )
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("status_history")
+        .select("job_card_id, to_status, created_at, note, profiles!changed_by(name)")
+        .order("created_at", { ascending: true }),
+      supabase.from("app_settings").select("key, value"),
+    ]);
+
+    if (settingsData) {
+      const m: Record<string, string> = {};
+      for (const s of settingsData) m[s.key] = s.value;
+      if (m["ageing_threshold_days"]) setAgeingThreshold(parseInt(m["ageing_threshold_days"], 10));
+    }
+
+    const histByCard = new Map<string, Row["history"]>();
+    for (const h of histData ?? []) {
+      const list = histByCard.get(h.job_card_id) ?? [];
+      list.push({
+        toStatus: h.to_status,
+        createdAt: h.created_at,
+        note: h.note,
+        changedByName:
+          (h.profiles as unknown as { name: string } | null)?.name ?? null,
+      });
+      histByCard.set(h.job_card_id, list);
+    }
 
     setRows(
-      (data ?? []).map((jc) => ({
+      (jcData ?? []).map((jc) => ({
         id: jc.id,
         jobCardNumber: jc.job_card_number,
-        substationName: (jc.substations as unknown as { name: string } | null)?.name ?? "—",
-        substationId: (jc.substations as unknown as { id: string } | null)?.id ?? "",
-        equipmentName: (jc.equipment as unknown as { name: string } | null)?.name ?? "—",
-        component: jc.component,
+        stationId: jc.station_id,
+        stationName:
+          (jc.hierarchy_nodes as unknown as { name: string } | null)?.name ?? "—",
+        voltageClass:
+          (jc.voltage_classes as unknown as { name: string } | null)?.name ?? null,
+        equipmentType:
+          (jc.equipment_types as unknown as { name: string } | null)?.name ?? null,
+        componentDescription: jc.component_description,
         issueDescription: jc.issue_description,
         priority: jc.priority,
-        status: jc.status,
-        raisedBy: (jc.profiles as unknown as { name: string } | null)?.name ?? "—",
-        assignedEngineer: jc.assigned_engineer,
-        momNotes: jc.mom_notes,
-        momDocumentUrl: jc.mom_document_url,
-        momDocumentName: jc.mom_document_name,
-        momViewedAt: jc.mom_viewed_at,
-        estimateAmount: jc.estimate_amount,
-        estimateNotes: jc.estimate_notes,
-        estimateDocumentUrl: jc.estimate_document_url,
-        estimateDocumentName: jc.estimate_document_name,
-        approvalNotes: jc.approval_notes,
+        currentStatus: jc.current_status,
+        quotationAmount: jc.quotation_amount,
+        orderAmount: jc.order_amount,
+        remarks: jc.remarks,
         createdAt: jc.created_at,
-        assignedAt: jc.assigned_at,
-        inspectingAt: jc.inspecting_at,
-        momLoggedAt: jc.mom_logged_at,
-        estimateSentAt: jc.estimate_sent_at,
-        approvedAt: jc.approved_at,
-        rejectedAt: jc.rejected_at,
-        closedAt: jc.closed_at,
+        history: histByCard.get(jc.id) ?? [],
       }))
     );
     setLoading(false);
-  }, [supabase]);
-
-  React.useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  function openAction(row: Row, action: { label: string; nextStatus: string }) {
-    setManageRow(row);
-    setPendingAction(action);
-    setAssignedEngineer(row.assignedEngineer ?? "");
-    setMomNotes(row.momNotes ?? "");
-    setMomFile(null);
-    setEstimateAmount(row.estimateAmount != null ? String(row.estimateAmount) : "");
-    setEstimateNotes(row.estimateNotes ?? "");
-    setEstimateFile(null);
-    setUploadError(null);
   }
 
-  async function handleConfirm() {
-    if (!manageRow || !pendingAction) return;
-    setSaving(true);
-    setUploadError(null);
-
-    const nowIso = new Date().toISOString();
-    const update: Record<string, unknown> = { status: pendingAction.nextStatus };
-    const tsKey = STAGE_TIMESTAMP_KEY[pendingAction.nextStatus];
-    if (tsKey) {
-      const dbColumn = tsKey.replace(/[A-Z]/g, (m) => "_" + m.toLowerCase());
-      update[dbColumn] = nowIso;
-    }
-    if (pendingAction.nextStatus === "assigned") update.assigned_engineer = assignedEngineer;
-    if (pendingAction.nextStatus === "mom_logged") {
-      update.mom_notes = momNotes;
-      if (momFile) {
-        const filePath = `${manageRow.id}/mom-${Date.now()}-${momFile.name}`;
-        const { error: uploadErr } = await supabase.storage.from("job-attachments").upload(filePath, momFile);
-        if (uploadErr) {
-          setUploadError(uploadErr.message);
-          setSaving(false);
-          return;
-        }
-        const { data: publicUrlData } = supabase.storage.from("job-attachments").getPublicUrl(filePath);
-        update.mom_document_url = publicUrlData.publicUrl;
-        update.mom_document_name = momFile.name;
-      }
-    }
-    if (pendingAction.nextStatus === "estimate_sent") {
-      update.estimate_amount = estimateAmount ? Number(estimateAmount) : null;
-      update.estimate_notes = estimateNotes;
-
-      if (estimateFile) {
-        const filePath = `${manageRow.id}/${Date.now()}-${estimateFile.name}`;
-        const { error: uploadErr } = await supabase.storage.from("job-attachments").upload(filePath, estimateFile);
-        if (uploadErr) {
-          setUploadError(uploadErr.message);
-          setSaving(false);
-          return;
-        }
-        const { data: publicUrlData } = supabase.storage.from("job-attachments").getPublicUrl(filePath);
-        update.estimate_document_url = publicUrlData.publicUrl;
-        update.estimate_document_name = estimateFile.name;
-      }
-    }
-
-    await supabase.from("job_cards").update(update).eq("id", manageRow.id);
-
-    if (pendingAction.nextStatus === "estimate_sent") {
-      const { count } = await supabase
-        .from("job_card_estimates")
-        .select("id", { count: "exact", head: true })
-        .eq("job_card_id", manageRow.id);
-      await supabase.from("job_card_estimates").insert({
-        job_card_id: manageRow.id,
-        round: (count ?? 0) + 1,
-        amount: update.estimate_amount,
-        notes: estimateNotes,
-        document_url: update.estimate_document_url ?? null,
-        document_name: update.estimate_document_name ?? null,
-      });
-    }
-
-    let notifTitle = "Job Card Updated";
-    let notifDesc = `${manageRow.jobCardNumber} is now ${STAGE_LABEL[pendingAction.nextStatus]}`;
-    if (pendingAction.nextStatus === "estimate_sent") {
-      notifTitle = "Estimate Ready for Review";
-      notifDesc = `${manageRow.jobCardNumber}: estimate ₹${estimateAmount || "0"} — please approve or reject`;
-    }
-    await supabase.from("notifications").insert({
-      title: notifTitle,
-      description: notifDesc,
-      type: "job_card",
-      target_role: "assistant_engineer",
-      substation_id: manageRow.substationId,
-    });
-
-    setSaving(false);
-    setManageRow(null);
-    setPendingAction(null);
-    loadData();
-  }
-
-  const filtered = rows.filter(
-    (r) =>
+  const filtered = rows.filter((r) => {
+    const matchSearch =
+      !search ||
       r.jobCardNumber.toLowerCase().includes(search.toLowerCase()) ||
-      r.issueDescription.toLowerCase().includes(search.toLowerCase()) ||
-      r.substationName.toLowerCase().includes(search.toLowerCase())
-  );
+      r.stationName.toLowerCase().includes(search.toLowerCase()) ||
+      r.issueDescription.toLowerCase().includes(search.toLowerCase());
+    const matchStatus = filterStatus === "all" || r.currentStatus === filterStatus;
+    return matchSearch && matchStatus;
+  });
+
+  const selected = rows.find((r) => r.id === selectedId) ?? null;
+
+  async function changeStatus() {
+    if (!selectedId || !nextStatus) return;
+    setChangingStatus(true);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    await supabase.rpc("change_job_card_status", {
+      p_job_card_id: selectedId,
+      p_to_status: nextStatus,
+      p_changed_by: user?.id,
+      p_note: statusNote || null,
+    });
+    setChangingStatus(false);
+    setStatusDialog(false);
+    setStatusNote("");
+    setNextStatus("");
+    load();
+  }
+
+  const transitions = selected ? TRANSITIONS[selected.currentStatus] ?? [] : [];
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground tracking-tight">Job Cards</h1>
-        <p className="text-sm text-foreground-secondary mt-1">Issues raised by Assistant Engineers, tracked through resolution</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground tracking-tight">Job Cards</h1>
+          <p className="text-sm text-foreground-secondary mt-1">
+            Service management requests across all stations
+          </p>
+        </div>
       </div>
 
-      <PageToolbar search={search} onSearchChange={setSearch} placeholder="Search job cards…" />
+      <PageToolbar
+        search={search}
+        onSearch={setSearch}
+        filters={
+          <select
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+          >
+            <option value="all">All statuses</option>
+            {Object.entries(STATUS_LABEL).map(([v, l]) => (
+              <option key={v} value={v}>
+                {l}
+              </option>
+            ))}
+          </select>
+        }
+      />
 
-      <Card className="overflow-hidden">
-        {loading ? (
-          <EmptyState title="Loading job cards…" description="Fetching data from your database." />
-        ) : filtered.length === 0 ? (
-          <EmptyState title="No job cards found" description="They'll appear here as soon as an Assistant Engineer raises one." />
-        ) : (
-          <div className="divide-y divide-border">
-            {filtered.map((jc) => {
-              const stageTs = STAGE_TIMESTAMP_KEY[jc.status] ? fmtDateTime(jc[STAGE_TIMESTAMP_KEY[jc.status]] as string | null) : null;
-              return (
-                <div key={jc.id} className="flex items-start gap-4 px-5 py-4">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-accent">
-                    <ClipboardList className="h-4 w-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-medium text-foreground">{jc.jobCardNumber}</p>
-                      <Badge variant={priorityVariant[jc.priority as keyof typeof priorityVariant]} className="capitalize">
-                        {jc.priority}
-                      </Badge>
-                      <Badge variant={STAGE_VARIANT[jc.status] ?? "default"} dot>
-                        {STAGE_LABEL[jc.status] ?? jc.status}
-                      </Badge>
-                      {stageTs && (
-                        <span className="flex items-center gap-1 text-[11px] text-slate-400">
-                          <Clock className="h-3 w-3" /> {stageTs}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-foreground-secondary mt-1">{jc.issueDescription}</p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      {jc.substationName} · {jc.equipmentName}
-                      {jc.component ? ` · ${jc.component}` : ""} · Raised by {jc.raisedBy} on {fmtDateTime(jc.createdAt)}
-                    </p>
-                    {jc.assignedEngineer && (
-                      <p className="text-xs text-accent mt-1 flex items-center gap-1">
-                        <UserCog className="h-3 w-3" /> Service Engineer (Spectrum): {jc.assignedEngineer}
-                      </p>
-                    )}
-                    {jc.estimateAmount != null && (
-                      <div className="mt-2 rounded-2xl border border-blue-100 bg-blue-50/40 overflow-hidden shadow-sm">
-                        <div className="flex items-center gap-1.5 px-3.5 pt-3 text-xs font-semibold text-accent">
-                          <Receipt className="h-3.5 w-3.5" /> Quote &amp; Estimate
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-2 px-3.5 py-3 text-xs">
-                          <div>
-                            <p className="text-foreground-secondary font-medium">Amount</p>
-                            <p className="text-foreground font-semibold mt-0.5">₹{jc.estimateAmount?.toLocaleString() ?? "—"}</p>
-                          </div>
-                          <div>
-                            <p className="text-foreground-secondary font-medium">Date Sent</p>
-                            <p className="text-foreground mt-0.5 flex items-center gap-1">
-                              <Clock className="h-3 w-3" /> {fmtDateTime(jc.estimateSentAt) ?? "—"}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-foreground-secondary font-medium">Status</p>
-                            <Badge
-                              variant={jc.status === "approved" || jc.status === "closed" ? "success" : jc.status === "rejected" ? "danger" : "warning"}
-                              dot
-                              className="mt-0.5"
-                            >
-                              {jc.status === "approved" ? "Approved" : jc.status === "rejected" ? "Rejected" : jc.status === "closed" ? "Approved & Closed" : "Awaiting AE"}
-                            </Badge>
-                          </div>
-                          <div>
-                            <p className="text-foreground-secondary font-medium">Quote</p>
-                            {jc.estimateDocumentUrl ? (
-                              <div className="flex items-center gap-1.5 mt-0.5">
-                                <a
-                                  href={jc.estimateDocumentUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-accent px-2.5 py-1 text-[11px] font-medium hover:bg-blue-100 transition-colors"
-                                >
-                                  <Eye className="h-3 w-3" /> View
-                                </a>
-                                <a
-                                  href={jc.estimateDocumentUrl}
-                                  download={jc.estimateDocumentName ?? undefined}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="flex h-6 w-6 items-center justify-center rounded-full text-foreground-secondary hover:bg-hover transition-colors"
-                                  title="Download"
-                                >
-                                  <Download className="h-3.5 w-3.5" />
-                                </a>
-                              </div>
-                            ) : (
-                              <p className="text-foreground-secondary mt-0.5">No file</p>
-                            )}
-                          </div>
-                        </div>
-                        {jc.estimateNotes && (
-                          <p className="text-xs text-foreground-secondary px-3.5 pb-3 -mt-1">{jc.estimateNotes}</p>
-                        )}
-                      </div>
-                    )}
-                    {jc.status === "rejected" && jc.approvalNotes && (
-                      <p className="text-xs text-danger mt-1">AE remarks: {jc.approvalNotes}</p>
-                    )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <Card>
+          <CardHeader>
+            <CardTitle>Job Cards ({filtered.length})</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {loading ? (
+              <p className="text-sm text-foreground-secondary py-6 text-center">Loading…</p>
+            ) : filtered.length === 0 ? (
+              <EmptyState
+                icon={ClipboardList}
+                title="No job cards"
+                description="No job cards match your filters."
+              />
+            ) : (
+              <div className="space-y-1">
+                {filtered.map((row) => {
+                  const days = ageingDays(row.createdAt);
+                  const isAgeing =
+                    !["payment_received", "offer_dropped", "order_lost"].includes(
+                      row.currentStatus
+                    ) && days > ageingThreshold;
+                  return (
                     <button
-                      onClick={() => setDetailsRow(jc)}
-                      className="flex items-center gap-1 text-[11px] font-medium text-accent hover:underline mt-2"
+                      key={row.id}
+                      onClick={() => setSelectedId(row.id === selectedId ? null : row.id)}
+                      className={`w-full text-left flex items-center gap-3 py-2.5 border-b border-border last:border-0 hover:bg-hover/50 -mx-2 px-2 rounded-lg transition-colors ${selectedId === row.id ? "bg-blue-50" : ""}`}
                     >
-                      <ClipboardList className="h-3 w-3" /> Job Card Details
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-medium text-foreground">
+                            {row.jobCardNumber}
+                          </p>
+                          <Badge
+                            variant={
+                              PRIORITY_VARIANT[row.priority as keyof typeof PRIORITY_VARIANT]
+                            }
+                            className="capitalize"
+                          >
+                            {row.priority}
+                          </Badge>
+                          {isAgeing && (
+                            <Badge variant="danger" className="gap-1">
+                              <Clock className="h-2.5 w-2.5" /> {days}d
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-foreground-secondary mt-0.5 truncate">
+                          {row.stationName}
+                          {row.voltageClass ? ` · ${row.voltageClass}` : ""}
+                          {row.equipmentType ? ` · ${row.equipmentType}` : ""}
+                          {" · "}
+                          {fmtDateIST(row.createdAt)}
+                        </p>
+                      </div>
+                      <Badge
+                        variant={STATUS_VARIANT[row.currentStatus] ?? "default"}
+                        dot
+                        className="shrink-0"
+                      >
+                        {STATUS_LABEL[row.currentStatus] ?? row.currentStatus}
+                      </Badge>
                     </button>
-                  </div>
-                  <div className="flex flex-col gap-1.5 shrink-0">
-                    {(NEXT_ACTIONS[jc.status] ?? []).map((action) => (
-                      <Button key={action.nextStatus} size="sm" variant="secondary" onClick={() => openAction(jc, action)}>
-                        {action.label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </Card>
-
-      <Dialog open={!!manageRow} onOpenChange={(open) => !open && setManageRow(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{pendingAction?.label}</DialogTitle>
-            <DialogDescription>
-              {manageRow?.jobCardNumber} · {manageRow?.substationName}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="px-6 py-5 space-y-4">
-            {pendingAction?.nextStatus === "assigned" && (
-              <div className="space-y-1.5">
-                <Label htmlFor="engineer">Service Engineer</Label>
-                <Input
-                  id="engineer"
-                  value={assignedEngineer}
-                  onChange={(e) => setAssignedEngineer(e.target.value)}
-                  placeholder="e.g. Suresh Kumar"
-                />
+                  );
+                })}
               </div>
             )}
-            {pendingAction?.nextStatus === "mom_logged" && (
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="mom">Minutes of Meeting (site inspection notes)</Label>
-                  <textarea
-                    id="mom"
-                    value={momNotes}
-                    onChange={(e) => setMomNotes(e.target.value)}
-                    rows={4}
-                    placeholder="What the engineer found on site…"
-                    className="flex w-full rounded-[10px] border border-border bg-white px-3.5 py-2 text-sm text-foreground placeholder:text-slate-400 shadow-[0_1px_2px_rgba(15,23,42,0.03)] focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent resize-none"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="momfile">Attach MOM document (optional)</Label>
-                  <div className="flex items-center gap-2">
-                    <label
-                      htmlFor="momfile"
-                      className="flex items-center gap-2 rounded-[10px] border border-border bg-white px-3.5 py-2 text-sm text-foreground-secondary cursor-pointer hover:bg-hover transition-colors"
-                    >
-                      <Paperclip className="h-4 w-4" />
-                      {momFile ? momFile.name : "Choose file (PDF, image, document)"}
-                    </label>
-                    <input
-                      id="momfile"
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                      className="hidden"
-                      onChange={(e) => setMomFile(e.target.files?.[0] ?? null)}
-                    />
-                  </div>
-                  {uploadError && <p className="text-xs text-danger">{uploadError}</p>}
-                </div>
-              </div>
-            )}
-            {pendingAction?.nextStatus === "estimate_sent" && (
-              <>
-                <div className="space-y-1.5">
-                  <Label htmlFor="amount">Estimate amount (₹)</Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    min={0}
-                    value={estimateAmount}
-                    onChange={(e) => setEstimateAmount(e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="estimatenotes">Estimate details</Label>
-                  <textarea
-                    id="estimatenotes"
-                    value={estimateNotes}
-                    onChange={(e) => setEstimateNotes(e.target.value)}
-                    rows={3}
-                    placeholder="Parts, labor, breakdown…"
-                    className="flex w-full rounded-[10px] border border-border bg-white px-3.5 py-2 text-sm text-foreground placeholder:text-slate-400 shadow-[0_1px_2px_rgba(15,23,42,0.03)] focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent resize-none"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="file">Attach document (optional)</Label>
-                  <div className="flex items-center gap-2">
-                    <label
-                      htmlFor="file"
-                      className="flex items-center gap-2 rounded-[10px] border border-border bg-white px-3.5 py-2 text-sm text-foreground-secondary cursor-pointer hover:bg-hover transition-colors"
-                    >
-                      <Paperclip className="h-4 w-4" />
-                      {estimateFile ? estimateFile.name : "Choose file (PDF, image)"}
-                    </label>
-                    <input
-                      id="file"
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      className="hidden"
-                      onChange={(e) => setEstimateFile(e.target.files?.[0] ?? null)}
-                    />
-                  </div>
-                  {uploadError && <p className="text-xs text-danger">{uploadError}</p>}
-                </div>
-              </>
-            )}
-            {(pendingAction?.nextStatus === "inspecting" || pendingAction?.nextStatus === "closed") && (
-              <p className="text-sm text-foreground-secondary">
-                This will move the job card to <span className="font-medium text-foreground">{STAGE_LABEL[pendingAction.nextStatus]}</span>.
-              </p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setManageRow(null)} disabled={saving}>
-              Cancel
-            </Button>
-            <Button onClick={handleConfirm} disabled={saving}>
-              {saving ? "Saving…" : "Confirm"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </CardContent>
+        </Card>
 
-      {/* Job Card Details — full history */}
-      <Dialog open={!!detailsRow} onOpenChange={(open) => !open && setDetailsRow(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Job Card Details</DialogTitle>
-            <DialogDescription>
-              {detailsRow?.jobCardNumber} · {detailsRow?.substationName}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="px-6 py-5 space-y-5 max-h-[65vh] overflow-y-auto">
-            <div>
-              <p className="text-xs font-medium text-foreground-secondary">Issue reported</p>
-              <p className="text-sm text-foreground mt-1">{detailsRow?.issueDescription}</p>
-            </div>
-            {detailsRow?.momNotes && (
+        {selected && (
+          <Card>
+            <CardHeader>
+              <CardTitle>{selected.jobCardNumber}</CardTitle>
+              <CardDescription>
+                {selected.stationName}
+                {selected.voltageClass ? ` · ${selected.voltageClass}` : ""}
+                {selected.equipmentType ? ` · ${selected.equipmentType}` : ""}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-4">
               <div>
-                <p className="text-xs font-medium text-foreground-secondary">Inspection notes (MOM)</p>
-                <p className="text-sm text-foreground mt-1">{detailsRow.momNotes}</p>
-                {detailsRow.momDocumentUrl && (
-                  <div className="flex items-center gap-1.5 mt-2">
-                    <a
-                      href={detailsRow.momDocumentUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-accent px-2.5 py-1 text-xs font-medium hover:bg-blue-100 transition-colors"
-                    >
-                      <Eye className="h-3 w-3" /> View MOM
-                    </a>
-                    <a
-                      href={detailsRow.momDocumentUrl}
-                      download={detailsRow.momDocumentName ?? undefined}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-foreground-secondary hover:bg-hover transition-colors"
-                      title="Download"
-                    >
-                      <Download className="h-4 w-4" />
-                    </a>
+                <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-1">
+                  Issue
+                </p>
+                <p className="text-sm text-foreground">{selected.issueDescription}</p>
+                {selected.componentDescription && (
+                  <p className="text-xs text-foreground-secondary mt-1">
+                    Component: {selected.componentDescription}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {selected.quotationAmount != null && (
+                  <div>
+                    <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-1">
+                      Quotation
+                    </p>
+                    <p className="text-sm font-medium text-foreground">
+                      ₹{selected.quotationAmount.toLocaleString("en-IN")}
+                    </p>
                   </div>
                 )}
-                {detailsRow.momViewedAt ? (
-                  <p className="text-xs text-success mt-1.5 flex items-center gap-1">
-                    <Clock className="h-3 w-3" /> Viewed by AE on {fmtDateTime(detailsRow.momViewedAt)}
-                  </p>
-                ) : detailsRow.momDocumentUrl ? (
-                  <p className="text-xs text-foreground-secondary mt-1.5">Not yet viewed by AE</p>
-                ) : null}
+                {selected.orderAmount != null && (
+                  <div>
+                    <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-1">
+                      Order Value
+                    </p>
+                    <p className="text-sm font-medium text-foreground">
+                      ₹{selected.orderAmount.toLocaleString("en-IN")}
+                    </p>
+                  </div>
+                )}
               </div>
-            )}
-            {estimateHistory.length > 0 && (
+
+              {selected.remarks && (
+                <div>
+                  <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-1">
+                    Remarks
+                  </p>
+                  <p className="text-sm text-foreground">{selected.remarks}</p>
+                </div>
+              )}
+
               <div>
-                <p className="text-xs font-medium text-foreground-secondary mb-1.5">Quote History</p>
-                <div className="space-y-2">
-                  {estimateHistory.map((est) => (
-                    <div key={est.id} className="rounded-2xl border border-blue-100 bg-blue-50/40 px-3.5 py-3 shadow-sm">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold text-accent">Round {est.round}</p>
-                        <Badge
-                          variant={est.decision === "approved" ? "success" : est.decision === "rejected" ? "danger" : "warning"}
-                          dot
-                        >
-                          {est.decision === "pending" ? "Awaiting AE" : est.decision === "approved" ? "Approved" : "Rejected"}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between mt-1.5">
-                        <p className="text-sm font-semibold text-foreground">₹{est.amount?.toLocaleString() ?? "—"}</p>
-                        <p className="text-xs text-foreground-secondary flex items-center gap-1">
-                          <Clock className="h-3 w-3" /> Sent {fmtDateTime(est.sentAt)}
-                        </p>
-                      </div>
-                      {est.notes && <p className="text-xs text-foreground-secondary mt-1">{est.notes}</p>}
-                      {est.documentUrl && (
-                        <div className="flex items-center gap-1.5 mt-2">
-                          <a
-                            href={est.documentUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-accent px-2.5 py-1 text-xs font-medium hover:bg-blue-100 transition-colors"
-                          >
-                            <Eye className="h-3 w-3" /> View Quote
-                          </a>
-                          <a
-                            href={est.documentUrl}
-                            download={est.documentName ?? undefined}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex h-7 w-7 items-center justify-center rounded-full text-foreground-secondary hover:bg-hover transition-colors"
-                            title="Download"
-                          >
-                            <Download className="h-4 w-4" />
-                          </a>
-                        </div>
-                      )}
-                      {est.decisionAt && (
-                        <p className="text-xs text-foreground-secondary mt-2 pt-2 border-t border-blue-100/70 flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {est.decision === "approved" ? "Approved" : "Rejected"} on {fmtDateTime(est.decisionAt)}
-                        </p>
-                      )}
-                      {est.decisionNotes && <p className="text-xs text-foreground-secondary mt-1">AE remarks: {est.decisionNotes}</p>}
-                    </div>
+                <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-1">
+                  Raised
+                </p>
+                <p className="text-sm text-foreground">{fmtIST(selected.createdAt)}</p>
+              </div>
+
+              {transitions.length > 0 && (
+                <div className="flex gap-2 flex-wrap pt-1">
+                  {transitions.map((t) => (
+                    <Button
+                      key={t}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setNextStatus(t);
+                        setStatusDialog(true);
+                      }}
+                    >
+                      → {STATUS_LABEL[t]}
+                    </Button>
                   ))}
                 </div>
-              </div>
-            )}
-            <div>
-              <p className="text-xs font-medium text-foreground-secondary mb-1">Full timeline</p>
-              {detailsRow && (
-                <JobCardTimeline
-                  data={{
-                    createdAt: detailsRow.createdAt,
-                    assignedAt: detailsRow.assignedAt,
-                    inspectingAt: detailsRow.inspectingAt,
-                    momLoggedAt: detailsRow.momLoggedAt,
-                    momViewedAt: detailsRow.momViewedAt,
-                    estimateSentAt: detailsRow.estimateSentAt,
-                    approvedAt: detailsRow.approvedAt,
-                    rejectedAt: detailsRow.rejectedAt,
-                    closedAt: detailsRow.closedAt,
-                    status: detailsRow.status,
-                  }}
-                />
               )}
+
+              <div>
+                <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-2">
+                  Progress
+                </p>
+                <JobCardTimeline
+                  data={{ currentStatus: selected.currentStatus, history: selected.history }}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      <Dialog open={statusDialog} onOpenChange={setStatusDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Status</DialogTitle>
+            <DialogDescription>
+              Move <strong>{selected?.jobCardNumber}</strong> to{" "}
+              <strong>{STATUS_LABEL[nextStatus]}</strong>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label>Note (optional)</Label>
+              <Input
+                value={statusNote}
+                onChange={(e) => setStatusNote(e.target.value)}
+                placeholder="Add a note about this status change…"
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setDetailsRow(null)}>
-              Close
+            <Button variant="outline" onClick={() => setStatusDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={changeStatus} disabled={changingStatus}>
+              {changingStatus ? "Saving…" : "Confirm"}
             </Button>
           </DialogFooter>
         </DialogContent>

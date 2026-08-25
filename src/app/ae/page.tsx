@@ -1,41 +1,44 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Boxes, AlertTriangle, ClipboardList, Clock, CheckCircle2, AlertOctagon, ArrowRight } from "lucide-react";
+import { ClipboardList, Receipt, CheckCircle2, AlertTriangle, ArrowRight, Clock } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/server";
 import { getAeDashboardData } from "@/lib/queries/ae-dashboard";
+import { fmtDateIST } from "@/lib/ist";
 
 export const dynamic = "force-dynamic";
 
-const priorityVariant = { low: "default", medium: "accent", high: "warning", critical: "danger" } as const;
-
-const STAGE_LABEL: Record<string, string> = {
-  open: "Open",
-  assigned: "Assigned",
-  inspecting: "Inspecting",
-  mom_logged: "MOM Logged",
-  estimate_sent: "Estimate Sent",
-  approved: "Approved",
-  rejected: "Rejected",
-  closed: "Closed",
-  in_progress: "In Progress",
-  resolved: "Resolved",
+const STATUS_LABEL: Record<string, string> = {
+  quotation_shared: "Quotation Shared",
+  order_received: "Order Received",
+  offer_dropped: "Offer Dropped",
+  order_lost: "Order Lost",
+  supply_service_given: "Supply / Service Given",
+  bills_submitted: "Bills Submitted",
+  payment_received: "Payment Received",
 };
 
-const STAGE_VARIANT: Record<string, "default" | "accent" | "warning" | "danger" | "success"> = {
-  open: "danger",
-  assigned: "accent",
-  inspecting: "accent",
-  mom_logged: "accent",
-  estimate_sent: "warning",
-  approved: "success",
-  rejected: "danger",
-  closed: "default",
-  in_progress: "warning",
-  resolved: "success",
+const STATUS_VARIANT: Record<
+  string,
+  "default" | "accent" | "warning" | "danger" | "success"
+> = {
+  quotation_shared: "accent",
+  order_received: "warning",
+  offer_dropped: "danger",
+  order_lost: "danger",
+  supply_service_given: "warning",
+  bills_submitted: "warning",
+  payment_received: "success",
 };
+
+const PRIORITY_VARIANT = {
+  low: "default",
+  medium: "accent",
+  high: "warning",
+  critical: "danger",
+} as const;
 
 export default async function AEDashboardPage() {
   const supabase = await createClient();
@@ -44,30 +47,56 @@ export default async function AEDashboardPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase.from("profiles").select("substation_id").eq("id", user.id).single();
-  if (!profile?.substation_id) return null;
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("station_id")
+    .eq("id", user.id)
+    .single();
 
-  const { substation, kpis, lowStock, jobCards } = await getAeDashboardData(profile.substation_id);
+  if (!profile?.station_id) return null;
+
+  const { station, kpis, jobCards, ageingThreshold } = await getAeDashboardData(
+    profile.station_id
+  );
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-semibold text-foreground tracking-tight">
-          {substation?.name ?? "My Substation"}
+          {station?.name ?? "My Station"}
         </h1>
-        <p className="text-sm text-foreground-secondary mt-1">
-          {substation?.code} · {(substation as unknown as { regions?: { name: string } })?.regions?.name ?? ""}
-        </p>
+        {station?.code && (
+          <p className="text-sm text-foreground-secondary mt-1">{station.code}</p>
+        )}
       </div>
 
-      {/* Job Cards — prominent, clickable */}
+      {kpis.ageingCount > 0 && (
+        <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>
+            <strong>{kpis.ageingCount}</strong> job card{kpis.ageingCount !== 1 ? "s" : ""} open
+            for more than {ageingThreshold} days.
+          </span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <StatCard label="Open Job Cards" value={kpis.openJobCards} icon={ClipboardList} tone="warning" />
+        <StatCard label="Bills Submitted" value={kpis.billsSubmitted} icon={Receipt} tone="warning" />
+        <StatCard label="Payment Received" value={kpis.paymentReceived} icon={CheckCircle2} tone="success" />
+        <StatCard label={`Ageing >${ageingThreshold}d`} value={kpis.ageingCount} icon={Clock} tone="danger" />
+      </div>
+
       <Card>
         <CardHeader className="flex-row items-center justify-between">
           <div>
             <CardTitle>Job Cards</CardTitle>
-            <CardDescription>Issues you&apos;ve raised at this substation</CardDescription>
+            <CardDescription>Service requests at this station</CardDescription>
           </div>
-          <Link href="/ae/job-cards" className="flex items-center gap-1 text-sm font-medium text-accent hover:underline shrink-0">
+          <Link
+            href="/ae/job-cards"
+            className="flex items-center gap-1 text-sm font-medium text-accent hover:underline shrink-0"
+          >
             View all <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </CardHeader>
@@ -90,48 +119,26 @@ export default async function AEDashboardPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-foreground">{jc.jobCardNumber}</p>
-                      <Badge variant={priorityVariant[jc.priority as keyof typeof priorityVariant]} className="capitalize">
+                      <Badge
+                        variant={
+                          PRIORITY_VARIANT[jc.priority as keyof typeof PRIORITY_VARIANT]
+                        }
+                        className="capitalize"
+                      >
                         {jc.priority}
                       </Badge>
                     </div>
-                    <p className="text-xs text-foreground-secondary mt-0.5 truncate">{jc.equipmentName}</p>
+                    <p className="text-xs text-foreground-secondary mt-0.5 truncate">
+                      {jc.voltageClass ?? "—"}
+                      {jc.equipmentType ? ` · ${jc.equipmentType}` : ""}
+                      {" · "}
+                      {fmtDateIST(jc.createdAt)}
+                    </p>
                   </div>
-                  <Badge variant={STAGE_VARIANT[jc.status] ?? "default"} dot className="shrink-0">
-                    {STAGE_LABEL[jc.status] ?? jc.status}
+                  <Badge variant={STATUS_VARIANT[jc.currentStatus] ?? "default"} dot className="shrink-0">
+                    {STATUS_LABEL[jc.currentStatus] ?? jc.currentStatus}
                   </Badge>
                 </Link>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        <StatCard label="Available Inventory" value={kpis.availableInventory.toLocaleString()} icon={Boxes} />
-        <StatCard label="Low Stock" value={kpis.lowStockItems} icon={AlertTriangle} tone="danger" />
-        <StatCard label="Open Job Cards" value={kpis.openJobCards} icon={ClipboardList} tone="warning" />
-        <StatCard label="Pending Service" value={kpis.pendingServices} icon={Clock} tone="warning" />
-        <StatCard label="Equipment Healthy" value={kpis.healthy} icon={CheckCircle2} tone="success" />
-        <StatCard label="Needs Attention" value={kpis.serviceRequired + kpis.replacementRequired} icon={AlertOctagon} tone="danger" />
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Low Stock Components</CardTitle>
-          <CardDescription>Below minimum threshold at your substation</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {lowStock.length === 0 ? (
-            <p className="text-sm text-foreground-secondary py-6 text-center">All stock levels are healthy.</p>
-          ) : (
-            <div className="space-y-1">
-              {lowStock.map((item) => (
-                <div key={item.id} className="flex items-center justify-between py-2.5 border-b border-border last:border-0">
-                  <p className="text-sm font-medium text-foreground">{item.componentName}</p>
-                  <Badge variant="danger">
-                    {item.availableQty}/{item.minQty} {item.unit}
-                  </Badge>
-                </div>
               ))}
             </div>
           )}

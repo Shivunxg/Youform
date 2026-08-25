@@ -1,73 +1,52 @@
 import { createClient } from "@/lib/supabase/server";
 
-export async function getAeDashboardData(substationId: string) {
+export async function getAeDashboardData(stationId: string) {
   const supabase = await createClient();
 
-  const [substationRes, equipmentRes, inventoryRes, jobCardsRes, serviceRequestsRes] = await Promise.all([
-    supabase.from("substations").select("*, regions(name)").eq("id", substationId).single(),
-    supabase.from("equipment").select("id, name, status").eq("substation_id", substationId),
+  const [stationRes, jobCardsRes, settingsRes] = await Promise.all([
     supabase
-      .from("inventory")
-      .select("id, available_qty, min_qty, unit, components(name)")
-      .eq("substation_id", substationId),
+      .from("hierarchy_nodes")
+      .select("id, name, code, parent_id")
+      .eq("id", stationId)
+      .single(),
     supabase
       .from("job_cards")
-      .select("id, job_card_number, priority, status, issue_description, created_at, equipment(name)")
-      .eq("substation_id", substationId)
+      .select(
+        "id, job_card_number, current_status, priority, created_at, voltage_classes(name), equipment_types(name)"
+      )
+      .eq("station_id", stationId)
       .order("created_at", { ascending: false })
-      .limit(8),
-    supabase
-      .from("service_requests")
-      .select("id, request_number, type, status, created_at, equipment(name)")
-      .eq("substation_id", substationId)
-      .order("created_at", { ascending: false })
-      .limit(8),
+      .limit(10),
+    supabase.from("app_settings").select("key, value"),
   ]);
 
-  const equipment = equipmentRes.data ?? [];
-  const inventory = inventoryRes.data ?? [];
-  const jobCards = jobCardsRes.data ?? [];
-  const serviceRequests = serviceRequestsRes.data ?? [];
+  const settings: Record<string, string> = {};
+  for (const s of settingsRes.data ?? []) settings[s.key] = s.value;
+  const ageingThreshold = parseInt(settings["ageing_threshold_days"] ?? "30", 10);
 
-  const lowStock = inventory.filter((i) => i.available_qty < i.min_qty);
-  const healthCounts = { healthy: 0, service_required: 0, replacement_required: 0 };
-  for (const e of equipment) {
-    if (e.status in healthCounts) healthCounts[e.status as keyof typeof healthCounts]++;
-  }
+  const open = ["quotation_shared", "order_received", "supply_service_given"];
+  const now = Date.now();
+  const allCards = jobCardsRes.data ?? [];
 
-  return {
-    substation: substationRes.data,
-    kpis: {
-      totalEquipment: equipment.length,
-      availableInventory: inventory.reduce((sum, i) => sum + i.available_qty, 0),
-      lowStockItems: lowStock.length,
-      openJobCards: jobCards.filter((j) => j.status === "open" || j.status === "in_progress").length,
-      pendingServices: serviceRequests.filter((s) => s.status === "pending" || s.status === "in_progress").length,
-      healthy: healthCounts.healthy,
-      serviceRequired: healthCounts.service_required,
-      replacementRequired: healthCounts.replacement_required,
-    },
-    lowStock: lowStock.map((i) => ({
-      id: i.id,
-      componentName: (i.components as unknown as { name: string } | null)?.name ?? "Unnamed component",
-      availableQty: i.available_qty,
-      minQty: i.min_qty,
-      unit: i.unit,
-    })),
-    jobCards: jobCards.map((jc) => ({
-      id: jc.id,
-      jobCardNumber: jc.job_card_number,
-      equipmentName: (jc.equipment as unknown as { name: string } | null)?.name ?? "—",
-      issueDescription: jc.issue_description,
-      priority: jc.priority,
-      status: jc.status,
-    })),
-    serviceRequests: serviceRequests.map((sr) => ({
-      id: sr.id,
-      requestNumber: sr.request_number,
-      equipmentName: (sr.equipment as unknown as { name: string } | null)?.name ?? "—",
-      type: sr.type,
-      status: sr.status,
-    })),
+  const kpis = {
+    openJobCards: allCards.filter((jc) => open.includes(jc.current_status)).length,
+    billsSubmitted: allCards.filter((jc) => jc.current_status === "bills_submitted").length,
+    paymentReceived: allCards.filter((jc) => jc.current_status === "payment_received").length,
+    ageingCount: allCards.filter((jc) => {
+      if (!open.includes(jc.current_status)) return false;
+      return (now - new Date(jc.created_at).getTime()) / 86400000 > ageingThreshold;
+    }).length,
   };
+
+  const jobCards = allCards.map((jc) => ({
+    id: jc.id,
+    jobCardNumber: jc.job_card_number,
+    currentStatus: jc.current_status,
+    priority: jc.priority,
+    voltageClass: (jc.voltage_classes as unknown as { name: string } | null)?.name ?? null,
+    equipmentType: (jc.equipment_types as unknown as { name: string } | null)?.name ?? null,
+    createdAt: jc.created_at,
+  }));
+
+  return { station: stationRes.data, kpis, jobCards, ageingThreshold };
 }

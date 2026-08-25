@@ -5,14 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  MapPin,
-  Building2,
-  Boxes,
-  Cpu,
-  PuzzleIcon,
+  Network,
   ClipboardList,
-  Wrench,
-  CalendarClock,
   BarChart3,
   Bell,
   Users,
@@ -20,6 +14,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Zap,
+  HardHat,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +22,6 @@ interface NavItem {
   label: string;
   href: string;
   icon: React.ElementType;
-  badge?: number;
 }
 
 interface NavGroup {
@@ -42,26 +36,11 @@ const adminNavGroups: NavGroup[] = [
   },
   {
     title: "Network",
-    items: [
-      { label: "Regions", href: "/admin/regions", icon: MapPin },
-      { label: "Substations", href: "/admin/substations", icon: Building2 },
-    ],
-  },
-  {
-    title: "Assets",
-    items: [
-      { label: "Inventory", href: "/admin/inventory", icon: Boxes },
-      { label: "Equipment", href: "/admin/equipment", icon: Cpu },
-      { label: "Components", href: "/admin/components", icon: PuzzleIcon },
-    ],
+    items: [{ label: "Hierarchy", href: "/admin/hierarchy", icon: Network }],
   },
   {
     title: "Operations",
-    items: [
-      { label: "Job Cards", href: "/admin/job-cards", icon: ClipboardList },
-      { label: "Service Requests", href: "/admin/service-requests", icon: Wrench },
-      { label: "Preventive Maintenance", href: "/admin/maintenance", icon: CalendarClock },
-    ],
+    items: [{ label: "Job Cards", href: "/admin/job-cards", icon: ClipboardList }],
   },
   {
     title: "Insights",
@@ -85,13 +64,6 @@ const aeNavGroups: NavGroup[] = [
     items: [{ label: "Dashboard", href: "/ae", icon: LayoutDashboard }],
   },
   {
-    title: "My Substation",
-    items: [
-      { label: "Inventory", href: "/ae/inventory", icon: Boxes },
-      { label: "Equipment", href: "/ae/equipment", icon: Cpu },
-    ],
-  },
-  {
     title: "Operations",
     items: [{ label: "Job Cards", href: "/ae/job-cards", icon: ClipboardList }],
   },
@@ -101,11 +73,30 @@ const aeNavGroups: NavGroup[] = [
   },
 ];
 
-export function Sidebar({ variant = "admin", badges = {} }: { variant?: "admin" | "ae"; badges?: Record<string, number> }) {
+const seNavGroups: NavGroup[] = [
+  {
+    title: "Overview",
+    items: [{ label: "Dashboard", href: "/se", icon: LayoutDashboard }],
+  },
+  {
+    title: "Operations",
+    items: [{ label: "My Jobs", href: "/se/job-cards", icon: HardHat }],
+  },
+];
+
+export function Sidebar({
+  variant = "admin",
+  badges = {},
+}: {
+  variant?: "admin" | "ae" | "se";
+  badges?: Record<string, number>;
+}) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = React.useState(false);
-  const navGroups = variant === "admin" ? adminNavGroups : aeNavGroups;
-  const basePath = variant === "admin" ? "/admin" : "/ae";
+
+  const navGroups =
+    variant === "admin" ? adminNavGroups : variant === "ae" ? aeNavGroups : seNavGroups;
+  const basePath = variant === "admin" ? "/admin" : variant === "ae" ? "/ae" : "/se";
 
   return (
     <aside
@@ -139,7 +130,9 @@ export function Sidebar({ variant = "admin", badges = {} }: { variant?: "admin" 
             <div className="space-y-0.5">
               {group.items.map((item) => {
                 const active =
-                  item.href === basePath ? pathname === basePath : pathname.startsWith(item.href);
+                  item.href === basePath
+                    ? pathname === basePath
+                    : pathname.startsWith(item.href);
                 const Icon = item.icon;
                 return (
                   <Link
@@ -153,11 +146,18 @@ export function Sidebar({ variant = "admin", badges = {} }: { variant?: "admin" 
                         : "text-foreground-secondary hover:bg-hover hover:text-foreground"
                     )}
                   >
-                    <Icon className={cn("h-[18px] w-[18px] shrink-0", active ? "text-accent" : "text-slate-400 group-hover:text-foreground-secondary")} />
+                    <Icon
+                      className={cn(
+                        "h-[18px] w-[18px] shrink-0",
+                        active
+                          ? "text-accent"
+                          : "text-slate-400 group-hover:text-foreground-secondary"
+                      )}
+                    />
                     {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
-                    {!collapsed && (badges[item.href] ?? item.badge) ? (
+                    {!collapsed && badges[item.href] ? (
                       <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[11px] font-semibold text-white">
-                        {badges[item.href] ?? item.badge}
+                        {badges[item.href]}
                       </span>
                     ) : null}
                   </Link>
@@ -173,7 +173,13 @@ export function Sidebar({ variant = "admin", badges = {} }: { variant?: "admin" 
           onClick={() => setCollapsed((c) => !c)}
           className="flex w-full items-center justify-center gap-2 rounded-[10px] px-2.5 py-2 text-xs font-medium text-foreground-secondary hover:bg-hover hover:text-foreground transition-colors"
         >
-          {collapsed ? <ChevronsRight className="h-4 w-4" /> : <><ChevronsLeft className="h-4 w-4" /> Collapse</>}
+          {collapsed ? (
+            <ChevronsRight className="h-4 w-4" />
+          ) : (
+            <>
+              <ChevronsLeft className="h-4 w-4" /> Collapse
+            </>
+          )}
         </button>
       </div>
     </aside>

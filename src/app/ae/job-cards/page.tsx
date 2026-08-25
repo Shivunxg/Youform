@@ -1,805 +1,480 @@
 "use client";
 
 import * as React from "react";
-import { Plus, ClipboardList, CheckCircle2, XCircle, Clock, Eye, Download, Receipt } from "lucide-react";
+import { ClipboardList, Plus } from "lucide-react";
+import { JobCardTimeline, type TimelineData } from "@/components/job-cards/timeline";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { PageToolbar, EmptyState } from "@/components/data-table/toolbar";
-import { JobCardTimeline } from "@/components/job-cards/timeline";
 import { createClient } from "@/lib/supabase/client";
+import { fmtDateIST, fmtIST } from "@/lib/ist";
+
+const STATUS_LABEL: Record<string, string> = {
+  quotation_shared: "Quotation Shared",
+  order_received: "Order Received",
+  offer_dropped: "Offer Dropped",
+  order_lost: "Order Lost",
+  supply_service_given: "Supply / Service Given",
+  bills_submitted: "Bills Submitted",
+  payment_received: "Payment Received",
+};
+
+const STATUS_VARIANT: Record<
+  string,
+  "default" | "accent" | "warning" | "danger" | "success"
+> = {
+  quotation_shared: "accent",
+  order_received: "warning",
+  offer_dropped: "danger",
+  order_lost: "danger",
+  supply_service_given: "warning",
+  bills_submitted: "warning",
+  payment_received: "success",
+};
+
+const PRIORITY_VARIANT = {
+  low: "default",
+  medium: "accent",
+  high: "warning",
+  critical: "danger",
+} as const;
 
 interface Row {
   id: string;
   jobCardNumber: string;
-  equipmentName: string;
-  component: string | null;
+  stationName: string;
+  voltageClass: string | null;
+  equipmentType: string | null;
+  componentDescription: string | null;
   issueDescription: string;
   priority: string;
-  status: string;
-  assignedEngineer: string | null;
-  momNotes: string | null;
-  momDocumentUrl: string | null;
-  momDocumentName: string | null;
-  momViewedAt: string | null;
-  estimateAmount: number | null;
-  estimateNotes: string | null;
-  estimateDocumentUrl: string | null;
-  estimateDocumentName: string | null;
+  currentStatus: string;
+  quotationAmount: number | null;
+  orderAmount: number | null;
+  remarks: string | null;
   createdAt: string;
-  assignedAt: string | null;
-  inspectingAt: string | null;
-  momLoggedAt: string | null;
-  estimateSentAt: string | null;
-  approvedAt: string | null;
-  rejectedAt: string | null;
-  closedAt: string | null;
+  history: TimelineData["history"];
 }
 
-interface EquipmentOption {
-  id: string;
-  name: string;
-}
-
-interface ComponentOption {
-  id: string;
-  name: string;
-  equipmentId: string;
-}
-
-const priorityVariant = { low: "default", medium: "accent", high: "warning", critical: "danger" } as const;
-
-function fmtDateTime(iso: string | null) {
-  if (!iso) return null;
-  return new Date(iso).toLocaleString(undefined, {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-const STAGE_TIMESTAMP_KEY: Record<string, keyof Row> = {
-  assigned: "assignedAt",
-  inspecting: "inspectingAt",
-  mom_logged: "momLoggedAt",
-  estimate_sent: "estimateSentAt",
-  approved: "approvedAt",
-  rejected: "rejectedAt",
-  closed: "closedAt",
-};
-
-const STAGE_LABEL: Record<string, string> = {
-  open: "Open",
-  assigned: "Assigned",
-  inspecting: "Inspecting",
-  mom_logged: "MOM Logged",
-  estimate_sent: "Estimate Sent",
-  approved: "Approved",
-  rejected: "Rejected",
-  closed: "Closed",
-  in_progress: "In Progress",
-  resolved: "Resolved",
-};
-
-const STAGE_VARIANT: Record<string, "default" | "accent" | "warning" | "danger" | "success"> = {
-  open: "danger",
-  assigned: "accent",
-  inspecting: "accent",
-  mom_logged: "accent",
-  estimate_sent: "warning",
-  approved: "success",
-  rejected: "danger",
-  closed: "default",
-  in_progress: "warning",
-  resolved: "success",
-};
-
-const emptyForm = { equipmentId: "", componentId: "", newComponentName: "", issueDescription: "", priority: "medium" };
+interface VoltageClass { id: string; name: string }
+interface EquipmentType { id: string; voltage_class_id: string; name: string }
 
 export default function AEJobCardsPage() {
   const supabase = React.useMemo(() => createClient(), []);
-  const [substationId, setSubstationId] = React.useState<string | null>(null);
   const [rows, setRows] = React.useState<Row[]>([]);
-  const [equipmentOptions, setEquipmentOptions] = React.useState<EquipmentOption[]>([]);
-  const [componentOptions, setComponentOptions] = React.useState<ComponentOption[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [search, setSearch] = React.useState("");
-  const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [form, setForm] = React.useState(emptyForm);
+  const [filterStatus, setFilterStatus] = React.useState("all");
+  const [selectedId, setSelectedId] = React.useState<string | null>(null);
+  const [stationId, setStationId] = React.useState<string | null>(null);
+
+  const [newDialog, setNewDialog] = React.useState(false);
+  const [voltageClasses, setVoltageClasses] = React.useState<VoltageClass[]>([]);
+  const [equipmentTypes, setEquipmentTypes] = React.useState<EquipmentType[]>([]);
+  const [form, setForm] = React.useState({
+    voltageClassId: "",
+    equipmentTypeId: "",
+    componentDescription: "",
+    issueDescription: "",
+    priority: "medium",
+    quotationAmount: "",
+    remarks: "",
+  });
   const [saving, setSaving] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  const [approvalRow, setApprovalRow] = React.useState<Row | null>(null);
-  const [approvalDecision, setApprovalDecision] = React.useState<"approved" | "rejected">("approved");
-  const [approvalNotes, setApprovalNotes] = React.useState("");
-  const [detailsRow, setDetailsRow] = React.useState<Row | null>(null);
-  const [estimateHistory, setEstimateHistory] = React.useState<
-    { id: string; round: number; amount: number | null; notes: string | null; documentUrl: string | null; documentName: string | null; sentAt: string; decision: string; decisionAt: string | null; decisionNotes: string | null }[]
-  >([]);
 
   React.useEffect(() => {
-    if (!detailsRow) {
-      setEstimateHistory([]);
-      return;
-    }
     (async () => {
-      const { data } = await supabase
-        .from("job_card_estimates")
-        .select("id, round, amount, notes, document_url, document_name, sent_at, decision, decision_at, decision_notes")
-        .eq("job_card_id", detailsRow.id)
-        .order("round", { ascending: true });
-      setEstimateHistory(
-        (data ?? []).map((e) => ({
-          id: e.id,
-          round: e.round,
-          amount: e.amount,
-          notes: e.notes,
-          documentUrl: e.document_url,
-          documentName: e.document_name,
-          sentAt: e.sent_at,
-          decision: e.decision,
-          decisionAt: e.decision_at,
-          decisionNotes: e.decision_notes,
-        }))
-      );
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("station_id")
+        .eq("id", user.id)
+        .single();
+      if (profile?.station_id) {
+        setStationId(profile.station_id);
+        loadData(profile.station_id, user.id);
+      }
     })();
-  }, [detailsRow, supabase]);
+  }, []);
 
-  const loadData = React.useCallback(async () => {
+  async function loadData(sid: string, uid: string) {
     setLoading(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data: profile } = await supabase.from("profiles").select("substation_id").eq("id", user.id).single();
-    if (!profile?.substation_id) {
-      setLoading(false);
-      return;
-    }
-    setSubstationId(profile.substation_id);
-
-    const [{ data }, { data: equipmentRows }, { data: componentRows }] = await Promise.all([
+    const [{ data: jcData }, { data: histData }, { data: vcData }] = await Promise.all([
       supabase
         .from("job_cards")
         .select(
-          "id, job_card_number, component, issue_description, priority, status, assigned_engineer, mom_notes, mom_document_url, mom_document_name, mom_viewed_at, estimate_amount, estimate_notes, estimate_document_url, estimate_document_name, created_at, assigned_at, inspecting_at, mom_logged_at, estimate_sent_at, approved_at, rejected_at, closed_at, equipment(name)"
+          "id, job_card_number, current_status, priority, issue_description, component_description, quotation_amount, order_amount, remarks, created_at, hierarchy_nodes!station_id(name), voltage_classes(name), equipment_types(name)"
         )
-        .eq("substation_id", profile.substation_id)
+        .eq("station_id", sid)
         .order("created_at", { ascending: false }),
-      supabase.from("equipment").select("id, name").eq("substation_id", profile.substation_id).order("name"),
-      supabase.from("components").select("id, name, equipment_id"),
+      supabase
+        .from("status_history")
+        .select("job_card_id, to_status, created_at, note, profiles!changed_by(name)")
+        .order("created_at", { ascending: true }),
+      supabase.from("voltage_classes").select("id, name").eq("station_id", sid),
     ]);
 
-    setEquipmentOptions(equipmentRows ?? []);
-    setComponentOptions((componentRows ?? []).map((c) => ({ id: c.id, name: c.name, equipmentId: c.equipment_id })));
-
-    if (data) {
-      setRows(
-        data.map((jc) => ({
-          id: jc.id,
-          jobCardNumber: jc.job_card_number,
-          equipmentName: (jc.equipment as unknown as { name: string } | null)?.name ?? "—",
-          component: jc.component,
-          issueDescription: jc.issue_description,
-          priority: jc.priority,
-          status: jc.status,
-          assignedEngineer: jc.assigned_engineer,
-          momNotes: jc.mom_notes,
-          momDocumentUrl: jc.mom_document_url,
-          momDocumentName: jc.mom_document_name,
-          momViewedAt: jc.mom_viewed_at,
-          estimateAmount: jc.estimate_amount,
-          estimateNotes: jc.estimate_notes,
-          estimateDocumentUrl: jc.estimate_document_url,
-          estimateDocumentName: jc.estimate_document_name,
-          createdAt: jc.created_at,
-          assignedAt: jc.assigned_at,
-          inspectingAt: jc.inspecting_at,
-          momLoggedAt: jc.mom_logged_at,
-          estimateSentAt: jc.estimate_sent_at,
-          approvedAt: jc.approved_at,
-          rejectedAt: jc.rejected_at,
-          closedAt: jc.closed_at,
-        }))
-      );
+    const histByCard = new Map<string, Row["history"]>();
+    for (const h of histData ?? []) {
+      const list = histByCard.get(h.job_card_id) ?? [];
+      list.push({
+        toStatus: h.to_status,
+        createdAt: h.created_at,
+        note: h.note,
+        changedByName:
+          (h.profiles as unknown as { name: string } | null)?.name ?? null,
+      });
+      histByCard.set(h.job_card_id, list);
     }
+
+    setVoltageClasses(vcData ?? []);
+    setRows(
+      (jcData ?? []).map((jc) => ({
+        id: jc.id,
+        jobCardNumber: jc.job_card_number,
+        stationName:
+          (jc.hierarchy_nodes as unknown as { name: string } | null)?.name ?? "—",
+        voltageClass:
+          (jc.voltage_classes as unknown as { name: string } | null)?.name ?? null,
+        equipmentType:
+          (jc.equipment_types as unknown as { name: string } | null)?.name ?? null,
+        componentDescription: jc.component_description,
+        issueDescription: jc.issue_description,
+        priority: jc.priority,
+        currentStatus: jc.current_status,
+        quotationAmount: jc.quotation_amount,
+        orderAmount: jc.order_amount,
+        remarks: jc.remarks,
+        createdAt: jc.created_at,
+        history: histByCard.get(jc.id) ?? [],
+      }))
+    );
     setLoading(false);
-  }, [supabase]);
-
-  React.useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  const filtered = rows.filter(
-    (r) =>
-      r.jobCardNumber.toLowerCase().includes(search.toLowerCase()) ||
-      r.issueDescription.toLowerCase().includes(search.toLowerCase())
-  );
-
-  function openCreate() {
-    setForm({ ...emptyForm, equipmentId: equipmentOptions[0]?.id ?? "" });
-    setError(null);
-    setDialogOpen(true);
   }
 
-  async function handleSave() {
-    if (!substationId || !form.issueDescription.trim()) return;
-    if (form.componentId === "__new__" && !form.newComponentName.trim()) {
-      setError("Please enter a name for the new component.");
-      return;
-    }
-    setSaving(true);
-    setError(null);
+  async function loadEquipmentTypes(vcId: string) {
+    const { data } = await supabase
+      .from("equipment_types")
+      .select("id, voltage_class_id, name")
+      .eq("voltage_class_id", vcId);
+    setEquipmentTypes(data ?? []);
+  }
 
+  async function handleCreate() {
+    if (!stationId || !form.issueDescription.trim()) return;
+    setSaving(true);
     const {
       data: { user },
     } = await supabase.auth.getUser();
-
-    let componentName = componentOptions.find((c) => c.id === form.componentId)?.name ?? null;
-
-    if (form.componentId === "__new__" && form.newComponentName.trim() && form.equipmentId) {
-      const { data: newComponent, error: compError } = await supabase
-        .from("components")
-        .insert({ name: form.newComponentName.trim(), equipment_id: form.equipmentId, min_qty: 0 })
-        .select("id, name")
-        .single();
-      if (compError) {
-        setError(compError.message);
-        setSaving(false);
-        return;
-      }
-      componentName = newComponent?.name ?? form.newComponentName.trim();
-    }
-
-    const { error: insertError } = await supabase.from("job_cards").insert({
-      substation_id: substationId,
-      equipment_id: form.equipmentId || null,
-      component: componentName,
+    await supabase.from("job_cards").insert({
+      station_id: stationId,
+      voltage_class_id: form.voltageClassId || null,
+      equipment_type_id: form.equipmentTypeId || null,
+      component_description: form.componentDescription || null,
       issue_description: form.issueDescription,
       priority: form.priority,
+      quotation_amount: form.quotationAmount ? parseFloat(form.quotationAmount) : null,
+      remarks: form.remarks || null,
       raised_by: user?.id,
+      current_status: "quotation_shared",
     });
-
-    if (insertError) {
-      setError(insertError.message);
-      setSaving(false);
-      return;
-    }
-
-    const equipmentName = equipmentOptions.find((e) => e.id === form.equipmentId)?.name;
-    await supabase.from("notifications").insert({
-      title: "New Job Card Raised",
-      description: `${form.priority.toUpperCase()} priority issue reported${equipmentName ? ` on ${equipmentName}` : ""}`,
-      type: "job_card",
-      target_role: "spectrum_admin",
-      substation_id: substationId,
-    });
-
     setSaving(false);
-    setDialogOpen(false);
-    loadData();
-  }
-
-  async function handleViewMom(row: Row) {
-    if (!row.momViewedAt) {
-      const now = new Date().toISOString();
-      await supabase.from("job_cards").update({ mom_viewed_at: now }).eq("id", row.id);
-      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, momViewedAt: now } : r)));
-      setDetailsRow((prev) => (prev && prev.id === row.id ? { ...prev, momViewedAt: now } : prev));
-    }
-  }
-
-  function openApproval(row: Row) {
-    setApprovalRow(row);
-    setApprovalDecision("approved");
-    setApprovalNotes("");
-  }
-
-  async function handleApprovalSubmit() {
-    if (!approvalRow || !substationId) return;
-    setSaving(true);
-
-    await supabase
-      .from("job_cards")
-      .update({
-        status: approvalDecision,
-        approval_notes: approvalNotes || null,
-        [approvalDecision === "approved" ? "approved_at" : "rejected_at"]: new Date().toISOString(),
-      })
-      .eq("id", approvalRow.id);
-
-    const { data: latestEstimate } = await supabase
-      .from("job_card_estimates")
-      .select("id")
-      .eq("job_card_id", approvalRow.id)
-      .order("round", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (latestEstimate) {
-      await supabase
-        .from("job_card_estimates")
-        .update({
-          decision: approvalDecision,
-          decision_at: new Date().toISOString(),
-          decision_notes: approvalNotes || null,
-        })
-        .eq("id", latestEstimate.id);
-    }
-
-    await supabase.from("notifications").insert({
-      title: approvalDecision === "approved" ? "Estimate Approved" : "Estimate Rejected",
-      description: `${approvalRow.jobCardNumber} was ${approvalDecision} by the Assistant Engineer`,
-      type: "job_card",
-      target_role: "spectrum_admin",
-      substation_id: substationId,
+    setNewDialog(false);
+    setForm({
+      voltageClassId: "",
+      equipmentTypeId: "",
+      componentDescription: "",
+      issueDescription: "",
+      priority: "medium",
+      quotationAmount: "",
+      remarks: "",
     });
-
-    setSaving(false);
-    setApprovalRow(null);
-    loadData();
+    if (stationId && user) loadData(stationId, user.id);
   }
 
-  const relevantComponents = componentOptions.filter((c) => c.equipmentId === form.equipmentId);
+  const filtered = rows.filter((r) => {
+    const matchSearch =
+      !search ||
+      r.jobCardNumber.toLowerCase().includes(search.toLowerCase()) ||
+      r.issueDescription.toLowerCase().includes(search.toLowerCase());
+    const matchStatus = filterStatus === "all" || r.currentStatus === filterStatus;
+    return matchSearch && matchStatus;
+  });
+
+  const selected = rows.find((r) => r.id === selectedId) ?? null;
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-foreground tracking-tight">Job Cards</h1>
-          <p className="text-sm text-foreground-secondary mt-1">Issues raised for your substation</p>
+          <p className="text-sm text-foreground-secondary mt-1">Service requests at your station</p>
         </div>
+        <Button onClick={() => setNewDialog(true)} className="gap-2">
+          <Plus className="h-4 w-4" /> Raise Job Card
+        </Button>
       </div>
 
       <PageToolbar
         search={search}
-        onSearchChange={setSearch}
-        placeholder="Search job cards…"
-        right={
-          <Button onClick={openCreate}>
-            <Plus className="h-4 w-4" /> Raise Job Card
-          </Button>
+        onSearch={setSearch}
+        filters={
+          <select
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+          >
+            <option value="all">All statuses</option>
+            {Object.entries(STATUS_LABEL).map(([v, l]) => (
+              <option key={v} value={v}>
+                {l}
+              </option>
+            ))}
+          </select>
         }
       />
 
-      <Card className="overflow-hidden">
-        {loading ? (
-          <EmptyState title="Loading job cards…" description="Fetching data for your substation." />
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            title="No job cards yet"
-            description="Raise a job card when equipment develops an issue — it reaches your Admin instantly."
-          />
-        ) : (
-          <div className="divide-y divide-border">
-            {filtered.map((jc) => (
-              <div key={jc.id} className="flex items-start gap-4 px-5 py-4">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-accent">
-                  <ClipboardList className="h-4 w-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-medium text-foreground">{jc.jobCardNumber}</p>
-                    <Badge variant={priorityVariant[jc.priority as keyof typeof priorityVariant]} className="capitalize">
-                      {jc.priority}
-                    </Badge>
-                    <Badge variant={STAGE_VARIANT[jc.status] ?? "default"} dot>
-                      {STAGE_LABEL[jc.status] ?? jc.status}
-                    </Badge>
-                    {STAGE_TIMESTAMP_KEY[jc.status] && fmtDateTime(jc[STAGE_TIMESTAMP_KEY[jc.status]] as string | null) && (
-                      <span className="flex items-center gap-1 text-[11px] text-slate-400">
-                        <Clock className="h-3 w-3" /> {fmtDateTime(jc[STAGE_TIMESTAMP_KEY[jc.status]] as string | null)}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm text-foreground-secondary mt-1">{jc.issueDescription}</p>
-                  <p className="text-xs text-slate-400 mt-1">
-                    {jc.equipmentName}
-                    {jc.component ? ` · ${jc.component}` : ""} · Raised {fmtDateTime(jc.createdAt)}
-                  </p>
-                  {jc.assignedEngineer && (
-                    <p className="text-xs text-accent mt-1">Service Engineer (Spectrum): {jc.assignedEngineer}</p>
-                  )}
-                  {jc.momNotes && jc.status !== "open" && jc.status !== "assigned" && (
-                    <div className="mt-1">
-                      <p className="text-xs text-foreground-secondary">Inspection notes: {jc.momNotes}</p>
-                      {jc.momDocumentUrl && (
-                        <a
-                          href={jc.momDocumentUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={() => handleViewMom(jc)}
-                          className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-accent px-2.5 py-1 text-[11px] font-medium hover:bg-blue-100 transition-colors mt-1"
-                        >
-                          <Eye className="h-3 w-3" /> {jc.momViewedAt ? "View MOM again" : "View MOM"}
-                        </a>
-                      )}
-                    </div>
-                  )}
-                  {jc.estimateAmount != null && (
-                    <div className="mt-2 rounded-2xl border border-blue-100 bg-blue-50/40 overflow-hidden shadow-sm">
-                      <div className="flex items-center gap-1.5 px-3.5 pt-3 text-xs font-semibold text-accent">
-                        <Receipt className="h-3.5 w-3.5" /> Quote &amp; Estimate
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-2 px-3.5 py-3 text-xs">
-                        <div>
-                          <p className="text-foreground-secondary font-medium">Amount</p>
-                          <p className="text-foreground font-semibold mt-0.5">₹{jc.estimateAmount?.toLocaleString() ?? "—"}</p>
-                        </div>
-                        <div>
-                          <p className="text-foreground-secondary font-medium">Date Sent</p>
-                          <p className="text-foreground mt-0.5 flex items-center gap-1">
-                            <Clock className="h-3 w-3" /> {fmtDateTime(jc.estimateSentAt) ?? "—"}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-foreground-secondary font-medium">Status</p>
-                          <Badge
-                            variant={jc.status === "approved" || jc.status === "closed" ? "success" : jc.status === "rejected" ? "danger" : "warning"}
-                            dot
-                            className="mt-0.5"
-                          >
-                            {jc.status === "approved" ? "Approved" : jc.status === "rejected" ? "Rejected" : jc.status === "closed" ? "Approved & Closed" : "Needs your review"}
-                          </Badge>
-                        </div>
-                        <div>
-                          <p className="text-foreground-secondary font-medium">Quote</p>
-                          {jc.estimateDocumentUrl ? (
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <a
-                                href={jc.estimateDocumentUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-accent px-2.5 py-1 text-[11px] font-medium hover:bg-blue-100 transition-colors"
-                              >
-                                <Eye className="h-3 w-3" /> View
-                              </a>
-                              <a
-                                href={jc.estimateDocumentUrl}
-                                download={jc.estimateDocumentName ?? undefined}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex h-6 w-6 items-center justify-center rounded-full text-foreground-secondary hover:bg-hover transition-colors"
-                                title="Download"
-                              >
-                                <Download className="h-3.5 w-3.5" />
-                              </a>
-                            </div>
-                          ) : (
-                            <p className="text-foreground-secondary mt-0.5">No file</p>
-                          )}
-                        </div>
-                      </div>
-                      {jc.estimateNotes && <p className="text-xs text-foreground-secondary px-3.5 pb-3 -mt-1">{jc.estimateNotes}</p>}
-                    </div>
-                  )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <Card>
+          <CardHeader>
+            <CardTitle>My Job Cards ({filtered.length})</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {loading ? (
+              <p className="text-sm text-foreground-secondary py-6 text-center">Loading…</p>
+            ) : filtered.length === 0 ? (
+              <EmptyState
+                icon={ClipboardList}
+                title="No job cards"
+                description="Raise a job card to track a service request."
+              />
+            ) : (
+              <div className="space-y-1">
+                {filtered.map((row) => (
                   <button
-                    onClick={() => setDetailsRow(jc)}
-                    className="flex items-center gap-1 text-[11px] font-medium text-accent hover:underline mt-2"
+                    key={row.id}
+                    onClick={() => setSelectedId(row.id === selectedId ? null : row.id)}
+                    className={`w-full text-left flex items-center gap-3 py-2.5 border-b border-border last:border-0 hover:bg-hover/50 -mx-2 px-2 rounded-lg transition-colors ${selectedId === row.id ? "bg-blue-50" : ""}`}
                   >
-                    <ClipboardList className="h-3 w-3" /> Job Card Details
-                  </button>
-                </div>
-                {jc.status === "estimate_sent" && (
-                  <div className="flex flex-col gap-1.5 shrink-0">
-                    <Button size="sm" onClick={() => openApproval(jc)}>
-                      Review Estimate
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
-
-      {/* Raise job card */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Raise Job Card</DialogTitle>
-            <DialogDescription>Report an equipment issue at your substation. Your Admin is notified immediately.</DialogDescription>
-          </DialogHeader>
-          <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>Equipment</Label>
-              {equipmentOptions.length === 0 ? (
-                <p className="text-xs text-foreground-secondary py-2">
-                  No equipment registered yet at your substation. Add it from the Inventory page first, or ask your Admin.
-                </p>
-              ) : (
-                <Select value={form.equipmentId} onValueChange={(v) => setForm({ ...form, equipmentId: v, componentId: "" })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select equipment" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {equipmentOptions.map((e) => (
-                      <SelectItem key={e.id} value={e.id}>
-                        {e.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-            <div className="space-y-1.5">
-              <Label>Component</Label>
-              <Select
-                value={form.componentId}
-                onValueChange={(v) => setForm({ ...form, componentId: v })}
-                disabled={!form.equipmentId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={relevantComponents.length ? "Select component" : "None registered"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {relevantComponents.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="__new__">+ Register new component</SelectItem>
-                </SelectContent>
-              </Select>
-              {form.componentId === "__new__" && (
-                <Input
-                  value={form.newComponentName}
-                  onChange={(e) => setForm({ ...form, newComponentName: e.target.value })}
-                  placeholder="e.g. Cooling Fan"
-                  className="mt-1.5"
-                  autoFocus
-                />
-              )}
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="issue">
-                Issue description <span className="text-danger">*</span>
-              </Label>
-              <textarea
-                id="issue"
-                value={form.issueDescription}
-                onChange={(e) => setForm({ ...form, issueDescription: e.target.value })}
-                placeholder="Describe what's wrong…"
-                rows={3}
-                className="flex w-full rounded-[10px] border border-border bg-white px-3.5 py-2 text-sm text-foreground placeholder:text-slate-400 shadow-[0_1px_2px_rgba(15,23,42,0.03)] focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent resize-none"
-              />
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="priority">Priority</Label>
-              <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
-                <SelectTrigger id="priority">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="critical">Critical</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {error && <p className="text-xs text-danger sm:col-span-2">{error}</p>}
-          </div>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setDialogOpen(false)} disabled={saving}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? "Submitting…" : "Raise job card"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Review estimate */}
-      <Dialog open={!!approvalRow} onOpenChange={(open) => !open && setApprovalRow(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Review Estimate</DialogTitle>
-            <DialogDescription>{approvalRow?.jobCardNumber}</DialogDescription>
-          </DialogHeader>
-          <div className="px-6 py-5 space-y-4">
-            <div className="rounded-lg border border-border bg-background-secondary px-4 py-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-foreground-secondary">Amount</p>
-                  <p className="text-lg font-semibold text-foreground">₹{approvalRow?.estimateAmount?.toLocaleString() ?? "—"}</p>
-                </div>
-                {approvalRow?.estimateSentAt && (
-                  <p className="text-xs text-foreground-secondary flex items-center gap-1">
-                    <Clock className="h-3 w-3" /> {fmtDateTime(approvalRow.estimateSentAt)}
-                  </p>
-                )}
-              </div>
-              {approvalRow?.estimateNotes && <p className="text-sm text-foreground-secondary">{approvalRow.estimateNotes}</p>}
-              {approvalRow?.estimateDocumentUrl && (
-                <div className="flex items-center gap-1.5 pt-1">
-                  <a
-                    href={approvalRow.estimateDocumentUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-accent px-3 py-1 text-xs font-medium hover:bg-blue-100 transition-colors"
-                  >
-                    <Eye className="h-3.5 w-3.5" /> View Quote
-                  </a>
-                  <a
-                    href={approvalRow.estimateDocumentUrl}
-                    download={approvalRow.estimateDocumentName ?? undefined}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex h-7 w-7 items-center justify-center rounded-full text-foreground-secondary hover:bg-hover transition-colors"
-                    title="Download"
-                  >
-                    <Download className="h-4 w-4" />
-                  </a>
-                </div>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setApprovalDecision("approved")}
-                className={`flex items-center justify-center gap-2 rounded-[10px] border-2 py-2.5 text-sm font-medium transition-colors ${
-                  approvalDecision === "approved" ? "border-success bg-green-50 text-success" : "border-border text-foreground-secondary"
-                }`}
-              >
-                <CheckCircle2 className="h-4 w-4" /> Approve
-              </button>
-              <button
-                onClick={() => setApprovalDecision("rejected")}
-                className={`flex items-center justify-center gap-2 rounded-[10px] border-2 py-2.5 text-sm font-medium transition-colors ${
-                  approvalDecision === "rejected" ? "border-danger bg-red-50 text-danger" : "border-border text-foreground-secondary"
-                }`}
-              >
-                <XCircle className="h-4 w-4" /> Reject
-              </button>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="approvalnotes">Remarks (optional)</Label>
-              <textarea
-                id="approvalnotes"
-                value={approvalNotes}
-                onChange={(e) => setApprovalNotes(e.target.value)}
-                rows={3}
-                placeholder="Any comments for the Admin…"
-                className="flex w-full rounded-[10px] border border-border bg-white px-3.5 py-2 text-sm text-foreground placeholder:text-slate-400 shadow-[0_1px_2px_rgba(15,23,42,0.03)] focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent resize-none"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setApprovalRow(null)} disabled={saving}>
-              Cancel
-            </Button>
-            <Button onClick={handleApprovalSubmit} disabled={saving}>
-              {saving ? "Submitting…" : "Submit decision"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Job Card Details — full history */}
-      <Dialog open={!!detailsRow} onOpenChange={(open) => !open && setDetailsRow(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Job Card Details</DialogTitle>
-            <DialogDescription>{detailsRow?.jobCardNumber}</DialogDescription>
-          </DialogHeader>
-          <div className="px-6 py-5 space-y-5 max-h-[65vh] overflow-y-auto">
-            <div>
-              <p className="text-xs font-medium text-foreground-secondary">Issue reported</p>
-              <p className="text-sm text-foreground mt-1">{detailsRow?.issueDescription}</p>
-            </div>
-            {detailsRow?.momNotes && (
-              <div>
-                <p className="text-xs font-medium text-foreground-secondary">Inspection notes (MOM)</p>
-                <p className="text-sm text-foreground mt-1">{detailsRow.momNotes}</p>
-                {detailsRow.momDocumentUrl && (
-                  <a
-                    href={detailsRow.momDocumentUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={() => handleViewMom(detailsRow)}
-                    className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-accent px-2.5 py-1 text-xs font-medium hover:bg-blue-100 transition-colors mt-2"
-                  >
-                    <Eye className="h-3 w-3" /> View MOM
-                  </a>
-                )}
-                {detailsRow.momViewedAt && (
-                  <p className="text-xs text-success mt-1.5 flex items-center gap-1">
-                    <Clock className="h-3 w-3" /> You viewed this on {fmtDateTime(detailsRow.momViewedAt)}
-                  </p>
-                )}
-              </div>
-            )}
-            {estimateHistory.length > 0 && (
-              <div>
-                <p className="text-xs font-medium text-foreground-secondary mb-1.5">Quote History</p>
-                <div className="space-y-2">
-                  {estimateHistory.map((est) => (
-                    <div key={est.id} className="rounded-2xl border border-blue-100 bg-blue-50/40 px-3.5 py-3 shadow-sm">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold text-accent">Round {est.round}</p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-foreground">{row.jobCardNumber}</p>
                         <Badge
-                          variant={est.decision === "approved" ? "success" : est.decision === "rejected" ? "danger" : "warning"}
-                          dot
+                          variant={
+                            PRIORITY_VARIANT[row.priority as keyof typeof PRIORITY_VARIANT]
+                          }
+                          className="capitalize"
                         >
-                          {est.decision === "pending" ? "Awaiting your review" : est.decision === "approved" ? "Approved" : "Rejected"}
+                          {row.priority}
                         </Badge>
                       </div>
-                      <div className="flex items-center justify-between mt-1.5">
-                        <p className="text-sm font-semibold text-foreground">₹{est.amount?.toLocaleString() ?? "—"}</p>
-                        <p className="text-xs text-foreground-secondary flex items-center gap-1">
-                          <Clock className="h-3 w-3" /> Sent {fmtDateTime(est.sentAt)}
-                        </p>
-                      </div>
-                      {est.notes && <p className="text-xs text-foreground-secondary mt-1">{est.notes}</p>}
-                      {est.documentUrl && (
-                        <div className="flex items-center gap-1.5 mt-2">
-                          <a
-                            href={est.documentUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-accent px-2.5 py-1 text-xs font-medium hover:bg-blue-100 transition-colors"
-                          >
-                            <Eye className="h-3 w-3" /> View Quote
-                          </a>
-                          <a
-                            href={est.documentUrl}
-                            download={est.documentName ?? undefined}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex h-7 w-7 items-center justify-center rounded-full text-foreground-secondary hover:bg-hover transition-colors"
-                            title="Download"
-                          >
-                            <Download className="h-4 w-4" />
-                          </a>
-                        </div>
-                      )}
-                      {est.decisionAt && (
-                        <p className="text-xs text-foreground-secondary mt-2 pt-2 border-t border-blue-100/70 flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {est.decision === "approved" ? "Approved" : "Rejected"} on {fmtDateTime(est.decisionAt)}
-                        </p>
-                      )}
+                      <p className="text-xs text-foreground-secondary mt-0.5 truncate">
+                        {row.voltageClass ?? "—"}
+                        {row.equipmentType ? ` · ${row.equipmentType}` : ""}
+                        {" · "}
+                        {fmtDateIST(row.createdAt)}
+                      </p>
                     </div>
-                  ))}
-                </div>
+                    <Badge
+                      variant={STATUS_VARIANT[row.currentStatus] ?? "default"}
+                      dot
+                      className="shrink-0"
+                    >
+                      {STATUS_LABEL[row.currentStatus] ?? row.currentStatus}
+                    </Badge>
+                  </button>
+                ))}
               </div>
             )}
-            <div>
-              <p className="text-xs font-medium text-foreground-secondary mb-1">Full timeline</p>
-              {detailsRow && (
-                <JobCardTimeline
-                  data={{
-                    createdAt: detailsRow.createdAt,
-                    assignedAt: detailsRow.assignedAt,
-                    inspectingAt: detailsRow.inspectingAt,
-                    momLoggedAt: detailsRow.momLoggedAt,
-                    momViewedAt: detailsRow.momViewedAt,
-                    estimateSentAt: detailsRow.estimateSentAt,
-                    approvedAt: detailsRow.approvedAt,
-                    rejectedAt: detailsRow.rejectedAt,
-                    closedAt: detailsRow.closedAt,
-                    status: detailsRow.status,
-                  }}
-                />
+          </CardContent>
+        </Card>
+
+        {selected && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <CardTitle className="text-base">{selected.jobCardNumber}</CardTitle>
+                  <p className="text-xs text-foreground-secondary mt-0.5">
+                    {selected.voltageClass ?? "—"}
+                    {selected.equipmentType ? ` · ${selected.equipmentType}` : ""}
+                  </p>
+                </div>
+                <Badge variant={STATUS_VARIANT[selected.currentStatus] ?? "default"} dot>
+                  {STATUS_LABEL[selected.currentStatus]}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-4">
+              <div>
+                <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-1">
+                  Issue
+                </p>
+                <p className="text-sm text-foreground">{selected.issueDescription}</p>
+                {selected.componentDescription && (
+                  <p className="text-xs text-foreground-secondary mt-1">
+                    Component: {selected.componentDescription}
+                  </p>
+                )}
+              </div>
+              {selected.quotationAmount != null && (
+                <div>
+                  <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-1">
+                    Quotation
+                  </p>
+                  <p className="text-sm font-medium text-foreground">
+                    ₹{selected.quotationAmount.toLocaleString("en-IN")}
+                  </p>
+                </div>
               )}
+              {selected.orderAmount != null && (
+                <div>
+                  <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-1">
+                    Order Value
+                  </p>
+                  <p className="text-sm font-medium text-foreground">
+                    ₹{selected.orderAmount.toLocaleString("en-IN")}
+                  </p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-1">
+                  Raised
+                </p>
+                <p className="text-sm text-foreground">{fmtIST(selected.createdAt)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-2">
+                  Progress
+                </p>
+                <JobCardTimeline
+                  data={{ currentStatus: selected.currentStatus, history: selected.history }}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      <Dialog open={newDialog} onOpenChange={setNewDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Raise Job Card</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Voltage Class</Label>
+              <select
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                value={form.voltageClassId}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, voltageClassId: e.target.value, equipmentTypeId: "" }));
+                  if (e.target.value) loadEquipmentTypes(e.target.value);
+                  else setEquipmentTypes([]);
+                }}
+              >
+                <option value="">— select —</option>
+                {voltageClasses.map((vc) => (
+                  <option key={vc.id} value={vc.id}>
+                    {vc.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {equipmentTypes.length > 0 && (
+              <div className="space-y-1.5">
+                <Label>Equipment Type</Label>
+                <select
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  value={form.equipmentTypeId}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, equipmentTypeId: e.target.value }))
+                  }
+                >
+                  <option value="">— select —</option>
+                  {equipmentTypes.map((et) => (
+                    <option key={et.id} value={et.id}>
+                      {et.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <Label>Component (optional)</Label>
+              <Input
+                value={form.componentDescription}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, componentDescription: e.target.value }))
+                }
+                placeholder="e.g. Bushing, CT, PT…"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Issue Description *</Label>
+              <Input
+                value={form.issueDescription}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, issueDescription: e.target.value }))
+                }
+                placeholder="Describe the issue…"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Priority</Label>
+                <select
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  value={form.priority}
+                  onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}
+                >
+                  {["low", "medium", "high", "critical"].map((p) => (
+                    <option key={p} value={p} className="capitalize">
+                      {p.charAt(0).toUpperCase() + p.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Quotation Amount (₹)</Label>
+                <Input
+                  type="number"
+                  value={form.quotationAmount}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, quotationAmount: e.target.value }))
+                  }
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Remarks (optional)</Label>
+              <Input
+                value={form.remarks}
+                onChange={(e) => setForm((f) => ({ ...f, remarks: e.target.value }))}
+                placeholder="Any additional notes…"
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setDetailsRow(null)}>
-              Close
+            <Button variant="outline" onClick={() => setNewDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreate} disabled={saving || !form.issueDescription.trim()}>
+              {saving ? "Saving…" : "Raise"}
             </Button>
           </DialogFooter>
         </DialogContent>
