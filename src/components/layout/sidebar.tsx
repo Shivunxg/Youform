@@ -6,7 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import {
   LayoutDashboard, Network, ClipboardList, BarChart3, Bell,
   Users, Settings, ChevronsLeft, ChevronsRight, Zap, HardHat,
-  LogOut, UserCircle, ChevronUp, FileText,
+  LogOut, UserCircle, ChevronUp, FileText, Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -24,7 +24,10 @@ interface NavGroup { title: string; items: NavItem[] }
 
 const adminNavGroups: NavGroup[] = [
   { title: "Overview",        items: [{ label: "Dashboard",      href: "/admin",               icon: LayoutDashboard }] },
-  { title: "Network",         items: [{ label: "Hierarchy",      href: "/admin/hierarchy",      icon: Network         }] },
+  { title: "Network",         items: [
+    { label: "Hierarchy",         href: "/admin/hierarchy",  icon: Network },
+    { label: "Equipment Register", href: "/admin/equipment", icon: Wrench  },
+  ]},
   { title: "Operations",      items: [
     { label: "Job Cards",      href: "/admin/job-cards",      icon: ClipboardList   },
     { label: "Proposals",      href: "/admin/proposals",      icon: FileText        },
