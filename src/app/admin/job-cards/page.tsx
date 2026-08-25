@@ -118,27 +118,24 @@ export default function AdminJobCardsPage() {
   const [selectedEngs, setSelectedEngs] = React.useState<Set<string>>(new Set());
   const [savingEngs, setSavingEngs] = React.useState(false);
 
+  // Detail loaded lazily when a card is selected
+  const [selectedDetail, setSelectedDetail] = React.useState<{ history: Row["history"]; ack: AckInfo | null } | null>(null);
+  const [loadingDetail, setLoadingDetail] = React.useState(false);
+
   React.useEffect(() => { load(); }, []);
 
   async function load() {
     setLoading(true);
-    const [{ data: jcData }, { data: histData }, { data: settingsData }, { data: jceData }, { data: engData }, { data: ackData }] =
-      await Promise.all([
-        supabase
-          .from("job_cards")
-          .select(
-            "id, job_card_number, station_id, current_status, priority, issue_description, component_description, quotation_amount, order_amount, remarks, created_at, hierarchy_nodes!station_id(name), voltage_classes(name), equipment_types(name)"
-          )
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("status_history")
-          .select("job_card_id, to_status, created_at, note, profiles!changed_by(name)")
-          .order("created_at", { ascending: true }),
-        supabase.from("app_settings").select("key, value"),
-        supabase.from("job_card_engineers").select("job_card_id, engineer_id, profiles!engineer_id(name)"),
-        supabase.from("profiles").select("id, name").eq("role", "service_engineer").eq("status", "active"),
-        supabase.from("work_acknowledgements").select("job_card_id, created_at, profiles!acknowledged_by(name)"),
-      ]);
+    const [{ data: jcData }, { data: settingsData }, { data: engData }] = await Promise.all([
+      supabase
+        .from("job_cards")
+        .select(
+          "id, job_card_number, station_id, current_status, priority, issue_description, component_description, quotation_amount, order_amount, remarks, created_at, hierarchy_nodes!station_id(name), voltage_classes(name), equipment_types(name), job_card_engineers(engineer_id, profiles!engineer_id(id, name))"
+        )
+        .order("created_at", { ascending: false }),
+      supabase.from("app_settings").select("key, value"),
+      supabase.from("profiles").select("id, name").eq("role", "service_engineer").eq("status", "active"),
+    ]);
 
     if (settingsData) {
       const m: Record<string, string> = {};
@@ -147,33 +144,6 @@ export default function AdminJobCardsPage() {
     }
 
     setAllEngineers((engData ?? []).map((e) => ({ id: e.id, name: e.name })));
-
-    const histByCard = new Map<string, Row["history"]>();
-    for (const h of histData ?? []) {
-      const list = histByCard.get(h.job_card_id) ?? [];
-      list.push({
-        toStatus: h.to_status,
-        createdAt: h.created_at,
-        note: h.note,
-        changedByName: (h.profiles as { name: string } | null)?.name ?? null,
-      });
-      histByCard.set(h.job_card_id, list);
-    }
-
-    const engsByCard = new Map<string, EngineerRef[]>();
-    for (const jce of jceData ?? []) {
-      const list = engsByCard.get(jce.job_card_id) ?? [];
-      list.push({ id: jce.engineer_id, name: (jce.profiles as { name: string } | null)?.name ?? jce.engineer_id });
-      engsByCard.set(jce.job_card_id, list);
-    }
-
-    const ackByCard = new Map<string, AckInfo>();
-    for (const a of ackData ?? []) {
-      ackByCard.set(a.job_card_id, {
-        acknowledgedBy: (a.profiles as any)?.name ?? "KPTCL Engineer",
-        createdAt: a.created_at,
-      });
-    }
 
     setRows(
       (jcData ?? []).map((jc) => ({
@@ -191,12 +161,44 @@ export default function AdminJobCardsPage() {
         orderAmount: jc.order_amount,
         remarks: jc.remarks,
         createdAt: jc.created_at,
-        history: histByCard.get(jc.id) ?? [],
-        engineers: engsByCard.get(jc.id) ?? [],
-        ack: ackByCard.get(jc.id) ?? null,
+        history: [],
+        engineers: ((jc.job_card_engineers as any[]) ?? []).map((jce) => ({
+          id: jce.engineer_id,
+          name: (jce.profiles as { name: string } | null)?.name ?? jce.engineer_id,
+        })),
+        ack: null,
       }))
     );
     setLoading(false);
+  }
+
+  async function loadDetail(id: string) {
+    setLoadingDetail(true);
+    setSelectedDetail(null);
+    const [{ data: histData }, { data: ackData }] = await Promise.all([
+      supabase
+        .from("status_history")
+        .select("to_status, created_at, note, profiles!changed_by(name)")
+        .eq("job_card_id", id)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("work_acknowledgements")
+        .select("created_at, profiles!acknowledged_by(name)")
+        .eq("job_card_id", id)
+        .maybeSingle(),
+    ]);
+    setSelectedDetail({
+      history: (histData ?? []).map((h) => ({
+        toStatus: h.to_status,
+        createdAt: h.created_at,
+        note: h.note,
+        changedByName: (h.profiles as any)?.name ?? null,
+      })),
+      ack: ackData
+        ? { acknowledgedBy: (ackData.profiles as any)?.name ?? "KPTCL Engineer", createdAt: ackData.created_at }
+        : null,
+    });
+    setLoadingDetail(false);
   }
 
   const filtered = rows.filter((r) => {
@@ -334,7 +336,8 @@ export default function AdminJobCardsPage() {
 
     setSavingEngs(false);
     setEngDialog(false);
-    load();
+    await load();
+    if (selectedId) loadDetail(selectedId);
   }
 
   const transitions = selected ? TRANSITIONS[selected.currentStatus] ?? [] : [];
@@ -386,7 +389,10 @@ export default function AdminJobCardsPage() {
                   return (
                     <button
                       key={row.id}
-                      onClick={() => setSelectedId(row.id === selectedId ? null : row.id)}
+                      onClick={() => {
+                        if (row.id === selectedId) { setSelectedId(null); setSelectedDetail(null); }
+                        else { setSelectedId(row.id); loadDetail(row.id); }
+                      }}
                       className={`w-full text-left flex items-start gap-3 py-2.5 border-b border-border last:border-0 hover:bg-hover/50 -mx-2 px-2 rounded-lg transition-colors ${selectedId === row.id ? "bg-blue-50" : ""} ${rowHighlight}`}
                     >
                       <div className="min-w-0 flex-1">
@@ -496,12 +502,14 @@ export default function AdminJobCardsPage() {
               {/* KPTCL Acknowledgement */}
               <div className="rounded-xl border p-3">
                 <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-2">KPTCL Acknowledgement</p>
-                {selected.ack ? (
+                {loadingDetail ? (
+                  <p className="text-xs text-foreground-secondary italic">Loading…</p>
+                ) : selectedDetail?.ack ? (
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-green-700">Acknowledged by {selected.ack.acknowledgedBy}</p>
-                      <p className="text-xs text-foreground-secondary">{fmtIST(selected.ack.createdAt)}</p>
+                      <p className="text-sm font-medium text-green-700">Acknowledged by {selectedDetail.ack.acknowledgedBy}</p>
+                      <p className="text-xs text-foreground-secondary">{fmtIST(selectedDetail.ack.createdAt)}</p>
                     </div>
                   </div>
                 ) : selected.currentStatus === "supply_service_given" ? (
@@ -531,7 +539,11 @@ export default function AdminJobCardsPage() {
 
               <div>
                 <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-2">Progress</p>
-                <JobCardTimeline data={{ currentStatus: selected.currentStatus, history: selected.history }} />
+                {loadingDetail ? (
+                  <p className="text-xs text-foreground-secondary italic">Loading timeline…</p>
+                ) : (
+                  <JobCardTimeline data={{ currentStatus: selected.currentStatus, history: selectedDetail?.history ?? [] }} />
+                )}
               </div>
             </CardContent>
           </Card>

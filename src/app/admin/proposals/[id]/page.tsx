@@ -54,13 +54,19 @@ export default function ProposalViewPage() {
   React.useEffect(() => {
     supabase
       .from("proposals")
-      .select("*, job_cards(job_card_number), profiles!created_by(name), hierarchy_nodes!station_id(contact_email)")
+      .select("*, job_cards(job_card_number), profiles!created_by(name)")
       .eq("id", id)
       .single()
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         setP(data);
-        const email = data?.hierarchy_nodes?.contact_email;
-        if (email) setRecipientEmail(email);
+        if (data?.station_id) {
+          const { data: node } = await supabase
+            .from("hierarchy_nodes")
+            .select("contact_email")
+            .eq("id", data.station_id)
+            .single();
+          if (node?.contact_email) setRecipientEmail(node.contact_email);
+        }
       });
   }, [id]);
 

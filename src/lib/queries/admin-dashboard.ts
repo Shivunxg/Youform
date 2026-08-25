@@ -1,70 +1,65 @@
 // @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
 
+const open = ["quotation_shared", "order_received", "supply_service_given"];
+const won  = ["order_received", "supply_service_given", "bills_submitted", "payment_received"];
+const lost = ["offer_dropped", "order_lost"];
+
 export async function getAdminDashboardData() {
   const supabase = await createClient();
 
-  const [jobCardsRes, settingsRes, recentRes] = await Promise.all([
-    supabase.from("job_cards").select("id, current_status, order_amount, created_at"),
+  const [
+    settingsRes, recentRes,
+    openCountRes, billsCountRes, wonCountRes, lostCountRes,
+    revenueRes, collectedRes, openCardsRes,
+  ] = await Promise.all([
     supabase.from("app_settings").select("key, value"),
     supabase
       .from("job_cards")
-      .select(
-        "id, job_card_number, current_status, priority, created_at, hierarchy_nodes!station_id(name), voltage_classes(name), equipment_types(name)"
-      )
+      .select("id, job_card_number, current_status, priority, created_at, hierarchy_nodes!station_id(name), voltage_classes(name), equipment_types(name)")
       .order("created_at", { ascending: false })
       .limit(8),
+    supabase.from("job_cards").select("id", { count: "exact", head: true }).in("current_status", open),
+    supabase.from("job_cards").select("id", { count: "exact", head: true }).eq("current_status", "bills_submitted"),
+    supabase.from("job_cards").select("id", { count: "exact", head: true }).in("current_status", won),
+    supabase.from("job_cards").select("id", { count: "exact", head: true }).in("current_status", lost),
+    supabase.from("job_cards").select("order_amount").in("current_status", ["bills_submitted", "payment_received"]),
+    supabase.from("job_cards").select("order_amount").eq("current_status", "payment_received"),
+    // Only open cards with created_at for ageing — much smaller than all cards
+    supabase.from("job_cards").select("created_at").in("current_status", open),
   ]);
 
-  const all = jobCardsRes.data ?? [];
   const settings: Record<string, string> = {};
   for (const s of settingsRes.data ?? []) settings[s.key] = s.value;
   const ageingThreshold = parseInt(settings["ageing_threshold_days"] ?? "30", 10);
 
-  const open = ["quotation_shared", "order_received", "supply_service_given"];
-  const won = ["order_received", "supply_service_given", "bills_submitted", "payment_received"];
-  const lost = ["offer_dropped", "order_lost"];
-
   const now = Date.now();
-  const ageingCount = all.filter((jc) => {
-    if (!open.includes(jc.current_status)) return false;
+  const ageingCount = (openCardsRes.data ?? []).filter((jc) => {
     const days = (now - new Date(jc.created_at).getTime()) / 86400000;
     return days > ageingThreshold;
   }).length;
 
-  const totalWon = all.filter((jc) => won.includes(jc.current_status)).length;
-  const totalDecided = all.filter(
-    (jc) => won.includes(jc.current_status) || lost.includes(jc.current_status)
-  ).length;
-  const winRate = totalDecided === 0 ? 0 : Math.round((totalWon / totalDecided) * 100);
-
-  const revenueBilled = all
-    .filter((jc) => ["bills_submitted", "payment_received"].includes(jc.current_status))
-    .reduce((sum, jc) => sum + (jc.order_amount ?? 0), 0);
-
-  const revenueCollected = all
-    .filter((jc) => jc.current_status === "payment_received")
-    .reduce((sum, jc) => sum + (jc.order_amount ?? 0), 0);
+  const totalDecided = (wonCountRes.count ?? 0) + (lostCountRes.count ?? 0);
+  const winRate = totalDecided === 0 ? 0 : Math.round(((wonCountRes.count ?? 0) / totalDecided) * 100);
 
   const kpis = {
-    openJobCards: all.filter((jc) => open.includes(jc.current_status)).length,
-    billsSubmitted: all.filter((jc) => jc.current_status === "bills_submitted").length,
+    openJobCards:     openCountRes.count ?? 0,
+    billsSubmitted:   billsCountRes.count ?? 0,
     winRate,
-    revenueBilled,
-    revenueCollected,
+    revenueBilled:    (revenueRes.data ?? []).reduce((s, jc) => s + (jc.order_amount ?? 0), 0),
+    revenueCollected: (collectedRes.data ?? []).reduce((s, jc) => s + (jc.order_amount ?? 0), 0),
     ageingCount,
   };
 
   const recent = (recentRes.data ?? []).map((jc) => ({
     id: jc.id,
     jobCardNumber: jc.job_card_number,
-    stationName:
-      (jc.hierarchy_nodes as unknown as { name: string } | null)?.name ?? "—",
-    voltageClass: (jc.voltage_classes as unknown as { name: string } | null)?.name ?? null,
+    stationName:   (jc.hierarchy_nodes as unknown as { name: string } | null)?.name ?? "—",
+    voltageClass:  (jc.voltage_classes as unknown as { name: string } | null)?.name ?? null,
     equipmentType: (jc.equipment_types as unknown as { name: string } | null)?.name ?? null,
-    priority: jc.priority,
+    priority:      jc.priority,
     currentStatus: jc.current_status,
-    createdAt: jc.created_at,
+    createdAt:     jc.created_at,
   }));
 
   return { kpis, recent, settings };
