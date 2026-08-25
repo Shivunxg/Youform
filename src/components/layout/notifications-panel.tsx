@@ -1,24 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { X, ClipboardList, Wrench, Boxes, Bell as BellIcon } from "lucide-react";
+import { X, Bell as BellIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DbNotification } from "@/lib/supabase/types";
 import { formatDistanceToNow } from "date-fns";
-
-const iconMap = {
-  job_card: ClipboardList,
-  service_request: Wrench,
-  inventory: Boxes,
-  system: BellIcon,
-};
-
-const colorMap = {
-  job_card: "bg-blue-50 text-accent",
-  service_request: "bg-amber-50 text-warning",
-  inventory: "bg-red-50 text-danger",
-  system: "bg-slate-100 text-foreground-secondary",
-};
 
 export function NotificationsPanel({
   open,
@@ -37,7 +23,10 @@ export function NotificationsPanel({
       <div className="relative w-full max-w-sm h-full bg-white shadow-2xl flex flex-col animate-fade-in">
         <div className="flex items-center justify-between h-16 px-5 border-b border-border shrink-0">
           <h2 className="text-sm font-semibold text-foreground">Notifications</h2>
-          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-hover">
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-hover"
+          >
             <X className="h-4 w-4 text-foreground-secondary" />
           </button>
         </div>
@@ -47,36 +36,35 @@ export function NotificationsPanel({
               <BellIcon className="h-8 w-8 text-slate-300 mb-3" />
               <p className="text-sm font-medium text-foreground">No notifications yet</p>
               <p className="text-xs text-foreground-secondary mt-1">
-                Job cards, service requests, and inventory alerts will show up here.
+                Job card updates and alerts will show up here.
               </p>
             </div>
           ) : (
-            notifications.map((n) => {
-              const Icon = iconMap[n.type];
-              return (
-                <div
-                  key={n.id}
-                  className={cn(
-                    "flex gap-3 px-5 py-4 border-b border-border/70 hover:bg-hover/60 transition-colors",
-                    !n.read && "bg-blue-50/30"
-                  )}
-                >
-                  <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full", colorMap[n.type])}>
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground">{n.title}</p>
-                    {n.description && (
-                      <p className="text-xs text-foreground-secondary mt-0.5 leading-relaxed">{n.description}</p>
-                    )}
-                    <p className="text-[11px] text-slate-400 mt-1.5">
-                      {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
-                    </p>
-                  </div>
-                  {!n.read && <span className="h-2 w-2 rounded-full bg-accent shrink-0 mt-1.5" />}
+            notifications.map((n) => (
+              <div
+                key={n.id}
+                className={cn(
+                  "flex gap-3 px-5 py-4 border-b border-border/70 hover:bg-hover/60 transition-colors",
+                  !n.read && "bg-blue-50/30"
+                )}
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-foreground-secondary">
+                  <BellIcon className="h-4 w-4" />
                 </div>
-              );
-            })
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground">{n.title}</p>
+                  {n.body && (
+                    <p className="text-xs text-foreground-secondary mt-0.5 leading-relaxed">
+                      {n.body}
+                    </p>
+                  )}
+                  <p className="text-[11px] text-slate-400 mt-1.5">
+                    {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
+                  </p>
+                </div>
+                {!n.read && <span className="h-2 w-2 rounded-full bg-accent shrink-0 mt-1.5" />}
+              </div>
+            ))
           )}
         </div>
       </div>

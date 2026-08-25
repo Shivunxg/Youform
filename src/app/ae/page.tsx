@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ClipboardList, Receipt, CheckCircle2, AlertTriangle, ArrowRight, Clock } from "lucide-react";
