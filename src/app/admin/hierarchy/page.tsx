@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, ChevronRight, Network, Zap, Wrench, Box, Trash2, Phone } from "lucide-react";
+import { Plus, ChevronRight, Network, Zap, Wrench, Box, Trash2, Phone, MapPin, Camera, ExternalLink } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,10 +27,12 @@ interface Node {
   contact_name: string | null;
   contact_email: string | null;
   contact_phone: string | null;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 interface VoltageClass { id: string; station_id: string; name: string; status: string }
-interface EquipmentType { id: string; voltage_class_id: string; name: string; status: string }
+interface EquipmentType { id: string; voltage_class_id: string; name: string; status: string; image_url: string | null }
 interface Component { id: string; equipment_type_id: string; name: string }
 
 interface Settings {
@@ -50,7 +52,7 @@ export default function HierarchyPage() {
     level_4_label: "Station",
   });
   const [open, setOpen] = React.useState(false);
-  const [form, setForm] = React.useState({ name: "", code: "", level: "1", parent_id: "" });
+  const [form, setForm] = React.useState({ name: "", code: "", level: "1", parent_id: "", lat: "", lng: "" });
   const [saving, setSaving] = React.useState(false);
   const [expandedIds, setExpandedIds] = React.useState<Set<string>>(new Set());
 
@@ -62,7 +64,7 @@ export default function HierarchyPage() {
   const [expandedEts, setExpandedEts] = React.useState<Set<string>>(new Set());
   const [components, setComponents] = React.useState<Component[]>([]);
 
-  // Add dialogs for station-level items
+  // Add dialogs
   const [vcDialog, setVcDialog] = React.useState(false);
   const [vcName, setVcName] = React.useState("");
   const [savingVc, setSavingVc] = React.useState(false);
@@ -77,11 +79,18 @@ export default function HierarchyPage() {
   const [compEtId, setCompEtId] = React.useState("");
   const [savingComp, setSavingComp] = React.useState(false);
 
-  // Contact details for selected station
+  // Contact + location for selected station
   const [contactName, setContactName] = React.useState("");
   const [contactEmail, setContactEmail] = React.useState("");
   const [contactPhone, setContactPhone] = React.useState("");
+  const [stationLat, setStationLat] = React.useState("");
+  const [stationLng, setStationLng] = React.useState("");
   const [savingContact, setSavingContact] = React.useState(false);
+
+  // Equipment image upload
+  const [uploadingEt, setUploadingEt] = React.useState<Record<string, boolean>>({});
+  const [uploadTargetEtId, setUploadTargetEtId] = React.useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => { load(); }, []);
 
@@ -127,15 +136,18 @@ export default function HierarchyPage() {
   async function handleSave() {
     if (!form.name.trim()) return;
     setSaving(true);
+    const isStation = parseInt(form.level, 10) === 4;
     await supabase.from("hierarchy_nodes").insert({
       name: form.name.trim(),
       code: form.code.trim() || null,
       level: parseInt(form.level, 10),
       parent_id: form.parent_id || null,
+      latitude: isStation && form.lat ? parseFloat(form.lat) : null,
+      longitude: isStation && form.lng ? parseFloat(form.lng) : null,
     });
     setSaving(false);
     setOpen(false);
-    setForm({ name: "", code: "", level: "1", parent_id: "" });
+    setForm({ name: "", code: "", level: "1", parent_id: "", lat: "", lng: "" });
     load();
   }
 
@@ -184,23 +196,61 @@ export default function HierarchyPage() {
     if (selectedStation) loadStationDetail(selectedStation.id);
   }
 
-  async function saveContact() {
+  async function saveContactAndLocation() {
     if (!selectedStation) return;
     setSavingContact(true);
+    const lat = stationLat ? parseFloat(stationLat) : null;
+    const lng = stationLng ? parseFloat(stationLng) : null;
     await supabase.from("hierarchy_nodes").update({
       contact_name: contactName.trim() || null,
       contact_email: contactEmail.trim() || null,
       contact_phone: contactPhone.trim() || null,
+      latitude: lat,
+      longitude: lng,
     }).eq("id", selectedStation.id);
     setSavingContact(false);
-    // Update local node data so the tree reflects the change
     setNodes((prev) =>
       prev.map((n) =>
         n.id === selectedStation.id
-          ? { ...n, contact_name: contactName.trim() || null, contact_email: contactEmail.trim() || null, contact_phone: contactPhone.trim() || null }
+          ? { ...n, contact_name: contactName.trim() || null, contact_email: contactEmail.trim() || null, contact_phone: contactPhone.trim() || null, latitude: lat, longitude: lng }
           : n
       )
     );
+  }
+
+  function triggerImageUpload(etId: string) {
+    setUploadTargetEtId(etId);
+    fileInputRef.current?.click();
+  }
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !uploadTargetEtId || !selectedStation) return;
+
+    setUploadingEt((prev) => ({ ...prev, [uploadTargetEtId]: true }));
+
+    const ext = file.name.split(".").pop() ?? "jpg";
+    const path = `${selectedStation.id}/${uploadTargetEtId}.${ext}`;
+
+    const { error: upErr } = await supabase.storage
+      .from("equipment-images")
+      .upload(path, file, { upsert: true });
+
+    if (!upErr) {
+      const { data: { publicUrl } } = supabase.storage
+        .from("equipment-images")
+        .getPublicUrl(path);
+
+      await supabase.from("equipment_types").update({ image_url: publicUrl }).eq("id", uploadTargetEtId);
+
+      setEquipmentTypes((prev) =>
+        prev.map((et) => et.id === uploadTargetEtId ? { ...et, image_url: publicUrl } : et)
+      );
+    }
+
+    setUploadingEt((prev) => ({ ...prev, [uploadTargetEtId]: false }));
+    setUploadTargetEtId(null);
+    e.target.value = "";
   }
 
   function toggleExpand(id: string) {
@@ -212,13 +262,16 @@ export default function HierarchyPage() {
     });
   }
 
+  function mapsUrl(lat: number, lng: number) {
+    return `https://www.google.com/maps?q=${lat},${lng}`;
+  }
+
   function renderTree(parentId: string | null, depth: number): React.ReactNode {
     const children = nodes.filter((n) => n.parent_id === parentId);
     if (children.length === 0) return null;
     return (
       <div className={depth > 0 ? "ml-5 border-l border-border pl-4" : ""}>
         {children.map((node) => {
-          const hasChildren = nodes.some((n) => n.parent_id === node.id) || node.level < 4;
           const hasSubNodes = nodes.some((n) => n.parent_id === node.id);
           const expanded = expandedIds.has(node.id);
           const isStation = node.level === 4;
@@ -235,6 +288,8 @@ export default function HierarchyPage() {
                     setContactName(node.contact_name ?? "");
                     setContactEmail(node.contact_email ?? "");
                     setContactPhone(node.contact_phone ?? "");
+                    setStationLat(node.latitude != null ? String(node.latitude) : "");
+                    setStationLng(node.longitude != null ? String(node.longitude) : "");
                     loadStationDetail(node.id);
                     setExpandedVcs(new Set());
                     setExpandedEts(new Set());
@@ -253,6 +308,9 @@ export default function HierarchyPage() {
                 )}
                 <span className="text-sm font-medium text-foreground">{node.name}</span>
                 {node.code && <span className="text-xs text-foreground-secondary">({node.code})</span>}
+                {isStation && node.latitude != null && (
+                  <MapPin className="h-3 w-3 text-green-500 shrink-0" title="Location set" />
+                )}
                 <Badge variant="default" className="text-[10px] px-1.5 py-0">{levelLabel(node.level)}</Badge>
                 <Badge variant={node.status === "active" ? "success" : "danger"} className="text-[10px] px-1.5 py-0">
                   {node.status}
@@ -268,6 +326,15 @@ export default function HierarchyPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Hidden file input for equipment image upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleImageUpload}
+      />
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-foreground tracking-tight">Hierarchy</h1>
@@ -306,16 +373,16 @@ export default function HierarchyPage() {
         {/* Station detail panel */}
         {selectedStation && (
           <div className="space-y-4">
+            {/* Equipment catalog */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Zap className="h-4 w-4 text-amber-500" />
                   {selectedStation.name} — Catalog
                 </CardTitle>
-                <CardDescription>Voltage Classes → Equipment Types → Components</CardDescription>
+                <CardDescription>Voltage Classes → Equipment Types (with images) → Components</CardDescription>
               </CardHeader>
               <CardContent className="pt-0 space-y-4">
-                {/* Voltage Classes */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-xs font-semibold text-foreground-secondary uppercase tracking-wide">Voltage Classes</p>
@@ -349,7 +416,6 @@ export default function HierarchyPage() {
                               </button>
                             </div>
 
-                            {/* Equipment Types */}
                             {vcExpanded && (
                               <div className="border-t border-border px-3 py-2 space-y-2">
                                 {vcEts.length === 0 ? (
@@ -358,6 +424,7 @@ export default function HierarchyPage() {
                                   vcEts.map((et) => {
                                     const etComps = components.filter((c) => c.equipment_type_id === et.id);
                                     const etExpanded = expandedEts.has(et.id);
+                                    const isUploading = uploadingEt[et.id];
                                     return (
                                       <div key={et.id} className="ml-5 rounded border border-border">
                                         <div className="flex items-center gap-2 px-3 py-1.5">
@@ -367,8 +434,28 @@ export default function HierarchyPage() {
                                           >
                                             <ChevronRight className={`h-3 w-3 transition-transform ${etExpanded ? "rotate-90" : ""}`} />
                                           </button>
-                                          <Wrench className="h-3 w-3 text-blue-500 shrink-0" />
+                                          {/* Equipment thumbnail */}
+                                          {et.image_url ? (
+                                            <img
+                                              src={et.image_url}
+                                              alt={et.name}
+                                              className="h-6 w-6 rounded object-cover border border-border shrink-0 cursor-pointer"
+                                              onClick={() => triggerImageUpload(et.id)}
+                                              title="Click to replace image"
+                                            />
+                                          ) : (
+                                            <Wrench className="h-3 w-3 text-blue-500 shrink-0" />
+                                          )}
                                           <span className="text-xs font-medium flex-1">{et.name}</span>
+                                          {/* Upload image button */}
+                                          <button
+                                            onClick={() => triggerImageUpload(et.id)}
+                                            disabled={isUploading}
+                                            className="text-slate-300 hover:text-blue-500 transition-colors"
+                                            title="Upload equipment image"
+                                          >
+                                            <Camera className={`h-3 w-3 ${isUploading ? "animate-pulse text-blue-400" : ""}`} />
+                                          </button>
                                           <Button size="sm" variant="outline" className="h-5 px-1.5 text-[11px] gap-0.5" onClick={() => { setCompEtId(et.id); setCompDialog(true); }}>
                                             <Plus className="h-2.5 w-2.5" /> Component
                                           </Button>
@@ -377,7 +464,17 @@ export default function HierarchyPage() {
                                           </button>
                                         </div>
 
-                                        {/* Components */}
+                                        {/* Full image preview when expanded */}
+                                        {etExpanded && et.image_url && (
+                                          <div className="border-t border-border px-3 py-2">
+                                            <img
+                                              src={et.image_url}
+                                              alt={et.name}
+                                              className="w-full max-h-40 object-contain rounded-md border border-border bg-slate-50"
+                                            />
+                                          </div>
+                                        )}
+
                                         {etExpanded && (
                                           <div className="border-t border-border px-3 py-1.5 space-y-1">
                                             {etComps.length === 0 ? (
@@ -409,33 +506,73 @@ export default function HierarchyPage() {
                 </div>
               </CardContent>
             </Card>
-          {/* Contact Details Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Phone className="h-4 w-4 text-blue-500" />
-                Contact Details
-              </CardTitle>
-              <CardDescription>KPTCL officer contact for this substation — auto-fills proposal email</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>Contact Name</Label>
-                <Input value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="e.g. AEE / EE Whitefield" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Contact Email</Label>
-                <Input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="e.g. ee.whitefield@kptcl.gov.in" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Contact Phone</Label>
-                <Input type="tel" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="e.g. +91 98800 00000" />
-              </div>
-              <Button onClick={saveContact} disabled={savingContact} size="sm">
-                {savingContact ? "Saving…" : "Save Contact"}
-              </Button>
-            </CardContent>
-          </Card>
+
+            {/* Contact + Location Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-blue-500" />
+                  Contact &amp; Location
+                </CardTitle>
+                <CardDescription>KPTCL officer contact and GPS coordinates for this substation</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label>Contact Name</Label>
+                  <Input value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="e.g. AEE / EE Whitefield" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Contact Email</Label>
+                  <Input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="e.g. ee.whitefield@kptcl.gov.in" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Contact Phone</Label>
+                  <Input type="tel" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="e.g. +91 98800 00000" />
+                </div>
+
+                <div className="border-t border-border pt-4 space-y-3">
+                  <p className="text-xs font-semibold text-foreground-secondary uppercase tracking-wide flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5" /> Location
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>Latitude</Label>
+                      <Input
+                        type="number"
+                        step="any"
+                        value={stationLat}
+                        onChange={(e) => setStationLat(e.target.value)}
+                        placeholder="e.g. 12.9716"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Longitude</Label>
+                      <Input
+                        type="number"
+                        step="any"
+                        value={stationLng}
+                        onChange={(e) => setStationLng(e.target.value)}
+                        placeholder="e.g. 77.5946"
+                      />
+                    </div>
+                  </div>
+                  {selectedStation?.latitude != null && selectedStation?.longitude != null && (
+                    <a
+                      href={mapsUrl(selectedStation.latitude, selectedStation.longitude)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:underline"
+                    >
+                      <ExternalLink className="h-3 w-3" /> Open in Google Maps
+                    </a>
+                  )}
+                </div>
+
+                <Button onClick={saveContactAndLocation} disabled={savingContact} size="sm">
+                  {savingContact ? "Saving…" : "Save"}
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>
@@ -452,7 +589,7 @@ export default function HierarchyPage() {
               <select
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                 value={form.level}
-                onChange={(e) => setForm((f) => ({ ...f, level: e.target.value, parent_id: "" }))}
+                onChange={(e) => setForm((f) => ({ ...f, level: e.target.value, parent_id: "", lat: "", lng: "" }))}
               >
                 {[1, 2, 3, 4].map((l) => (
                   <option key={l} value={String(l)}>Level {l} — {levelLabel(l)}</option>
@@ -490,6 +627,36 @@ export default function HierarchyPage() {
                 placeholder="e.g. BLR-N-01"
               />
             </div>
+            {/* Lat/Long — only for stations (level 4) */}
+            {parseInt(form.level, 10) === 4 && (
+              <div className="space-y-2 border-t border-border pt-3">
+                <p className="text-xs font-semibold text-foreground-secondary uppercase tracking-wide flex items-center gap-1.5">
+                  <MapPin className="h-3 w-3" /> GPS Location (optional)
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Latitude</Label>
+                    <Input
+                      type="number"
+                      step="any"
+                      value={form.lat}
+                      onChange={(e) => setForm((f) => ({ ...f, lat: e.target.value }))}
+                      placeholder="e.g. 12.9716"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Longitude</Label>
+                    <Input
+                      type="number"
+                      step="any"
+                      value={form.lng}
+                      onChange={(e) => setForm((f) => ({ ...f, lng: e.target.value }))}
+                      placeholder="e.g. 77.5946"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
@@ -503,9 +670,7 @@ export default function HierarchyPage() {
       {/* Add Voltage Class */}
       <Dialog open={vcDialog} onOpenChange={setVcDialog}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Voltage Class</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Add Voltage Class</DialogTitle></DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
               <Label>Name (e.g. 11kV, 66kV, 110kV)</Label>
@@ -524,9 +689,7 @@ export default function HierarchyPage() {
       {/* Add Equipment Type */}
       <Dialog open={etDialog} onOpenChange={setEtDialog}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Equipment Type</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Add Equipment Type</DialogTitle></DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
               <Label>Name (e.g. Power Transformer, Circuit Breaker)</Label>
@@ -545,9 +708,7 @@ export default function HierarchyPage() {
       {/* Add Component */}
       <Dialog open={compDialog} onOpenChange={setCompDialog}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Component</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Add Component</DialogTitle></DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
               <Label>Name (e.g. Bushing, Tap Changer, Cooling Fan)</Label>
