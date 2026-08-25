@@ -18,16 +18,20 @@ import type { DbNotification } from "@/lib/supabase/types";
 
 export function Header({
   role = "Spectrum Admin",
-  name = "Arjun Mehta",
+  name = "",
+  email = "",
   notifications = [],
 }: {
   role?: string;
   name?: string;
+  email?: string;
   notifications?: DbNotification[];
 }) {
   const router = useRouter();
   const [panelOpen, setPanelOpen] = React.useState(false);
   const unread = notifications.filter((n) => !n.read).length;
+
+  const isAdmin = role === "Spectrum Admin";
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -36,11 +40,16 @@ export function Header({
     router.refresh();
   }
 
-  const initials = name
+  const displayName = name && !name.includes("@") ? name : (email || name || "User");
+  const displayEmail = email || (name?.includes("@") ? name : "");
+
+  const initials = displayName
     .split(" ")
     .map((n) => n[0])
+    .filter(Boolean)
     .slice(0, 2)
-    .join("");
+    .join("")
+    .toUpperCase() || "U";
 
   return (
     <>
@@ -78,24 +87,38 @@ export function Header({
                   <AvatarFallback>{initials}</AvatarFallback>
                 </Avatar>
                 <div className="hidden md:flex flex-col items-start leading-none">
-                  <span className="text-sm font-medium text-foreground">{name}</span>
+                  <span className="text-sm font-medium text-foreground">{displayName}</span>
                   <span className="text-[11px] text-foreground-secondary mt-0.5">{role}</span>
                 </div>
                 <ChevronDown className="hidden md:block h-3.5 w-3.5 text-slate-400" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
+                <p className="font-medium text-foreground">{displayName}</p>
+                {displayEmail && <p className="text-[11px] text-foreground-secondary font-normal truncate mt-0.5">{displayEmail}</p>}
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <UserCircle /> Profile
+              <DropdownMenuItem
+                className="gap-2 cursor-pointer"
+                onClick={() => router.push(isAdmin ? "/admin/settings" : "/ae/profile")}
+              >
+                <UserCircle className="h-4 w-4 shrink-0" />
+                <span>Profile</span>
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Settings /> Settings
-              </DropdownMenuItem>
+              {isAdmin && (
+                <DropdownMenuItem
+                  className="gap-2 cursor-pointer"
+                  onClick={() => router.push("/admin/settings")}
+                >
+                  <Settings className="h-4 w-4 shrink-0" />
+                  <span>Settings</span>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-danger focus:bg-red-50" onClick={handleSignOut}>
-                <LogOut /> Sign out
+              <DropdownMenuItem className="gap-2 text-danger focus:bg-red-50 cursor-pointer" onClick={handleSignOut}>
+                <LogOut className="h-4 w-4 shrink-0" />
+                <span>Sign out</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

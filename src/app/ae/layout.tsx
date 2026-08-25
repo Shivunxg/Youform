@@ -14,7 +14,7 @@ export default async function AELayout({ children }: { children: React.ReactNode
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("name, role, station_id")
+    .select("name, role, station_id, email")
     .eq("id", user.id)
     .single();
 
@@ -41,7 +41,7 @@ export default async function AELayout({ children }: { children: React.ReactNode
     <div className="flex min-h-screen bg-background-secondary">
       <Sidebar variant="ae" badges={badges} />
       <div className="flex-1 flex flex-col min-w-0">
-        <Header role="Account Executive" name={profile.name} notifications={notifications ?? []} />
+        <Header role="Account Executive" name={profile.name} email={profile.email ?? user.email ?? ""} notifications={notifications ?? []} />
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
           {!profile.station_id ? (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">

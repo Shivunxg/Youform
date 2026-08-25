@@ -14,7 +14,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("name, role")
+    .select("name, role, email")
     .eq("id", user.id)
     .single();
 
@@ -39,7 +39,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="flex min-h-screen bg-background-secondary">
       <Sidebar badges={badges} />
       <div className="flex-1 flex flex-col min-w-0">
-        <Header role="Spectrum Admin" name={profile.name} notifications={notifications ?? []} />
+        <Header role="Spectrum Admin" name={profile.name} email={profile.email ?? user.email ?? ""} notifications={notifications ?? []} />
         <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>
