@@ -360,6 +360,48 @@ export function proposalSharedEmail(data: ProposalSharedData): { subject: string
   };
 }
 
+// ── Maintenance Due ───────────────────────────────────────────────────────────
+export function maintenanceDueEmail(data: {
+  instanceName: string;
+  equipmentType: string;
+  stationName: string;
+  serialNumber?: string;
+  lastMaintenanceDate?: string;
+  nextDueDate: string;
+  daysRemaining: number;
+  appUrl: string;
+}) {
+  const urgencyColor = data.daysRemaining === 0 ? "red" : data.daysRemaining <= 3 ? "amber" : "blue";
+  const urgencyLabel = data.daysRemaining === 0
+    ? "DUE TODAY"
+    : data.daysRemaining <= 3
+    ? `Due in ${data.daysRemaining} day${data.daysRemaining === 1 ? "" : "s"}`
+    : `Due in ${data.daysRemaining} days`;
+
+  const fmtDate = (d: string) =>
+    new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+
+  const content = `
+    ${h1("Maintenance Due Reminder")}
+    ${statusPill(urgencyLabel, urgencyColor)}
+    ${p(`The following equipment is scheduled for maintenance and requires attention.`)}
+    ${divider()}
+    ${infoRow("Equipment", `${data.equipmentType} — ${data.instanceName}`)}
+    ${infoRow("Station", `${data.stationName} Substation`)}
+    ${data.serialNumber ? infoRow("Serial Number", data.serialNumber) : ""}
+    ${data.lastMaintenanceDate ? infoRow("Last Maintenance", fmtDate(data.lastMaintenanceDate)) : ""}
+    ${infoRow("Next Due Date", `<strong>${fmtDate(data.nextDueDate)}</strong>`)}
+    ${divider()}
+    ${p("Please ensure the maintenance is scheduled and carried out on time to avoid equipment downtime.")}
+    ${btn("View Equipment", `${data.appUrl}/admin/hierarchy`)}
+  `;
+
+  return {
+    subject: `[Maintenance ${urgencyLabel}] ${data.equipmentType} — ${data.instanceName} at ${data.stationName}`,
+    html: baseLayout(content, `Maintenance reminder for ${data.instanceName} at ${data.stationName} Substation.`),
+  };
+}
+
 // ── Helper ────────────────────────────────────────────────────────────────────
 function getPriorityStyle(priority: string): string {
   const styles: Record<string, string> = {
