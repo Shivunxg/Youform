@@ -233,9 +233,9 @@ export function LoginForm({ role }: { role: Role }) {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <a href="#" className="text-xs font-medium text-accent hover:underline">
+                <Link href="/auth/forgot-password" className="text-xs font-medium text-accent hover:underline">
                   Forgot password?
-                </a>
+                </Link>
               </div>
               <div className="relative">
                 <Input

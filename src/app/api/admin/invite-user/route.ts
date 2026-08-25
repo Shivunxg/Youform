@@ -28,16 +28,25 @@ export async function POST(req: NextRequest) {
   }
 
   const admin = createAdminClient();
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
 
-  // Create the auth user and send invite email
-  const { data: newUser, error: createError } = await admin.auth.admin.inviteUserByEmail(email, {
-    data: { role, name },
-    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/login`,
+  // generateLink creates the user + returns the invite URL without Supabase sending any email.
+  // This lets us send our own branded email via Resend instead of Supabase's default template.
+  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+    type: "invite",
+    email,
+    options: {
+      data: { role, name },
+      redirectTo: `${appUrl}/login`,
+    },
   });
 
-  if (createError) {
-    return NextResponse.json({ error: createError.message }, { status: 400 });
+  if (linkError) {
+    return NextResponse.json({ error: linkError.message }, { status: 400 });
   }
+
+  const userId = linkData.user.id;
+  const inviteLink = linkData.properties?.action_link ?? `${appUrl}/login`;
 
   // Update the auto-created profile row with name, role, station, employee_id
   const { error: profileError } = await admin
@@ -48,7 +57,7 @@ export async function POST(req: NextRequest) {
       station_id: station_id || null,
       employee_id: employee_id || null,
     })
-    .eq("id", newUser.user.id);
+    .eq("id", userId);
 
   if (profileError) {
     return NextResponse.json({ error: profileError.message }, { status: 500 });
@@ -65,11 +74,7 @@ export async function POST(req: NextRequest) {
     stationName = station?.name ?? null;
   }
 
-  // Send branded welcome email (best-effort — don't fail the invite if email fails)
-  const inviteLink = newUser.user.confirmation_sent_at
-    ? `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/login`
-    : `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/login`;
-
+  // Send branded invite email via Resend (Supabase sends nothing since we used generateLink)
   const { subject, html } = userInvitationEmail({
     name,
     email,
@@ -78,8 +83,8 @@ export async function POST(req: NextRequest) {
     inviteLink,
   });
   await sendEmail({ to: email, subject, html }).catch((e) =>
-    console.warn("[invite] welcome email failed:", e)
+    console.warn("[invite] email failed:", e)
   );
 
-  return NextResponse.json({ id: newUser.user.id });
+  return NextResponse.json({ id: userId });
 }
