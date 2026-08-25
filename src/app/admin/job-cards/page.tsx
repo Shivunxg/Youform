@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { Clock, UserPlus, Users } from "lucide-react";
+import { Clock, UserPlus, Users, CheckCircle2 } from "lucide-react";
 import { JobCardTimeline, type TimelineData } from "@/components/job-cards/timeline";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -62,6 +62,7 @@ const CLOSED_STATUSES = ["payment_received", "offer_dropped", "order_lost"];
 const OPEN_STATUSES = ["quotation_shared", "order_received", "supply_service_given"];
 
 interface EngineerRef { id: string; name: string }
+interface AckInfo { acknowledgedBy: string; createdAt: string }
 
 interface Row {
   id: string;
@@ -80,6 +81,7 @@ interface Row {
   createdAt: string;
   history: TimelineData["history"];
   engineers: EngineerRef[];
+  ack: AckInfo | null;
 }
 
 function ageBadgeColor(days: number, threshold: number) {
@@ -120,7 +122,7 @@ export default function AdminJobCardsPage() {
 
   async function load() {
     setLoading(true);
-    const [{ data: jcData }, { data: histData }, { data: settingsData }, { data: jceData }, { data: engData }] =
+    const [{ data: jcData }, { data: histData }, { data: settingsData }, { data: jceData }, { data: engData }, { data: ackData }] =
       await Promise.all([
         supabase
           .from("job_cards")
@@ -135,6 +137,7 @@ export default function AdminJobCardsPage() {
         supabase.from("app_settings").select("key, value"),
         supabase.from("job_card_engineers").select("job_card_id, engineer_id, profiles!engineer_id(name)"),
         supabase.from("profiles").select("id, name").eq("role", "service_engineer").eq("status", "active"),
+        supabase.from("work_acknowledgements").select("job_card_id, created_at, profiles!acknowledged_by(name)"),
       ]);
 
     if (settingsData) {
@@ -164,6 +167,14 @@ export default function AdminJobCardsPage() {
       engsByCard.set(jce.job_card_id, list);
     }
 
+    const ackByCard = new Map<string, AckInfo>();
+    for (const a of ackData ?? []) {
+      ackByCard.set(a.job_card_id, {
+        acknowledgedBy: (a.profiles as any)?.name ?? "KPTCL Engineer",
+        createdAt: a.created_at,
+      });
+    }
+
     setRows(
       (jcData ?? []).map((jc) => ({
         id: jc.id,
@@ -182,6 +193,7 @@ export default function AdminJobCardsPage() {
         createdAt: jc.created_at,
         history: histByCard.get(jc.id) ?? [],
         engineers: engsByCard.get(jc.id) ?? [],
+        ack: ackByCard.get(jc.id) ?? null,
       }))
     );
     setLoading(false);
@@ -430,6 +442,27 @@ export default function AdminJobCardsPage() {
                       </span>
                     ))}
                   </div>
+                )}
+              </div>
+
+              {/* KPTCL Acknowledgement */}
+              <div className="rounded-xl border p-3">
+                <p className="text-xs text-foreground-secondary uppercase tracking-wide font-semibold mb-2">KPTCL Acknowledgement</p>
+                {selected.ack ? (
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-green-700">Acknowledged by {selected.ack.acknowledgedBy}</p>
+                      <p className="text-xs text-foreground-secondary">{fmtIST(selected.ack.createdAt)}</p>
+                    </div>
+                  </div>
+                ) : selected.currentStatus === "supply_service_given" ? (
+                  <div className="flex items-start gap-2">
+                    <Clock className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                    <p className="text-sm text-amber-700">Awaiting KPTCL acknowledgement before billing.</p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-foreground-secondary italic">Not required at this stage.</p>
                 )}
               </div>
 

@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 
-export type Role = "spectrum_admin" | "account_executive";
+export type Role = "spectrum_admin" | "account_executive" | "kptcl_engineer";
 
 const VARIANTS = {
   spectrum_admin: {
@@ -51,6 +51,22 @@ const VARIANTS = {
       { icon: Boxes, label: "Track and update stock at your substation" },
       { icon: Wrench, label: "Raise job cards and service requests" },
       { icon: ShieldCheck, label: "Access limited to your assigned substation" },
+    ],
+    switchHref: "/login",
+    switchLabel: "Spectrum Admin? Sign in here",
+  },
+  kptcl_engineer: {
+    heading: "KPTCL sign-in",
+    subheading: "Sign in to track and acknowledge service work",
+    emailPlaceholder: "engineer@kptcl.gov.in",
+    panelTitleLine1: "Service Tracking",
+    panelTitleLine2: "For KPTCL Engineers",
+    panelDescription:
+      "View the status of all service and maintenance work at your station. Acknowledge completed work and maintain a transparent record of all jobs.",
+    features: [
+      { icon: ClipboardList, label: "Track all job cards at your station" },
+      { icon: ShieldCheck, label: "Digitally acknowledge completed work" },
+      { icon: Wrench, label: "Transparent record of all service history" },
     ],
     switchHref: "/login",
     switchLabel: "Spectrum Admin? Sign in here",
@@ -100,25 +116,34 @@ export function LoginForm({ role }: { role: Role }) {
       return;
     }
 
-    if (profile.role !== role && !(role === "account_executive" && profile.role === "service_engineer")) {
-      if (profile.role === "spectrum_admin") {
-        setError("This account is registered as a Spectrum Admin. Use the Admin sign-in page.");
-      } else if (profile.role === "account_executive") {
-        setError("This account is registered as an Account Executive. Use the Account Executive sign-in page.");
-      } else if (profile.role === "service_engineer") {
-        setError("This account is registered as a Service Engineer. Use the Service Engineer sign-in page.");
-      } else {
-        setError("You are not authorised to access this portal.");
-      }
+    if (profile.role !== role) {
+      const ROLE_LABELS: Record<string, string> = {
+        spectrum_admin: "Spectrum Admin",
+        account_executive: "Account Executive",
+        service_engineer: "Service Engineer",
+        kptcl_engineer: "KPTCL Engineer",
+      };
+      const ROLE_PAGES: Record<string, string> = {
+        spectrum_admin: "/login",
+        account_executive: "/login/ae",
+        service_engineer: "/login/se",
+        kptcl_engineer: "/login/kptcl",
+      };
+      const label = ROLE_LABELS[profile.role] ?? "a different role";
+      const page  = ROLE_PAGES[profile.role]  ?? "/login";
+      setError(`This account is registered as a ${label}. Please use the ${label} sign-in page.`);
       await supabase.auth.signOut();
       setLoading(false);
       return;
     }
 
-    const destination =
-      profile.role === "spectrum_admin" ? "/admin" :
-      profile.role === "service_engineer" ? "/se" : "/ae";
-    router.push(destination);
+    const destination: Record<string, string> = {
+      spectrum_admin: "/admin",
+      account_executive: "/ae",
+      service_engineer: "/se",
+      kptcl_engineer: "/kptcl",
+    };
+    router.push(destination[profile.role] ?? "/login");
     router.refresh();
   }
 

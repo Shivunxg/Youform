@@ -47,6 +47,12 @@ const seNavGroups: NavGroup[] = [
   { title: "Operations", items: [{ label: "My Jobs",   href: "/se/job-cards", icon: HardHat         }] },
 ];
 
+const kptclNavGroups: NavGroup[] = [
+  { title: "Overview",   items: [{ label: "Dashboard",  href: "/kptcl",            icon: LayoutDashboard }] },
+  { title: "Operations", items: [{ label: "Job Cards",  href: "/kptcl/job-cards",  icon: ClipboardList   }] },
+  { title: "Insights",   items: [{ label: "Notifications", href: "/kptcl/notifications", icon: Bell      }] },
+];
+
 export interface SidebarUser {
   name: string;
   email: string;
@@ -59,7 +65,7 @@ export function Sidebar({
   badges = {},
   user,
 }: {
-  variant?: "admin" | "ae" | "se";
+  variant?: "admin" | "ae" | "se" | "kptcl";
   badges?: Record<string, number>;
   user?: SidebarUser;
 }) {
@@ -67,8 +73,8 @@ export function Sidebar({
   const router   = useRouter();
   const [collapsed, setCollapsed] = React.useState(false);
 
-  const navGroups = variant === "admin" ? adminNavGroups : variant === "ae" ? aeNavGroups : seNavGroups;
-  const basePath  = variant === "admin" ? "/admin" : variant === "ae" ? "/ae" : "/se";
+  const navGroups = variant === "admin" ? adminNavGroups : variant === "ae" ? aeNavGroups : variant === "kptcl" ? kptclNavGroups : seNavGroups;
+  const basePath  = variant === "admin" ? "/admin" : variant === "ae" ? "/ae" : variant === "kptcl" ? "/kptcl" : "/se";
 
   async function handleSignOut() {
     const supabase = createClient();

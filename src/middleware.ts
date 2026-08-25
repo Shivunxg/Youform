@@ -30,11 +30,11 @@ export async function middleware(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   const isProtected =
-    path.startsWith("/admin") || path.startsWith("/ae") || path.startsWith("/se");
+    path.startsWith("/admin") || path.startsWith("/ae") || path.startsWith("/se") || path.startsWith("/kptcl");
 
   if (isProtected && !user) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = path.startsWith("/kptcl") ? "/login/kptcl" : "/login";
     return NextResponse.redirect(url);
   }
 
@@ -42,5 +42,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/ae/:path*", "/se/:path*"],
+  matcher: ["/admin/:path*", "/ae/:path*", "/se/:path*", "/kptcl/:path*"],
 };
