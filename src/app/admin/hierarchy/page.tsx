@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, ChevronRight, Network, Zap, Wrench, Box, Trash2 } from "lucide-react";
+import { Plus, ChevronRight, Network, Zap, Wrench, Box, Trash2, Phone } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,9 @@ interface Node {
   level: number;
   parent_id: string | null;
   status: string;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
 }
 
 interface VoltageClass { id: string; station_id: string; name: string; status: string }
@@ -73,6 +76,12 @@ export default function HierarchyPage() {
   const [compName, setCompName] = React.useState("");
   const [compEtId, setCompEtId] = React.useState("");
   const [savingComp, setSavingComp] = React.useState(false);
+
+  // Contact details for selected station
+  const [contactName, setContactName] = React.useState("");
+  const [contactEmail, setContactEmail] = React.useState("");
+  const [contactPhone, setContactPhone] = React.useState("");
+  const [savingContact, setSavingContact] = React.useState(false);
 
   React.useEffect(() => { load(); }, []);
 
@@ -175,6 +184,25 @@ export default function HierarchyPage() {
     if (selectedStation) loadStationDetail(selectedStation.id);
   }
 
+  async function saveContact() {
+    if (!selectedStation) return;
+    setSavingContact(true);
+    await supabase.from("hierarchy_nodes").update({
+      contact_name: contactName.trim() || null,
+      contact_email: contactEmail.trim() || null,
+      contact_phone: contactPhone.trim() || null,
+    }).eq("id", selectedStation.id);
+    setSavingContact(false);
+    // Update local node data so the tree reflects the change
+    setNodes((prev) =>
+      prev.map((n) =>
+        n.id === selectedStation.id
+          ? { ...n, contact_name: contactName.trim() || null, contact_email: contactEmail.trim() || null, contact_phone: contactPhone.trim() || null }
+          : n
+      )
+    );
+  }
+
   function toggleExpand(id: string) {
     setExpandedIds((prev) => {
       const next = new Set(prev);
@@ -204,6 +232,9 @@ export default function HierarchyPage() {
                     setSelectedStation(null);
                   } else {
                     setSelectedStation(node);
+                    setContactName(node.contact_name ?? "");
+                    setContactEmail(node.contact_email ?? "");
+                    setContactPhone(node.contact_phone ?? "");
                     loadStationDetail(node.id);
                     setExpandedVcs(new Set());
                     setExpandedEts(new Set());
@@ -378,6 +409,33 @@ export default function HierarchyPage() {
                 </div>
               </CardContent>
             </Card>
+          {/* Contact Details Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Phone className="h-4 w-4 text-blue-500" />
+                Contact Details
+              </CardTitle>
+              <CardDescription>KPTCL officer contact for this substation — auto-fills proposal email</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>Contact Name</Label>
+                <Input value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="e.g. AEE / EE Whitefield" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Contact Email</Label>
+                <Input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="e.g. ee.whitefield@kptcl.gov.in" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Contact Phone</Label>
+                <Input type="tel" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="e.g. +91 98800 00000" />
+              </div>
+              <Button onClick={saveContact} disabled={savingContact} size="sm">
+                {savingContact ? "Saving…" : "Save Contact"}
+              </Button>
+            </CardContent>
+          </Card>
           </div>
         )}
       </div>
