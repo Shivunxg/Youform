@@ -3,9 +3,14 @@
 
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Printer, Pencil, CheckCircle2, XCircle, Send } from "lucide-react";
+import { ArrowLeft, Printer, Pencil, CheckCircle2, XCircle, Send, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
 import { createClient } from "@/lib/supabase/client";
 
 const STATUS_VARIANT: Record<string, any> = {
@@ -41,6 +46,10 @@ export default function ProposalViewPage() {
   const supabase = React.useMemo(() => createClient(), []);
   const [p, setP] = React.useState<any>(null);
   const [updating, setUpdating] = React.useState(false);
+  const [sendDialog, setSendDialog] = React.useState(false);
+  const [recipientEmail, setRecipientEmail] = React.useState("");
+  const [sendingEmail, setSendingEmail] = React.useState(false);
+  const [emailSent, setEmailSent] = React.useState(false);
 
   React.useEffect(() => {
     supabase
@@ -56,6 +65,22 @@ export default function ProposalViewPage() {
     await supabase.from("proposals").update({ status }).eq("id", id);
     setP((prev: any) => ({ ...prev, status }));
     setUpdating(false);
+  }
+
+  async function handleSendEmail(e: React.FormEvent) {
+    e.preventDefault();
+    setSendingEmail(true);
+    // Mark as sent in DB first
+    if (p.status === "draft") await updateStatus("sent");
+    // Send email
+    await fetch("/api/email/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "proposal_shared", proposalId: id, recipientEmail }),
+    });
+    setSendingEmail(false);
+    setEmailSent(true);
+    setTimeout(() => { setSendDialog(false); setEmailSent(false); }, 2000);
   }
 
   if (!p) return <p className="text-sm text-foreground-secondary py-10 text-center">Loading…</p>;
@@ -80,6 +105,9 @@ export default function ProposalViewPage() {
           ))}
           <Button variant="outline" size="sm" onClick={() => router.push(`/admin/proposals/${id}/edit`)} className="gap-1">
             <Pencil className="h-3.5 w-3.5" /> Edit
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => { setRecipientEmail(""); setEmailSent(false); setSendDialog(true); }} className="gap-1">
+            <Mail className="h-3.5 w-3.5" /> Email to Client
           </Button>
           <Button size="sm" onClick={() => window.print()} className="gap-1">
             <Printer className="h-3.5 w-3.5" /> Print / PDF
@@ -222,6 +250,49 @@ export default function ProposalViewPage() {
           </div>
         </div>
       </div>
+
+      {/* Send Email dialog */}
+      <Dialog open={sendDialog} onOpenChange={setSendDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Email Proposal to Client</DialogTitle>
+            <DialogDescription>
+              Send <strong>{p.proposal_number}</strong> to the client's email address. The proposal will also be marked as <strong>Sent</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          {emailSent ? (
+            <div className="flex flex-col items-center justify-center px-6 py-10 gap-3 text-center">
+              <CheckCircle2 className="h-10 w-10 text-green-500" />
+              <p className="text-sm font-medium text-foreground">Email sent to {recipientEmail}</p>
+            </div>
+          ) : (
+            <>
+              <form id="send-proposal-form" onSubmit={handleSendEmail} className="px-6 py-5 space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="recipient-email">Client Email Address <span className="text-danger">*</span></Label>
+                  <Input
+                    id="recipient-email"
+                    type="email"
+                    value={recipientEmail}
+                    onChange={(e) => setRecipientEmail(e.target.value)}
+                    placeholder="e.g. ee.whitefield@kptcl.gov.in"
+                    required
+                  />
+                </div>
+                <p className="text-xs text-foreground-secondary">
+                  The recipient will receive a fully formatted proposal email including scope of work, price schedule, and terms.
+                </p>
+              </form>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setSendDialog(false)}>Cancel</Button>
+                <Button type="submit" form="send-proposal-form" disabled={sendingEmail} className="gap-2">
+                  {sendingEmail ? "Sending…" : <><Mail className="h-4 w-4" /> Send Proposal</>}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Print styles */}
       <style>{`

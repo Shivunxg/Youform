@@ -212,15 +212,45 @@ export default function AdminJobCardsPage() {
   const selected = rows.find((r) => r.id === selectedId) ?? null;
 
   async function changeStatus() {
-    if (!selectedId || !nextStatus) return;
+    if (!selectedId || !nextStatus || !selected) return;
     setChangingStatus(true);
     const { data: { user } } = await supabase.auth.getUser();
+    const prevStatus = selected.currentStatus;
     await supabase.rpc("change_job_card_status", {
       p_job_card_id: selectedId,
       p_to_status: nextStatus,
       p_changed_by: user?.id,
       p_note: statusNote || null,
     });
+
+    // Fire emails in background (best-effort)
+    const emailBase = {
+      jobCardId:        selectedId,
+      jobCardNumber:    selected.jobCardNumber,
+      stationId:        selected.stationId,
+      stationName:      selected.stationName,
+      voltageClass:     selected.voltageClass,
+      equipmentType:    selected.equipmentType,
+      issueDescription: selected.issueDescription,
+      fromStatus:       prevStatus,
+      toStatus:         nextStatus,
+      note:             statusNote || null,
+    };
+    // Notify assigned engineers + AE of status change
+    fetch("/api/email/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "job_card_status_changed", ...emailBase }),
+    }).catch(() => {});
+    // When service is given, notify KPTCL engineers to acknowledge
+    if (nextStatus === "supply_service_given") {
+      fetch("/api/email/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "kptcl_ack_required", ...emailBase }),
+      }).catch(() => {});
+    }
+
     setChangingStatus(false);
     setStatusDialog(false);
     setStatusNote("");
@@ -282,6 +312,24 @@ export default function AdminJobCardsPage() {
           created_by: user?.id ?? null,
         }))
       );
+    }
+
+    // Email newly assigned engineers
+    if (toAdd.length > 0 && selected) {
+      fetch("/api/email/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type:             "job_card_assigned",
+          engineerIds:      toAdd,
+          jobCardNumber:    selected.jobCardNumber,
+          stationName:      selected.stationName,
+          voltageClass:     selected.voltageClass,
+          equipmentType:    selected.equipmentType,
+          issueDescription: selected.issueDescription,
+          priority:         selected.priority,
+        }),
+      }).catch(() => {});
     }
 
     setSavingEngs(false);

@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendEmail } from "@/lib/emails/send";
+import { userInvitationEmail } from "@/lib/emails/templates";
 
 export async function POST(req: NextRequest) {
   // Verify caller is a spectrum_admin
@@ -51,6 +53,33 @@ export async function POST(req: NextRequest) {
   if (profileError) {
     return NextResponse.json({ error: profileError.message }, { status: 500 });
   }
+
+  // Fetch station name for the welcome email
+  let stationName: string | null = null;
+  if (station_id) {
+    const { data: station } = await admin
+      .from("hierarchy_nodes")
+      .select("name")
+      .eq("id", station_id)
+      .single();
+    stationName = station?.name ?? null;
+  }
+
+  // Send branded welcome email (best-effort — don't fail the invite if email fails)
+  const inviteLink = newUser.user.confirmation_sent_at
+    ? `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/login`
+    : `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/login`;
+
+  const { subject, html } = userInvitationEmail({
+    name,
+    email,
+    role,
+    stationName,
+    inviteLink,
+  });
+  await sendEmail({ to: email, subject, html }).catch((e) =>
+    console.warn("[invite] welcome email failed:", e)
+  );
 
   return NextResponse.json({ id: newUser.user.id });
 }
