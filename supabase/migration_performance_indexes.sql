@@ -26,5 +26,5 @@ CREATE INDEX IF NOT EXISTS idx_proposals_created_at ON public.proposals(created_
 CREATE INDEX IF NOT EXISTS idx_hierarchy_nodes_level     ON public.hierarchy_nodes(level);
 CREATE INDEX IF NOT EXISTS idx_hierarchy_nodes_parent_id ON public.hierarchy_nodes(parent_id);
 
--- notifications
-CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON public.notifications(created_at DESC);
+-- notifications_queue
+CREATE INDEX IF NOT EXISTS idx_notifications_queue_created_at ON public.notifications_queue(created_at DESC);
