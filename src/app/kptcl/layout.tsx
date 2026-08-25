@@ -20,13 +20,6 @@ export default async function KPTCLLayout({ children }: { children: React.ReactN
 
   if (!profile || profile.role !== "kptcl_engineer") redirect("/login/kptcl");
 
-  const { data: notifications } = await supabase
-    .from("notifications_queue")
-    .select("*")
-    .or(`target_role.eq.kptcl_engineer,target_user_id.eq.${user.id}`)
-    .order("created_at", { ascending: false })
-    .limit(20);
-
   const { count: pendingCount } = await supabase
     .from("job_cards")
     .select("id", { count: "exact", head: true })
@@ -49,7 +42,7 @@ export default async function KPTCLLayout({ children }: { children: React.ReactN
         }}
       />
       <div className="flex-1 flex flex-col min-w-0">
-        <Header notifications={notifications ?? []} />
+        <Header profile={{ name: profile.name ?? user.email ?? "KPTCL Engineer", email: profile.email ?? user.email ?? "", role: "KPTCL Engineer" }} />
         <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>

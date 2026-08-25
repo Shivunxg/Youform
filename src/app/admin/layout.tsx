@@ -20,13 +20,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   if (!profile || profile.role !== "spectrum_admin") redirect("/login");
 
-  const { data: notifications } = await supabase
-    .from("notifications_queue")
-    .select("*")
-    .or(`target_role.eq.spectrum_admin,target_user_id.eq.${user.id}`)
-    .order("created_at", { ascending: false })
-    .limit(20);
-
   const { count: openCount } = await supabase
     .from("job_cards")
     .select("id", { count: "exact", head: true })
@@ -43,7 +36,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         user={{ name: profile.name, email: profile.email ?? user.email ?? "", role: "Spectrum Admin", profileHref: "/admin/settings" }}
       />
       <div className="flex-1 flex flex-col min-w-0">
-        <Header notifications={notifications ?? []} />
+        <Header profile={{ name: profile.name, email: profile.email ?? user.email ?? "", role: "Spectrum Admin" }} />
         <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>

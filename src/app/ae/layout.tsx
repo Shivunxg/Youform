@@ -20,13 +20,6 @@ export default async function AELayout({ children }: { children: React.ReactNode
 
   if (!profile || profile.role !== "account_executive") redirect("/login");
 
-  const { data: notifications } = await supabase
-    .from("notifications_queue")
-    .select("*")
-    .or(`target_role.eq.account_executive,target_user_id.eq.${user.id}`)
-    .order("created_at", { ascending: false })
-    .limit(20);
-
   const badges: Record<string, number> = {};
   if (profile.station_id) {
     const { count } = await supabase
@@ -45,7 +38,7 @@ export default async function AELayout({ children }: { children: React.ReactNode
         user={{ name: profile.name, email: profile.email ?? user.email ?? "", role: "Account Executive", profileHref: "/ae/profile" }}
       />
       <div className="flex-1 flex flex-col min-w-0">
-        <Header notifications={notifications ?? []} />
+        <Header profile={{ name: profile.name, email: profile.email ?? user.email ?? "", role: "Account Executive" }} />
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
           {!profile.station_id ? (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">
