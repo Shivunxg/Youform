@@ -715,7 +715,7 @@ export default function HierarchyPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Add Hierarchy Node</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 px-6 py-2">
             <div className="space-y-1.5">
               <Label>Level</Label>
               <select className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" value={form.level} onChange={(e) => setForm((f) => ({ ...f, level: e.target.value, parent_id: "", lat: "", lng: "" }))}>
@@ -768,7 +768,7 @@ export default function HierarchyPage() {
       <Dialog open={vcDialog} onOpenChange={setVcDialog}>
         <DialogContent>
           <DialogHeader><DialogTitle>Add Voltage Class</DialogTitle></DialogHeader>
-          <div className="space-y-3 py-2">
+          <div className="space-y-3 px-6 py-2">
             <div className="space-y-1.5">
               <Label>Name (e.g. 11kV, 66kV, 110kV)</Label>
               <Input value={vcName} onChange={(e) => setVcName(e.target.value)} placeholder="e.g. 33kV" />
@@ -785,7 +785,7 @@ export default function HierarchyPage() {
       <Dialog open={etDialog} onOpenChange={setEtDialog}>
         <DialogContent>
           <DialogHeader><DialogTitle>Add Equipment Type</DialogTitle></DialogHeader>
-          <div className="space-y-3 py-2">
+          <div className="space-y-3 px-6 py-2">
             <div className="space-y-1.5">
               <Label>Name (e.g. Power Transformer, Circuit Breaker)</Label>
               <Input value={etName} onChange={(e) => setEtName(e.target.value)} placeholder="e.g. Power Transformer" />
@@ -802,7 +802,7 @@ export default function HierarchyPage() {
       <Dialog open={compDialog} onOpenChange={setCompDialog}>
         <DialogContent>
           <DialogHeader><DialogTitle>Add Component</DialogTitle></DialogHeader>
-          <div className="space-y-3 py-2">
+          <div className="space-y-3 px-6 py-2">
             <div className="space-y-1.5">
               <Label>Name (e.g. Bushing, Tap Changer, Cooling Fan)</Label>
               <Input value={compName} onChange={(e) => setCompName(e.target.value)} placeholder="e.g. HV Bushing" />

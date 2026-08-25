@@ -548,7 +548,7 @@ export default function AdminJobCardsPage() {
               <strong>{STATUS_LABEL[nextStatus]}</strong>
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-2">
+          <div className="space-y-3 px-6 py-2">
             <div className="space-y-1.5">
               <Label>Remarks (optional)</Label>
               <Input
