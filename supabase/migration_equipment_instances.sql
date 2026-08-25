@@ -37,13 +37,15 @@ CREATE TRIGGER trg_touch_equipment_instances
 -- RLS
 ALTER TABLE public.equipment_instances ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "admin_full_equipment_instances"
+DROP POLICY IF EXISTS "admin_full_equipment_instances" ON public.equipment_instances;
+CREATE POLICY "admin_full_equipment_instances"
   ON public.equipment_instances FOR ALL TO authenticated
   USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'spectrum_admin')
   );
 
-CREATE POLICY IF NOT EXISTS "ae_se_read_own_station_instances"
+DROP POLICY IF EXISTS "ae_se_read_own_station_instances" ON public.equipment_instances;
+CREATE POLICY "ae_se_read_own_station_instances"
   ON public.equipment_instances FOR SELECT TO authenticated
   USING (
     EXISTS (
@@ -54,7 +56,8 @@ CREATE POLICY IF NOT EXISTS "ae_se_read_own_station_instances"
     )
   );
 
-CREATE POLICY IF NOT EXISTS "kptcl_read_own_station_instances"
+DROP POLICY IF EXISTS "kptcl_read_own_station_instances" ON public.equipment_instances;
+CREATE POLICY "kptcl_read_own_station_instances"
   ON public.equipment_instances FOR SELECT TO authenticated
   USING (
     EXISTS (

@@ -13,19 +13,22 @@ VALUES ('equipment-images', 'equipment-images', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Allow authenticated users to upload images
-CREATE POLICY IF NOT EXISTS "auth_upload_equipment_images"
+DROP POLICY IF EXISTS "auth_upload_equipment_images" ON storage.objects;
+CREATE POLICY "auth_upload_equipment_images"
   ON storage.objects FOR INSERT
   TO authenticated
   WITH CHECK (bucket_id = 'equipment-images');
 
 -- Allow public read of equipment images
-CREATE POLICY IF NOT EXISTS "public_read_equipment_images"
+DROP POLICY IF EXISTS "public_read_equipment_images" ON storage.objects;
+CREATE POLICY "public_read_equipment_images"
   ON storage.objects FOR SELECT
   TO public
   USING (bucket_id = 'equipment-images');
 
 -- Allow authenticated users to update/replace images
-CREATE POLICY IF NOT EXISTS "auth_update_equipment_images"
+DROP POLICY IF EXISTS "auth_update_equipment_images" ON storage.objects;
+CREATE POLICY "auth_update_equipment_images"
   ON storage.objects FOR UPDATE
   TO authenticated
   USING (bucket_id = 'equipment-images');
