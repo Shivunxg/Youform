@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 
-export type Role = "spectrum_admin" | "assistant_engineer";
+export type Role = "spectrum_admin" | "account_executive";
 
 const VARIANTS = {
   spectrum_admin: {
@@ -37,9 +37,9 @@ const VARIANTS = {
       { icon: ShieldCheck, label: "Role-based, secure access control" },
     ],
     switchHref: "/login/ae",
-    switchLabel: "Assistant Engineer? Sign in here",
+    switchLabel: "Account Executive? Sign in here",
   },
-  assistant_engineer: {
+  account_executive: {
     heading: "Field sign-in",
     subheading: "Sign in to manage your substation",
     emailPlaceholder: "ae.yourname@ktpclsimms.in",
@@ -100,18 +100,25 @@ export function LoginForm({ role }: { role: Role }) {
       return;
     }
 
-    if (profile.role !== role) {
-      setError(
-        role === "spectrum_admin"
-          ? "This account is registered as an Assistant Engineer. Use the Assistant Engineer sign-in page."
-          : "This account is registered as a Spectrum Admin. Use the Admin sign-in page."
-      );
+    if (profile.role !== role && !(role === "account_executive" && profile.role === "service_engineer")) {
+      if (profile.role === "spectrum_admin") {
+        setError("This account is registered as a Spectrum Admin. Use the Admin sign-in page.");
+      } else if (profile.role === "account_executive") {
+        setError("This account is registered as an Account Executive. Use the Account Executive sign-in page.");
+      } else if (profile.role === "service_engineer") {
+        setError("This account is registered as a Service Engineer. Use the Service Engineer sign-in page.");
+      } else {
+        setError("You are not authorised to access this portal.");
+      }
       await supabase.auth.signOut();
       setLoading(false);
       return;
     }
 
-    router.push(role === "spectrum_admin" ? "/admin" : "/ae");
+    const destination =
+      profile.role === "spectrum_admin" ? "/admin" :
+      profile.role === "service_engineer" ? "/se" : "/ae";
+    router.push(destination);
     router.refresh();
   }
 
