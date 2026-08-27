@@ -63,6 +63,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: profileError.message }, { status: 500 });
   }
 
+  // For KPTCL engineers, seed the multi-station junction table
+  if (role === "kptcl_engineer" && station_id) {
+    await admin
+      .from("kptcl_station_assignments")
+      .insert({ kptcl_user_id: userId, station_id })
+      .then(() => {}); // ignore error — admin can assign via UI
+  }
+
   // Fetch station name for the welcome email
   let stationName: string | null = null;
   if (station_id) {

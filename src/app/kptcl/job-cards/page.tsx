@@ -45,6 +45,7 @@ interface AckInfo { id: string; acknowledgedBy: string; notes: string | null; cr
 interface Row {
   id: string;
   jobCardNumber: string;
+  stationId: string;
   stationName: string;
   voltageClass: string | null;
   equipmentType: string | null;
@@ -57,12 +58,16 @@ interface Row {
   ack: AckInfo | null;
 }
 
+interface AssignedStation { id: string; name: string }
+
 export default function KPTCLJobCardsPage() {
   const supabase = React.useMemo(() => createClient(), []);
   const [rows, setRows] = React.useState<Row[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [search, setSearch] = React.useState("");
   const [filterStatus, setFilterStatus] = React.useState("all");
+  const [filterStation, setFilterStation] = React.useState("all");
+  const [assignedStations, setAssignedStations] = React.useState<AssignedStation[]>([]);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [userId, setUserId] = React.useState<string | null>(null);
 
@@ -80,19 +85,26 @@ export default function KPTCLJobCardsPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("station_id")
-      .eq("id", user.id)
-      .single();
+    // Fetch all stations assigned to this KPTCL engineer
+    const { data: assignments } = await supabase
+      .from("kptcl_station_assignments")
+      .select("station_id, hierarchy_nodes!station_id(id, name)")
+      .eq("kptcl_user_id", user.id);
 
-    if (!profile?.station_id) { setLoading(false); return; }
+    const stationIds = (assignments ?? []).map((a) => a.station_id);
+    const stations = (assignments ?? []).map((a) => ({
+      id: (a.hierarchy_nodes as any)?.id ?? a.station_id,
+      name: (a.hierarchy_nodes as any)?.name ?? a.station_id,
+    }));
+    setAssignedStations(stations);
+
+    if (stationIds.length === 0) { setLoading(false); return; }
 
     const [{ data: jcData }, { data: histData }, { data: ackData }] = await Promise.all([
       supabase
         .from("job_cards")
         .select("id, job_card_number, station_id, current_status, priority, issue_description, component_description, created_at, hierarchy_nodes!station_id(name), voltage_classes(name), equipment_types(name)")
-        .eq("station_id", profile.station_id)
+        .in("station_id", stationIds)
         .order("created_at", { ascending: false }),
       supabase
         .from("status_history")
@@ -124,6 +136,7 @@ export default function KPTCLJobCardsPage() {
       (jcData ?? []).map((jc) => ({
         id: jc.id,
         jobCardNumber: jc.job_card_number,
+        stationId: jc.station_id,
         stationName: (jc.hierarchy_nodes as any)?.name ?? "—",
         voltageClass: (jc.voltage_classes as any)?.name ?? null,
         equipmentType: (jc.equipment_types as any)?.name ?? null,
@@ -145,7 +158,8 @@ export default function KPTCLJobCardsPage() {
       r.jobCardNumber.toLowerCase().includes(search.toLowerCase()) ||
       r.issueDescription.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === "all" || r.currentStatus === filterStatus;
-    return matchSearch && matchStatus;
+    const matchStation = filterStation === "all" || r.stationId === filterStation;
+    return matchSearch && matchStatus && matchStation;
   });
 
   const selected = rows.find((r) => r.id === selectedId) ?? null;
@@ -177,16 +191,30 @@ export default function KPTCLJobCardsPage() {
         search={search}
         onSearchChange={setSearch}
         right={
-          <select
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm"
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-          >
-            <option value="all">All statuses</option>
-            {Object.entries(STATUS_LABEL).map(([v, l]) => (
-              <option key={v} value={v}>{l}</option>
-            ))}
-          </select>
+          <div className="flex gap-2">
+            {assignedStations.length > 1 && (
+              <select
+                className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+                value={filterStation}
+                onChange={(e) => setFilterStation(e.target.value)}
+              >
+                <option value="all">All stations</option>
+                {assignedStations.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            )}
+            <select
+              className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="all">All statuses</option>
+              {Object.entries(STATUS_LABEL).map(([v, l]) => (
+                <option key={v} value={v}>{l}</option>
+              ))}
+            </select>
+          </div>
         }
       />
 

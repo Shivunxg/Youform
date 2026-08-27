@@ -67,6 +67,7 @@ interface Row {
   history: TimelineData["history"];
 }
 
+interface Station { id: string; name: string; code: string | null }
 interface VoltageClass { id: string; name: string }
 interface EquipmentType { id: string; voltage_class_id: string; name: string }
 interface Component { id: string; equipment_type_id: string; name: string }
@@ -78,13 +79,15 @@ export default function AEJobCardsPage() {
   const [search, setSearch] = React.useState("");
   const [filterStatus, setFilterStatus] = React.useState("all");
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
-  const [stationId, setStationId] = React.useState<string | null>(null);
 
+  // AE is not station-specific — loads all stations for the create form
+  const [stations, setStations] = React.useState<Station[]>([]);
   const [newDialog, setNewDialog] = React.useState(false);
   const [voltageClasses, setVoltageClasses] = React.useState<VoltageClass[]>([]);
   const [equipmentTypes, setEquipmentTypes] = React.useState<EquipmentType[]>([]);
   const [components, setComponents] = React.useState<Component[]>([]);
   const [form, setForm] = React.useState({
+    stationId: "",
     voltageClassId: "",
     equipmentTypeId: "",
     componentId: "",
@@ -96,40 +99,24 @@ export default function AEJobCardsPage() {
   });
   const [saving, setSaving] = React.useState(false);
 
-  React.useEffect(() => {
-    (async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("station_id")
-        .eq("id", user.id)
-        .single();
-      if (profile?.station_id) {
-        setStationId(profile.station_id);
-        loadData(profile.station_id, user.id);
-      }
-    })();
-  }, []);
+  React.useEffect(() => { loadData(); }, []);
 
-  async function loadData(sid: string, uid: string) {
+  async function loadData() {
     setLoading(true);
-    const [{ data: jcData }, { data: histData }, { data: vcData }] = await Promise.all([
+    const [{ data: jcData }, { data: histData }, { data: stationData }] = await Promise.all([
       supabase
         .from("job_cards")
         .select(
           "id, job_card_number, current_status, priority, issue_description, component_description, quotation_amount, order_amount, remarks, created_at, hierarchy_nodes!station_id(name), voltage_classes(name), equipment_types(name)"
         )
-        .eq("station_id", sid)
         .order("created_at", { ascending: false }),
       supabase
         .from("status_history")
         .select("job_card_id, to_status, created_at, note, profiles!changed_by(name)")
         .order("created_at", { ascending: true }),
-      supabase.from("voltage_classes").select("id, name").eq("station_id", sid),
+      supabase.from("hierarchy_nodes").select("id, name, code").eq("level", 4).eq("status", "active").order("name"),
     ]);
+    setStations(stationData ?? []);
 
     const histByCard = new Map<string, Row["history"]>();
     for (const h of histData ?? []) {
@@ -144,7 +131,6 @@ export default function AEJobCardsPage() {
       histByCard.set(h.job_card_id, list);
     }
 
-    setVoltageClasses(vcData ?? []);
     setRows(
       (jcData ?? []).map((jc) => ({
         id: jc.id,
@@ -169,6 +155,16 @@ export default function AEJobCardsPage() {
     setLoading(false);
   }
 
+  async function loadVoltageClasses(stationId: string) {
+    const { data } = await supabase
+      .from("voltage_classes")
+      .select("id, name")
+      .eq("station_id", stationId);
+    setVoltageClasses(data ?? []);
+    setEquipmentTypes([]);
+    setComponents([]);
+  }
+
   async function loadEquipmentTypes(vcId: string) {
     const { data } = await supabase
       .from("equipment_types")
@@ -187,13 +183,13 @@ export default function AEJobCardsPage() {
   }
 
   async function handleCreate() {
-    if (!stationId || !form.issueDescription.trim()) return;
+    if (!form.stationId || !form.issueDescription.trim()) return;
     setSaving(true);
     const {
       data: { user },
     } = await supabase.auth.getUser();
     await supabase.from("job_cards").insert({
-      station_id: stationId,
+      station_id: form.stationId,
       voltage_class_id: form.voltageClassId || null,
       equipment_type_id: form.equipmentTypeId || null,
       component_id: form.componentId || null,
@@ -208,6 +204,7 @@ export default function AEJobCardsPage() {
     setSaving(false);
     setNewDialog(false);
     setForm({
+      stationId: "",
       voltageClassId: "",
       equipmentTypeId: "",
       componentId: "",
@@ -217,7 +214,7 @@ export default function AEJobCardsPage() {
       quotationAmount: "",
       remarks: "",
     });
-    if (stationId && user) loadData(stationId, user.id);
+    loadData();
   }
 
   const filtered = rows.filter((r) => {
@@ -390,6 +387,24 @@ export default function AEJobCardsPage() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
+              <Label>Station *</Label>
+              <select
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                value={form.stationId}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, stationId: e.target.value, voltageClassId: "", equipmentTypeId: "", componentId: "" }));
+                  if (e.target.value) loadVoltageClasses(e.target.value);
+                  else { setVoltageClasses([]); setEquipmentTypes([]); setComponents([]); }
+                }}
+              >
+                <option value="">— select —</option>
+                {stations.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}{s.code ? ` (${s.code})` : ""}</option>
+                ))}
+              </select>
+            </div>
+            {voltageClasses.length > 0 && (
+            <div className="space-y-1.5">
               <Label>Voltage Class</Label>
               <select
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
@@ -408,6 +423,7 @@ export default function AEJobCardsPage() {
                 ))}
               </select>
             </div>
+            )}
             {equipmentTypes.length > 0 && (
               <div className="space-y-1.5">
                 <Label>Equipment Type</Label>
@@ -504,7 +520,7 @@ export default function AEJobCardsPage() {
             <Button variant="outline" onClick={() => setNewDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={handleCreate} disabled={saving || !form.issueDescription.trim()}>
+            <Button onClick={handleCreate} disabled={saving || !form.stationId || !form.issueDescription.trim()}>
               {saving ? "Saving…" : "Raise"}
             </Button>
           </DialogFooter>
