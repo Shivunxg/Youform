@@ -82,6 +82,20 @@ export function LoginForm({ role }: { role: Role }) {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
 
+  // Supabase may redirect back to any page (e.g. site root or /login) with
+  // #access_token=...&type=invite|recovery in the hash. Catch it here and
+  // forward to the set-password page so the user sees the right form.
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash.substring(1);
+    const params = new URLSearchParams(hash);
+    const type = params.get("type");
+    const token = params.get("access_token");
+    if (token && (type === "recovery" || type === "invite")) {
+      router.replace("/auth/reset-password" + window.location.hash);
+    }
+  }, [router]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
