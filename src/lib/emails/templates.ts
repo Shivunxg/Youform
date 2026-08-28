@@ -70,8 +70,7 @@ export function userInvitationEmail(data: UserInvitationData): { subject: string
     </table>
     ${divider()}
 
-    ${p(`If the button above doesn't work, copy and paste this link into your browser:`, true)}
-    <p style="margin:0 0 16px;word-break:break-all;font-size:12px;color:#2563EB;font-family:monospace;">${data.inviteLink}</p>
+    ${p(`If the button above doesn't work, <a href="${data.inviteLink}" style="color:#2563EB;">click here to accept your invitation</a>.`, true)}
 
     ${p(`If you did not request this invitation, you can safely ignore this email.`, true)}
   `;
@@ -100,8 +99,7 @@ export function passwordResetEmail(data: PasswordResetData): { subject: string; 
     ${btn("Reset My Password", data.resetLink)}
 
     ${divider()}
-    ${p("If the button above doesn't work, copy and paste this link:", true)}
-    <p style="margin:0 0 16px;word-break:break-all;font-size:12px;color:#2563EB;font-family:monospace;">${data.resetLink}</p>
+    ${p(`If the button above doesn't work, <a href="${data.resetLink}" style="color:#2563EB;">click here to reset your password</a>.`, true)}
 
     <table style="background-color:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:14px 18px;width:100%;" cellpadding="0" cellspacing="0" role="presentation">
       <tr>
