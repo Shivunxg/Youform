@@ -20,6 +20,7 @@ export default function ResetPasswordPage() {
   const [done, setDone] = React.useState(false);
   const [error, setError] = React.useState("");
   const [sessionReady, setSessionReady] = React.useState(false);
+  const [isInvite, setIsInvite] = React.useState(false);
 
   // Supabase redirects to this page with #access_token=...&type=recovery in the URL hash.
   // We need to exchange that for a session before we can call updateUser.
@@ -30,11 +31,12 @@ export default function ResetPasswordPage() {
     const refreshToken = params.get("refresh_token");
     const type = params.get("type");
 
-    if (type === "recovery" && accessToken && refreshToken) {
+    if ((type === "recovery" || type === "invite") && accessToken && refreshToken) {
+      if (type === "invite") setIsInvite(true);
       supabase.auth
         .setSession({ access_token: accessToken, refresh_token: refreshToken })
         .then(({ error }) => {
-          if (error) setError("This reset link is invalid or has expired. Please request a new one.");
+          if (error) setError("This link is invalid or has expired. Please ask your administrator to resend the invitation.");
           else setSessionReady(true);
         });
     } else {
@@ -90,8 +92,14 @@ export default function ResetPasswordPage() {
           ) : (
             <>
               <div className="mb-6">
-                <h1 className="text-xl font-bold text-[#0F172A] tracking-tight">Set a new password</h1>
-                <p className="text-sm text-slate-500 mt-1">Choose a strong password for your account.</p>
+                <h1 className="text-xl font-bold text-[#0F172A] tracking-tight">
+                  {isInvite ? "Welcome! Set your password" : "Set a new password"}
+                </h1>
+                <p className="text-sm text-slate-500 mt-1">
+                  {isInvite
+                    ? "Create a password to activate your KTPCL SIMMS account."
+                    : "Choose a strong password for your account."}
+                </p>
               </div>
 
               {error && (

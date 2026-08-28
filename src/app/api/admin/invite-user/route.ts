@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     email,
     options: {
       data: { role, name },
-      redirectTo: `${appUrl}/login`,
+      redirectTo: `${appUrl}/auth/reset-password`,
     },
   });
 
