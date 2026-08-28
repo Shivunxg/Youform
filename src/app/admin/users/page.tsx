@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { UserCircle, MoreHorizontal, Ban, CheckCircle2, Pencil, UserPlus } from "lucide-react";
+import { UserCircle, MoreHorizontal, Ban, CheckCircle2, Pencil, UserPlus, Trash2, KeyRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -76,6 +76,12 @@ export default function AdminUsersPage() {
   const [editing, setEditing]             = React.useState<Row | null>(null);
   const [editKptclStations, setEditKptclStations] = React.useState<string[]>([]);
   const [savingEdit, setSavingEdit]       = React.useState(false);
+
+  // Delete account dialog
+  const [deleteDialog, setDeleteDialog]   = React.useState(false);
+  const [deletingUser, setDeletingUser]   = React.useState<Row | null>(null);
+  const [deleting, setDeleting]           = React.useState(false);
+  const [deleteError, setDeleteError]     = React.useState<string | null>(null);
 
   // Invite user dialog
   const [inviteDialog, setInviteDialog] = React.useState(false);
@@ -215,6 +221,39 @@ export default function AdminUsersPage() {
 
   const needsStation = inviteRole === "kptcl_engineer";
 
+  async function sendPasswordReset(r: Row) {
+    if (!r.email) return;
+    await fetch("/api/auth/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: r.email }),
+    });
+    alert(`Password reset link sent to ${r.email}`);
+  }
+
+  function openDelete(r: Row) {
+    setDeletingUser(r);
+    setDeleteError(null);
+    setDeleteDialog(true);
+  }
+
+  async function handleDelete() {
+    if (!deletingUser) return;
+    setDeleting(true);
+    setDeleteError(null);
+    const res = await fetch("/api/admin/delete-user", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: deletingUser.id }),
+    });
+    const json = await res.json();
+    setDeleting(false);
+    if (!res.ok) { setDeleteError(json.error ?? "Failed to delete user."); return; }
+    setDeleteDialog(false);
+    setDeletingUser(null);
+    loadData();
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -313,10 +352,19 @@ export default function AdminUsersPage() {
                               <Pencil className="h-4 w-4" /> Assign Stations
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuItem onClick={() => sendPasswordReset(u)}>
+                            <KeyRound className="h-4 w-4" /> Send password reset
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => toggleStatus(u)}>
                             {u.status === "active"
                               ? <><Ban className="h-4 w-4" /> Disable account</>
                               : <><CheckCircle2 className="h-4 w-4" /> Enable account</>}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => openDelete(u)}
+                            className="text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4" /> Delete account
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -361,6 +409,33 @@ export default function AdminUsersPage() {
             <Button variant="outline" onClick={() => setEditDialog(false)}>Cancel</Button>
             <Button onClick={saveEdit} disabled={savingEdit}>
               {savingEdit ? "Saving…" : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Account confirmation dialog */}
+      <Dialog open={deleteDialog} onOpenChange={setDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Account</DialogTitle>
+            <DialogDescription>
+              This will permanently delete <strong>{deletingUser?.name}</strong> ({deletingUser?.email}) and all their data. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteError && (
+            <div className="mx-6 rounded-lg border border-red-100 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+              {deleteError}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialog(false)}>Cancel</Button>
+            <Button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {deleting ? "Deleting…" : "Delete permanently"}
             </Button>
           </DialogFooter>
         </DialogContent>
