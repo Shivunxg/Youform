@@ -1,5 +1,5 @@
-import { LoginForm } from "@/components/auth/login-form";
+import { redirect } from "next/navigation";
 
-export default function AELoginPage() {
-  return <LoginForm role="account_executive" />;
+export default function AELoginRedirect() {
+  redirect("/login");
 }

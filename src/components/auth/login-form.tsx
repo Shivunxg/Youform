@@ -6,10 +6,8 @@ import { useRouter } from "next/navigation";
 import {
   Zap,
   ShieldCheck,
-  MapPin,
   ClipboardList,
   Wrench,
-  Boxes,
   Eye,
   EyeOff,
   ArrowRight,
@@ -20,71 +18,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 
-export type Role = "spectrum_admin" | "account_executive" | "kptcl_engineer";
+const ROLE_DESTINATION: Record<string, string> = {
+  spectrum_admin:    "/admin",
+  account_executive: "/ae",
+  service_engineer:  "/se",
+  kptcl_engineer:    "/kptcl",
+};
 
-const VARIANTS = {
-  spectrum_admin: {
-    heading: "Welcome back",
-    subheading: "Sign in to your Spectrum Admin dashboard",
-    emailPlaceholder: "admin@ktpclsimms.in",
-    panelTitleLine1: "Substation Inventory &",
-    panelTitleLine2: "Maintenance Management",
-    panelDescription:
-      "A single, centralized platform for Spectrum Consultants to track inventory, maintenance, and equipment health across every KTPCL region and substation.",
-    features: [
-      { icon: MapPin, label: "Region & substation-wide visibility" },
-      { icon: ClipboardList, label: "Job cards & preventive maintenance tracking" },
-      { icon: ShieldCheck, label: "Role-based, secure access control" },
-    ],
-    switchHref: "/login/ae",
-    switchLabel: "Account Executive? Sign in here",
-  },
-  account_executive: {
-    heading: "Field sign-in",
-    subheading: "Sign in to manage your substation",
-    emailPlaceholder: "ae.yourname@ktpclsimms.in",
-    panelTitleLine1: "Your Substation,",
-    panelTitleLine2: "In Your Hands",
-    panelDescription:
-      "Update inventory, raise job cards, and request service for your assigned substation — visible to Spectrum Consultants in real time.",
-    features: [
-      { icon: Boxes, label: "Track and update stock at your substation" },
-      { icon: Wrench, label: "Raise job cards and service requests" },
-      { icon: ShieldCheck, label: "Access limited to your assigned substation" },
-    ],
-    switchHref: "/login",
-    switchLabel: "Spectrum Admin? Sign in here",
-  },
-  kptcl_engineer: {
-    heading: "KPTCL sign-in",
-    subheading: "Sign in to track and acknowledge service work",
-    emailPlaceholder: "engineer@kptcl.gov.in",
-    panelTitleLine1: "Service Tracking",
-    panelTitleLine2: "For KPTCL Engineers",
-    panelDescription:
-      "View the status of all service and maintenance work at your station. Acknowledge completed work and maintain a transparent record of all jobs.",
-    features: [
-      { icon: ClipboardList, label: "Track all job cards at your station" },
-      { icon: ShieldCheck, label: "Digitally acknowledge completed work" },
-      { icon: Wrench, label: "Transparent record of all service history" },
-    ],
-    switchHref: "/login",
-    switchLabel: "Spectrum Admin? Sign in here",
-  },
-} as const;
-
-export function LoginForm({ role }: { role: Role }) {
+export function LoginForm() {
   const router = useRouter();
-  const config = VARIANTS[role];
   const [showPassword, setShowPassword] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
 
-  // Supabase may redirect back to any page (e.g. site root or /login) with
-  // #access_token=...&type=invite|recovery in the hash. Catch it here and
-  // forward to the set-password page so the user sees the right form.
+  // Supabase may redirect back here with #access_token=...&type=invite|recovery
+  // in the hash. Forward to the set-password page so the user sees the right form.
   React.useEffect(() => {
     if (typeof window === "undefined") return;
     const hash = window.location.hash.substring(1);
@@ -130,34 +80,15 @@ export function LoginForm({ role }: { role: Role }) {
       return;
     }
 
-    if (profile.role !== role) {
-      const ROLE_LABELS: Record<string, string> = {
-        spectrum_admin: "Spectrum Admin",
-        account_executive: "Account Executive",
-        service_engineer: "Service Engineer",
-        kptcl_engineer: "KPTCL Engineer",
-      };
-      const ROLE_PAGES: Record<string, string> = {
-        spectrum_admin: "/login",
-        account_executive: "/login/ae",
-        service_engineer: "/login/se",
-        kptcl_engineer: "/login/kptcl",
-      };
-      const label = ROLE_LABELS[profile.role] ?? "a different role";
-      const page  = ROLE_PAGES[profile.role]  ?? "/login";
-      setError(`This account is registered as a ${label}. Please use the ${label} sign-in page.`);
+    const destination = ROLE_DESTINATION[profile.role];
+    if (!destination) {
+      setError("Unrecognised account role. Contact your administrator.");
       await supabase.auth.signOut();
       setLoading(false);
       return;
     }
 
-    const destination: Record<string, string> = {
-      spectrum_admin: "/admin",
-      account_executive: "/ae",
-      service_engineer: "/se",
-      kptcl_engineer: "/kptcl",
-    };
-    router.push(destination[profile.role] ?? "/login");
+    router.push(destination);
     router.refresh();
   }
 
@@ -190,14 +121,20 @@ export function LoginForm({ role }: { role: Role }) {
         <div className="relative space-y-8">
           <div>
             <h1 className="text-3xl xl:text-4xl font-semibold leading-tight tracking-tight">
-              {config.panelTitleLine1}
-              <br /> {config.panelTitleLine2}
+              Substation Inventory &<br /> Maintenance Management
             </h1>
-            <p className="text-blue-200/70 text-sm mt-4 max-w-md leading-relaxed">{config.panelDescription}</p>
+            <p className="text-blue-200/70 text-sm mt-4 max-w-md leading-relaxed">
+              A single, centralized platform for Spectrum Consultants to track inventory,
+              maintenance, and equipment health across every KTPCL region and substation.
+            </p>
           </div>
 
           <div className="space-y-4">
-            {config.features.map((f, i) => (
+            {[
+              { icon: ClipboardList, label: "Job cards & preventive maintenance tracking" },
+              { icon: ShieldCheck,   label: "Role-based, secure access control" },
+              { icon: Wrench,        label: "Region & substation-wide visibility" },
+            ].map((f, i) => (
               <div key={i} className="flex items-center gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 border border-white/10">
                   <f.icon className="h-4 w-4 text-blue-300" />
@@ -221,8 +158,8 @@ export function LoginForm({ role }: { role: Role }) {
             <span className="text-sm font-semibold text-foreground">KTPCL SIMMS</span>
           </div>
 
-          <h2 className="text-2xl font-semibold text-foreground tracking-tight">{config.heading}</h2>
-          <p className="text-sm text-foreground-secondary mt-1.5">{config.subheading}</p>
+          <h2 className="text-2xl font-semibold text-foreground tracking-tight">Welcome back</h2>
+          <p className="text-sm text-foreground-secondary mt-1.5">Sign in to your KTPCL SIMMS account</p>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-5">
             {error && (
@@ -237,7 +174,7 @@ export function LoginForm({ role }: { role: Role }) {
               <Input
                 id="email"
                 type="email"
-                placeholder={config.emailPlaceholder}
+                placeholder="your@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -281,12 +218,6 @@ export function LoginForm({ role }: { role: Role }) {
               {!loading && <ArrowRight className="h-4 w-4" />}
             </Button>
           </form>
-
-          <p className="mt-6 text-center text-sm text-foreground-secondary">
-            <Link href={config.switchHref} className="font-medium text-accent hover:underline">
-              {config.switchLabel}
-            </Link>
-          </p>
 
           <p className="mt-8 text-center text-xs text-foreground-secondary">
             Trouble signing in? Contact your Spectrum Consultants system administrator.

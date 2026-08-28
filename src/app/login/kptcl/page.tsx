@@ -1,7 +1,5 @@
-import { LoginForm } from "@/components/auth/login-form";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "KPTCL Sign In — KTPCL SIMMS" };
-
-export default function KPTCLLoginPage() {
-  return <LoginForm role="kptcl_engineer" />;
+export default function KPTCLLoginRedirect() {
+  redirect("/login");
 }
