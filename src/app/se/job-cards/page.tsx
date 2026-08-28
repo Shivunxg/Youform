@@ -118,7 +118,7 @@ export default function SEJobCardsPage() {
             changedByName:
               (h.profiles as unknown as { name: string } | null)?.name ?? null,
           }));
-          return {
+          return [{
             id: jc.id,
             jobCardNumber: jc.job_card_number,
             stationName: jc.hierarchy_nodes?.name ?? "—",
