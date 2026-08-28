@@ -90,9 +90,13 @@ export async function POST(req: NextRequest) {
     stationName,
     inviteLink,
   });
-  await sendEmail({ to: email, subject, html }).catch((e) =>
-    console.warn("[invite] email failed:", e)
-  );
+  const emailResult = await sendEmail({ to: email, subject, html }).catch((e) => {
+    console.error("[invite] email exception:", e);
+    return { success: false, error: String(e) };
+  });
+  console.log("[invite] email result:", JSON.stringify(emailResult));
+  console.log("[invite] from:", process.env.EMAIL_FROM ?? "KTPCL SIMMS <noreply@spectrumconsultants.co.in>");
+  console.log("[invite] RESEND_API_KEY set:", !!process.env.RESEND_API_KEY);
 
-  return NextResponse.json({ id: userId });
+  return NextResponse.json({ id: userId, emailSent: emailResult.success });
 }
