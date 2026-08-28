@@ -34,7 +34,7 @@ export async function middleware(request: NextRequest) {
 
   if (isProtected && !user) {
     const url = request.nextUrl.clone();
-    url.pathname = path.startsWith("/kptcl") ? "/login/kptcl" : "/login";
+    url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 

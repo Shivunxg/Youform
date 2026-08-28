@@ -52,21 +52,22 @@ export default async function SEDashboardPage() {
     .order("assigned_at", { ascending: false })
     .limit(10);
 
-  const jobCards = (assignments ?? []).map((a) => {
+  const jobCards = (assignments ?? []).flatMap((a) => {
     const jc = a.job_cards as unknown as {
       id: string;
       job_card_number: string;
       current_status: string;
       created_at: string;
       hierarchy_nodes: { name: string } | null;
-    };
-    return {
+    } | null;
+    if (!jc) return [];
+    return [{
       id: jc.id,
       jobCardNumber: jc.job_card_number,
       currentStatus: jc.current_status,
       stationName: jc.hierarchy_nodes?.name ?? "—",
       createdAt: jc.created_at,
-    };
+    }];
   });
 
   return (

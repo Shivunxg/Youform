@@ -75,7 +75,10 @@ export default function SEJobCardsPage() {
         .order("assigned_at", { ascending: false });
 
       const jobCardIds =
-        assignments?.map((a) => (a.job_cards as unknown as { id: string }).id) ?? [];
+        assignments?.flatMap((a) => {
+          const jc = a.job_cards as unknown as { id: string } | null;
+          return jc ? [jc.id] : [];
+        }) ?? [];
 
       const { data: historyData } =
         jobCardIds.length > 0
@@ -94,7 +97,7 @@ export default function SEJobCardsPage() {
       }
 
       setRows(
-        (assignments ?? []).map((a) => {
+        (assignments ?? []).flatMap((a) => {
           const jc = a.job_cards as unknown as {
             id: string;
             job_card_number: string;
@@ -106,7 +109,8 @@ export default function SEJobCardsPage() {
             hierarchy_nodes: { name: string } | null;
             voltage_classes: { name: string } | null;
             equipment_types: { name: string } | null;
-          };
+          } | null;
+          if (!jc) return [];
           const hist = (historyByCard.get(jc.id) ?? []).map((h) => ({
             toStatus: h.to_status,
             createdAt: h.created_at,
@@ -126,7 +130,7 @@ export default function SEJobCardsPage() {
             equipmentType: jc.equipment_types?.name ?? null,
             createdAt: jc.created_at,
             history: hist,
-          };
+          }];
         })
       );
       setLoading(false);
