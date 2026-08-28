@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { UserCircle, MoreHorizontal, Ban, CheckCircle2, Pencil, UserPlus, Trash2, KeyRound } from "lucide-react";
+import { UserCircle, MoreHorizontal, Ban, CheckCircle2, Pencil, UserPlus, Trash2, KeyRound, Send } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -221,6 +221,21 @@ export default function AdminUsersPage() {
 
   const needsStation = inviteRole === "kptcl_engineer";
 
+  async function resendInvite(r: Row) {
+    if (!r.email) return;
+    const res = await fetch("/api/admin/resend-invite", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: r.id }),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      alert(`Failed to resend invite: ${json.error ?? "Unknown error"}`);
+      return;
+    }
+    alert(`Invite resent to ${r.email}`);
+  }
+
   async function sendPasswordReset(r: Row) {
     if (!r.email) return;
     await fetch("/api/auth/forgot-password", {
@@ -352,6 +367,9 @@ export default function AdminUsersPage() {
                               <Pencil className="h-4 w-4" /> Assign Stations
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuItem onClick={() => resendInvite(u)}>
+                            <Send className="h-4 w-4" /> Resend invite
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => sendPasswordReset(u)}>
                             <KeyRound className="h-4 w-4" /> Send password reset
                           </DropdownMenuItem>
