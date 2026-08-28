@@ -18,7 +18,15 @@ import {
 } from "@/components/ui/dialog";
 import { PageToolbar, EmptyState } from "@/components/data-table/toolbar";
 import { createClient } from "@/lib/supabase/client";
-import { fmtDateIST, fmtIST } from "@/lib/ist";
+import { fmtDateIST, fmtIST, ageingDays } from "@/lib/ist";
+
+const OPEN_STATUSES = new Set(["quotation_shared", "order_received"]);
+
+function ageBadgeColor(days: number, threshold: number) {
+  if (days <= threshold)       return "bg-green-50 border-green-200 text-green-700";
+  if (days <= threshold * 2)   return "bg-amber-50 border-amber-200 text-amber-700";
+  return "bg-red-50 border-red-200 text-red-700";
+}
 
 const STATUS_LABEL: Record<string, string> = {
   quotation_shared: "Quotation Shared",
@@ -98,12 +106,13 @@ export default function AEJobCardsPage() {
     remarks: "",
   });
   const [saving, setSaving] = React.useState(false);
+  const [ageingThreshold, setAgeingThreshold] = React.useState(30);
 
   React.useEffect(() => { loadData(); }, []);
 
   async function loadData() {
     setLoading(true);
-    const [{ data: jcData }, { data: histData }, { data: stationData }] = await Promise.all([
+    const [{ data: jcData }, { data: histData }, { data: stationData }, { data: settingsData }] = await Promise.all([
       supabase
         .from("job_cards")
         .select(
@@ -115,8 +124,11 @@ export default function AEJobCardsPage() {
         .select("job_card_id, to_status, created_at, note, profiles!changed_by(name)")
         .order("created_at", { ascending: true }),
       supabase.from("hierarchy_nodes").select("id, name, code").eq("level", 4).eq("status", "active").order("name"),
+      supabase.from("app_settings").select("key, value"),
     ]);
     setStations(stationData ?? []);
+    const settingsMap = Object.fromEntries((settingsData ?? []).map((s) => [s.key, s.value]));
+    if (settingsMap["ageing_threshold_days"]) setAgeingThreshold(parseInt(settingsMap["ageing_threshold_days"], 10));
 
     const histByCard = new Map<string, Row["history"]>();
     for (const h of histData ?? []) {
@@ -274,40 +286,49 @@ export default function AEJobCardsPage() {
               />
             ) : (
               <div className="space-y-1">
-                {filtered.map((row) => (
-                  <button
-                    key={row.id}
-                    onClick={() => setSelectedId(row.id === selectedId ? null : row.id)}
-                    className={`w-full text-left flex items-center gap-3 py-2.5 border-b border-border last:border-0 hover:bg-hover/50 -mx-2 px-2 rounded-lg transition-colors ${selectedId === row.id ? "bg-blue-50" : ""}`}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-foreground">{row.jobCardNumber}</p>
-                        <Badge
-                          variant={
-                            PRIORITY_VARIANT[row.priority as keyof typeof PRIORITY_VARIANT]
-                          }
-                          className="capitalize"
-                        >
-                          {row.priority}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-foreground-secondary mt-0.5 truncate">
-                        {row.voltageClass ?? "—"}
-                        {row.equipmentType ? ` · ${row.equipmentType}` : ""}
-                        {" · "}
-                        {fmtDateIST(row.createdAt)}
-                      </p>
-                    </div>
-                    <Badge
-                      variant={STATUS_VARIANT[row.currentStatus] ?? "default"}
-                      dot
-                      className="shrink-0"
+                {filtered.map((row) => {
+                  const days = ageingDays(row.createdAt);
+                  const isOpen = OPEN_STATUSES.has(row.currentStatus);
+                  const showAge = isOpen && days > 0;
+                  const isOverdue = isOpen && days > ageingThreshold;
+                  return (
+                    <button
+                      key={row.id}
+                      onClick={() => setSelectedId(row.id === selectedId ? null : row.id)}
+                      className={`w-full text-left flex items-center gap-3 py-2.5 border-b border-border last:border-0 hover:bg-hover/50 -mx-2 px-2 rounded-lg transition-colors ${selectedId === row.id ? "bg-blue-50" : ""} ${isOverdue && days > ageingThreshold * 2 ? "border-l-2 border-l-red-400" : isOverdue ? "border-l-2 border-l-amber-400" : ""}`}
                     >
-                      {STATUS_LABEL[row.currentStatus] ?? row.currentStatus}
-                    </Badge>
-                  </button>
-                ))}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-medium text-foreground">{row.jobCardNumber}</p>
+                          <Badge
+                            variant={PRIORITY_VARIANT[row.priority as keyof typeof PRIORITY_VARIANT]}
+                            className="capitalize"
+                          >
+                            {row.priority}
+                          </Badge>
+                          {showAge && (
+                            <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded border ${ageBadgeColor(days, ageingThreshold)}`}>
+                              {days}d
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-foreground-secondary mt-0.5 truncate">
+                          {row.voltageClass ?? "—"}
+                          {row.equipmentType ? ` · ${row.equipmentType}` : ""}
+                          {" · "}
+                          {fmtDateIST(row.createdAt)}
+                        </p>
+                      </div>
+                      <Badge
+                        variant={STATUS_VARIANT[row.currentStatus] ?? "default"}
+                        dot
+                        className="shrink-0"
+                      >
+                        {STATUS_LABEL[row.currentStatus] ?? row.currentStatus}
+                      </Badge>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </CardContent>
