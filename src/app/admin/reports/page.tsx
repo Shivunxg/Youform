@@ -3,12 +3,14 @@
 
 import * as React from "react";
 import {
-  BarChart, Bar, LineChart, Line, FunnelChart, Funnel,
+  BarChart, Bar, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, Cell, PieChart, Pie,
 } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { AlertCircle, Users, UserX, CheckCircle2, FileText, TrendingUp, RotateCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { fmtDateIST, ageingDays } from "@/lib/ist";
 
@@ -262,26 +264,42 @@ export default function AdminReportsPage() {
 
   const drillList = activeTile ? kpiLists[activeTile] : null;
 
+  const hasFilters = zone || circle || division || station || dateFrom || dateTo;
+
+  function resetFilters() {
+    setZone(""); setCircle(""); setDivision(""); setStation("");
+    setDateFrom(""); setDateTo("");
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground tracking-tight">Analytics & Reports</h1>
-        <p className="text-sm text-foreground-secondary mt-1">
-          Service management metrics across the network
-        </p>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground tracking-tight">Analytics & Reports</h1>
+          <p className="text-sm text-foreground-secondary mt-1">
+            Service management metrics across the KTPCL network
+          </p>
+        </div>
+        {!loading && (
+          <div className="shrink-0 flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2">
+            <span className="text-xs text-foreground-secondary">Total Jobs</span>
+            <span className="text-lg font-bold text-foreground">{filtered.length}</span>
+          </div>
+        )}
       </div>
 
       {/* Filters */}
       <Card>
         <CardContent className="pt-4 pb-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="flex flex-wrap items-end gap-3">
             {[
               { label: "Zone", value: zone, onChange: (v: string) => { setZone(v); setCircle(""); setDivision(""); setStation(""); }, options: zones },
               { label: "Circle", value: circle, onChange: (v: string) => { setCircle(v); setDivision(""); setStation(""); }, options: circles },
               { label: "Division", value: division, onChange: (v: string) => { setDivision(v); setStation(""); }, options: divisions },
               { label: "Station", value: station, onChange: setStation, options: stations },
             ].map((f) => (
-              <div key={f.label}>
+              <div key={f.label} className="flex-1 min-w-[120px]">
                 <p className="text-[11px] font-semibold text-foreground-secondary uppercase mb-1">{f.label}</p>
                 <select
                   className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
@@ -293,14 +311,19 @@ export default function AdminReportsPage() {
                 </select>
               </div>
             ))}
-            <div>
+            <div className="flex-1 min-w-[120px]">
               <p className="text-[11px] font-semibold text-foreground-secondary uppercase mb-1">From</p>
               <input type="date" className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
             </div>
-            <div>
+            <div className="flex-1 min-w-[120px]">
               <p className="text-[11px] font-semibold text-foreground-secondary uppercase mb-1">To</p>
               <input type="date" className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
             </div>
+            {hasFilters && (
+              <Button variant="outline" size="sm" onClick={resetFilters} className="gap-1.5 h-[34px]">
+                <RotateCcw className="h-3.5 w-3.5" /> Reset
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -309,39 +332,129 @@ export default function AdminReportsPage() {
         <p className="text-sm text-foreground-secondary text-center py-12">Loading analytics…</p>
       ) : (
         <>
-          {/* Revenue KPIs */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {REVENUE_TILES.map((t) => (
-              <div key={t.label} className="rounded-xl border border-border bg-background p-4">
-                <p className="text-xs text-foreground-secondary">{t.label}</p>
-                <p className={`text-xl font-bold mt-1 ${t.color}`}>{t.value}</p>
+          {/* ── PRIMARY KPIs: the 3 operational metrics ── */}
+          <div>
+            <p className="text-xs font-semibold text-foreground-secondary uppercase tracking-wide mb-3">Operations Overview</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Open Jobs */}
+              <button
+                onClick={() => setActiveTile(activeTile === "open" ? null : "open")}
+                className={`rounded-xl border bg-background p-5 text-left transition-all hover:shadow-md group ${activeTile === "open" ? "border-amber-400 ring-2 ring-amber-100 shadow-md" : "border-border hover:border-amber-300"}`}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50">
+                    <AlertCircle className="h-5 w-5 text-amber-600" />
+                  </div>
+                  {ageingCount > 0 && (
+                    <span className="text-[11px] font-semibold bg-red-50 text-red-600 border border-red-200 rounded-full px-2 py-0.5">{ageingCount} ageing</span>
+                  )}
+                </div>
+                <p className="text-3xl font-bold text-amber-600">{kpiLists.open.length}</p>
+                <p className="text-sm font-medium text-foreground mt-0.5">Open Jobs</p>
+                <p className="text-xs text-foreground-secondary mt-1">Click to drill down</p>
+              </button>
+
+              {/* SE Assigned */}
+              <button
+                onClick={() => setActiveTile(activeTile === "assigned" ? null : "assigned")}
+                className={`rounded-xl border bg-background p-5 text-left transition-all hover:shadow-md group ${activeTile === "assigned" ? "border-indigo-400 ring-2 ring-indigo-100 shadow-md" : "border-border hover:border-indigo-300"}`}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50">
+                    <Users className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <span className="text-[11px] font-semibold bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-full px-2 py-0.5">
+                    {filtered.length > 0 ? Math.round((kpiLists.assigned.length / filtered.length) * 100) : 0}% of total
+                  </span>
+                </div>
+                <p className="text-3xl font-bold text-indigo-600">{kpiLists.assigned.length}</p>
+                <p className="text-sm font-medium text-foreground mt-0.5">Service Engineer Assigned</p>
+                <p className="text-xs text-foreground-secondary mt-1">Jobs with an SE attached</p>
+              </button>
+
+              {/* Not Assigned */}
+              <button
+                onClick={() => setActiveTile(activeTile === "not_assigned" ? null : "not_assigned")}
+                className={`rounded-xl border bg-background p-5 text-left transition-all hover:shadow-md group ${activeTile === "not_assigned" ? "border-rose-400 ring-2 ring-rose-100 shadow-md" : "border-border hover:border-rose-300"}`}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-rose-50">
+                    <UserX className="h-5 w-5 text-rose-600" />
+                  </div>
+                  {kpiLists.not_assigned.length > 0 && (
+                    <span className="text-[11px] font-semibold bg-rose-50 text-rose-600 border border-rose-200 rounded-full px-2 py-0.5">Action needed</span>
+                  )}
+                </div>
+                <p className="text-3xl font-bold text-rose-600">{kpiLists.not_assigned.length}</p>
+                <p className="text-sm font-medium text-foreground mt-0.5">Not Assigned</p>
+                <p className="text-xs text-foreground-secondary mt-1">Jobs without a service engineer</p>
+              </button>
+            </div>
+          </div>
+
+          {/* ── SECONDARY KPIs: completion + revenue ── */}
+          <div>
+            <p className="text-xs font-semibold text-foreground-secondary uppercase tracking-wide mb-3">Performance & Revenue</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+              <button
+                onClick={() => setActiveTile(activeTile === "completed" ? null : "completed")}
+                className={`rounded-xl border bg-background p-4 text-left transition-all hover:shadow-sm col-span-1 ${activeTile === "completed" ? "border-green-400 ring-2 ring-green-100" : "border-border"}`}
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-50 mb-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                </div>
+                <p className="text-2xl font-bold text-green-600">{kpiLists.completed.length}</p>
+                <p className="text-xs text-foreground-secondary mt-0.5">Orders Completed</p>
+              </button>
+
+              <button
+                onClick={() => setActiveTile(activeTile === "mom" ? null : "mom")}
+                className={`rounded-xl border bg-background p-4 text-left transition-all hover:shadow-sm col-span-1 ${activeTile === "mom" ? "border-blue-400 ring-2 ring-blue-100" : "border-border"}`}
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 mb-2">
+                  <FileText className="h-4 w-4 text-blue-600" />
+                </div>
+                <p className="text-2xl font-bold text-blue-600">{kpiLists.mom.length}</p>
+                <p className="text-xs text-foreground-secondary mt-0.5">MOM Logged</p>
+              </button>
+
+              <div className="rounded-xl border border-border bg-background p-4">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 mb-2">
+                  <TrendingUp className="h-4 w-4 text-slate-600" />
+                </div>
+                <p className="text-2xl font-bold text-foreground">{winRate}%</p>
+                <p className="text-xs text-foreground-secondary mt-0.5">Win Rate</p>
               </div>
-            ))}
+
+              <div className="rounded-xl border border-border bg-background p-4">
+                <p className="text-[10px] font-semibold text-foreground-secondary uppercase mb-2">Billed</p>
+                <p className="text-xl font-bold text-foreground">{fmtRupee(revenueBilled)}</p>
+                <p className="text-xs text-foreground-secondary mt-0.5">Revenue Billed</p>
+              </div>
+
+              <div className="rounded-xl border border-border bg-background p-4">
+                <p className="text-[10px] font-semibold text-foreground-secondary uppercase mb-2">Collected</p>
+                <p className="text-xl font-bold text-green-600">{fmtRupee(revenueCollected)}</p>
+                <p className="text-xs text-foreground-secondary mt-0.5">Revenue Collected</p>
+              </div>
+
+              <div className="rounded-xl border border-border bg-background p-4">
+                <p className="text-[10px] font-semibold text-foreground-secondary uppercase mb-2">Outstanding</p>
+                <p className="text-xl font-bold text-amber-600">{fmtRupee(revenueBilled - revenueCollected)}</p>
+                <p className="text-xs text-foreground-secondary mt-0.5">Pending Collection</p>
+              </div>
+            </div>
           </div>
 
-          {/* Volume KPI tiles */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
-            {TILES.map((t) => {
-              const isActive = activeTile === t.key;
-              return (
-                <button
-                  key={t.key}
-                  onClick={() => setActiveTile(isActive ? null : t.key)}
-                  className={`rounded-xl border bg-background p-4 text-left transition-all hover:shadow-sm ${isActive ? "border-accent ring-2 ring-accent/20 shadow-sm" : "border-border"}`}
-                >
-                  <p className="text-xs text-foreground-secondary">{t.label}</p>
-                  <p className={`text-2xl font-bold mt-1 ${t.color}`}>{t.value}</p>
-                  <p className="text-[11px] text-foreground-secondary mt-1">{t.sub}</p>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Drill-down list */}
+          {/* ── Drill-down table ── */}
           {activeTile && drillList && (
             <Card>
-              <CardHeader>
-                <CardTitle>{TILES.find((t) => t.key === activeTile)?.label} — {drillList.length} records</CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>{TILES.find((t) => t.key === activeTile)?.label}</CardTitle>
+                  <p className="text-sm text-foreground-secondary mt-0.5">{drillList.length} job card{drillList.length !== 1 ? "s" : ""}</p>
+                </div>
+                <button onClick={() => setActiveTile(null)} className="text-xs text-foreground-secondary hover:text-foreground">✕ Close</button>
               </CardHeader>
               <CardContent className="pt-0">
                 {drillList.length === 0 ? (
@@ -350,12 +463,12 @@ export default function AdminReportsPage() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-border text-left">
-                          <th className="pb-2 pr-4 text-xs font-semibold text-foreground-secondary uppercase">Job Card</th>
-                          <th className="pb-2 pr-4 text-xs font-semibold text-foreground-secondary uppercase">Station</th>
-                          <th className="pb-2 pr-4 text-xs font-semibold text-foreground-secondary uppercase">Status</th>
-                          <th className="pb-2 pr-4 text-xs font-semibold text-foreground-secondary uppercase">Raised</th>
-                          <th className="pb-2 text-xs font-semibold text-foreground-secondary uppercase">Age</th>
+                        <tr className="border-b border-border text-left bg-background-secondary/40">
+                          <th className="px-3 pb-2 pt-2 text-xs font-semibold text-foreground-secondary uppercase">Job Card</th>
+                          <th className="px-3 pb-2 pt-2 text-xs font-semibold text-foreground-secondary uppercase">Station</th>
+                          <th className="px-3 pb-2 pt-2 text-xs font-semibold text-foreground-secondary uppercase">Status</th>
+                          <th className="px-3 pb-2 pt-2 text-xs font-semibold text-foreground-secondary uppercase">Raised</th>
+                          <th className="px-3 pb-2 pt-2 text-xs font-semibold text-foreground-secondary uppercase">Age</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -364,18 +477,18 @@ export default function AdminReportsPage() {
                           const isOpen = OPEN_STATUSES.includes(jc.current_status);
                           return (
                             <tr key={jc.id} className="border-b border-border last:border-0 hover:bg-hover/40">
-                              <td className="py-2 pr-4 font-medium">{jc.job_card_number}</td>
-                              <td className="py-2 pr-4 text-foreground-secondary">
+                              <td className="px-3 py-2.5 font-medium font-mono text-xs">{jc.job_card_number}</td>
+                              <td className="px-3 py-2.5 text-foreground-secondary text-xs">
                                 {jc.stationName}
-                                {jc.voltageClass ? <span className="ml-1 text-[11px]">· {jc.voltageClass}</span> : null}
+                                {jc.voltageClass ? <span className="ml-1 opacity-60">· {jc.voltageClass}</span> : null}
                               </td>
-                              <td className="py-2 pr-4">
+                              <td className="px-3 py-2.5">
                                 <Badge variant={STATUS_VARIANT[jc.current_status] ?? "default"} dot>
                                   {STATUS_LABEL[jc.current_status] ?? jc.current_status}
                                 </Badge>
                               </td>
-                              <td className="py-2 pr-4 text-foreground-secondary">{fmtDateIST(jc.created_at)}</td>
-                              <td className={`py-2 font-semibold ${isOpen ? ageColor(days) : "text-foreground-secondary"}`}>{days}d</td>
+                              <td className="px-3 py-2.5 text-foreground-secondary text-xs">{fmtDateIST(jc.created_at)}</td>
+                              <td className={`px-3 py-2.5 font-semibold text-xs ${isOpen ? ageColor(days) : "text-foreground-secondary"}`}>{days}d</td>
                             </tr>
                           );
                         })}
@@ -387,7 +500,7 @@ export default function AdminReportsPage() {
             </Card>
           )}
 
-          {/* Charts row 1 — Monthly trend */}
+          {/* ── Charts row 1 — Monthly trend + Status pie ── */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
             <Card className="xl:col-span-2">
               <CardHeader>
@@ -403,9 +516,7 @@ export default function AdminReportsPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border, #e5e7eb)" />
                       <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                       <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                      <Tooltip
-                        contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e5e7eb" }}
-                      />
+                      <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e5e7eb" }} />
                       <Legend wrapperStyle={{ fontSize: 12 }} />
                       <Bar dataKey="raised" name="Raised" fill="#3b82f6" radius={[3, 3, 0, 0]} />
                       <Bar dataKey="won" name="Won" fill="#10b981" radius={[3, 3, 0, 0]} />
@@ -416,11 +527,10 @@ export default function AdminReportsPage() {
               </CardContent>
             </Card>
 
-            {/* Status distribution pie */}
             <Card>
               <CardHeader>
                 <CardTitle>Status Distribution</CardTitle>
-                <CardDescription>All {filtered.length} job cards by current status</CardDescription>
+                <CardDescription>{filtered.length} job cards by current status</CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
                 {pieData.length === 0 ? (
@@ -429,18 +539,8 @@ export default function AdminReportsPage() {
                   <>
                     <ResponsiveContainer width="100%" height={180}>
                       <PieChart>
-                        <Pie
-                          data={pieData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={48}
-                          outerRadius={80}
-                          paddingAngle={2}
-                          dataKey="value"
-                        >
-                          {pieData.map((_, i) => (
-                            <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                          ))}
+                        <Pie data={pieData} cx="50%" cy="50%" innerRadius={48} outerRadius={80} paddingAngle={2} dataKey="value">
+                          {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                         </Pie>
                         <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e5e7eb" }} />
                       </PieChart>
@@ -462,7 +562,7 @@ export default function AdminReportsPage() {
             </Card>
           </div>
 
-          {/* Charts row 2 — Revenue trend + Funnel */}
+          {/* ── Charts row 2 — Revenue trend + Funnel ── */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
             <Card className="xl:col-span-2">
               <CardHeader>
@@ -478,10 +578,7 @@ export default function AdminReportsPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border, #e5e7eb)" />
                       <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                       <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => fmtRupee(v)} width={60} />
-                      <Tooltip
-                        contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e5e7eb" }}
-                        formatter={(v: number) => fmtRupee(v)}
-                      />
+                      <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e5e7eb" }} formatter={(v: number) => fmtRupee(v)} />
                       <Legend wrapperStyle={{ fontSize: 12 }} />
                       <Line type="monotone" dataKey="billed" name="Billed" stroke="#3b82f6" strokeWidth={2} dot={false} />
                       <Line type="monotone" dataKey="collected" name="Collected" stroke="#10b981" strokeWidth={2} dot={false} />
@@ -491,26 +588,22 @@ export default function AdminReportsPage() {
               </CardContent>
             </Card>
 
-            {/* Conversion funnel */}
             <Card>
               <CardHeader>
                 <CardTitle>Conversion Funnel</CardTitle>
                 <CardDescription>Quotation → Payment pipeline</CardDescription>
               </CardHeader>
-              <CardContent className="pt-0 space-y-2 pt-2">
-                {funnelData.map((step, i) => {
+              <CardContent className="pt-0 space-y-3 pt-2">
+                {funnelData.map((step) => {
                   const pct = funnelData[0].value === 0 ? 0 : Math.round((step.value / funnelData[0].value) * 100);
                   return (
                     <div key={step.name}>
                       <div className="flex items-center justify-between text-xs mb-1">
                         <span className="text-foreground-secondary truncate">{step.name}</span>
-                        <span className="font-semibold text-foreground ml-2">{step.value} <span className="text-foreground-secondary font-normal">({pct}%)</span></span>
+                        <span className="font-semibold text-foreground ml-2 shrink-0">{step.value} <span className="text-foreground-secondary font-normal">({pct}%)</span></span>
                       </div>
-                      <div className="h-5 rounded bg-slate-100 overflow-hidden">
-                        <div
-                          className="h-5 rounded transition-all"
-                          style={{ width: `${pct}%`, background: step.fill }}
-                        />
+                      <div className="h-4 rounded-full bg-slate-100 overflow-hidden">
+                        <div className="h-4 rounded-full transition-all" style={{ width: `${pct}%`, background: step.fill }} />
                       </div>
                     </div>
                   );
@@ -519,12 +612,12 @@ export default function AdminReportsPage() {
             </Card>
           </div>
 
-          {/* Station-wise bar chart */}
+          {/* ── Station-wise bar chart ── */}
           {stationData.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle>Station-wise Performance</CardTitle>
-                <CardDescription>Open jobs, completed jobs, and revenue billed per station (top 10)</CardDescription>
+                <CardDescription>Open jobs, completed jobs, and revenue billed — top 10 stations</CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
                 <ResponsiveContainer width="100%" height={280}>
