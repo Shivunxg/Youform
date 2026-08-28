@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/emails/send";
 import {
   jobCardAssignedEmail,
+  jobCardUnassignedEmail,
   jobCardStatusChangedEmail,
   kptclAckRequiredEmail,
   proposalSharedEmail,
@@ -51,6 +52,30 @@ export async function POST(req: NextRequest) {
         );
 
         return NextResponse.json({ sent: results.filter((r) => r.status === "fulfilled").length });
+      }
+
+      // ── Engineer removed from a job card
+      case "job_card_unassigned": {
+        const { engineerIds, jobCardNumber, stationName } = body;
+
+        const { data: engineers } = await supabase
+          .from("profiles")
+          .select("id, name, email")
+          .in("id", engineerIds);
+
+        await Promise.allSettled(
+          (engineers ?? []).filter((e) => e.email).map((eng) => {
+            const { subject, html } = jobCardUnassignedEmail({
+              engineerName: eng.name ?? eng.email,
+              jobCardNumber,
+              stationName,
+              appUrl: APP_URL,
+            });
+            return sendEmail({ to: eng.email!, subject, html });
+          })
+        );
+
+        return NextResponse.json({ ok: true });
       }
 
       // ── Job card status changed — notify all assigned engineers + AE

@@ -163,7 +163,29 @@ export function jobCardAssignedEmail(data: JobCardAssignedData): { subject: stri
   };
 }
 
-// ── 4. Job Card Status Changed ───────────────────────────────────────────────
+// ── 4. Job Card Unassigned ──────────────────────────────────────────────────
+export interface JobCardUnassignedData {
+  engineerName: string;
+  jobCardNumber: string;
+  stationName: string;
+  appUrl: string;
+}
+
+export function jobCardUnassignedEmail(data: JobCardUnassignedData): { subject: string; html: string } {
+  const content = `
+    ${h1("You've been removed from a job card")}
+    ${p(`Hi ${data.engineerName},`)}
+    ${p(`You have been unassigned from job card <strong>${data.jobCardNumber}</strong> at <strong>${data.stationName}</strong>. No further action is required from you for this job.`)}
+    ${p("If you believe this is a mistake, please contact your Spectrum Consultants administrator.", true)}
+  `;
+
+  return {
+    subject: `Unassigned: Job Card ${data.jobCardNumber} — ${data.stationName}`,
+    html:    baseLayout(content, `You have been removed from job card ${data.jobCardNumber} at ${data.stationName}.`),
+  };
+}
+
+// ── 5. Job Card Status Changed ───────────────────────────────────────────────
 export interface JobCardStatusChangedData {
   recipientName: string;
   jobCardNumber: string;

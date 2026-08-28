@@ -316,6 +316,20 @@ export default function AdminJobCardsPage() {
       );
     }
 
+    // Email removed engineers
+    if (toRemove.length > 0 && selected) {
+      fetch("/api/email/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type:          "job_card_unassigned",
+          engineerIds:   toRemove,
+          jobCardNumber: selected.jobCardNumber,
+          stationName:   selected.stationName,
+        }),
+      }).catch(() => {});
+    }
+
     // Email newly assigned engineers
     if (toAdd.length > 0 && selected) {
       fetch("/api/email/notify", {
