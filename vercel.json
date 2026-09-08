@@ -95,6 +95,7 @@
     { "src": "/blog/typeform-alternative-free-guide", "dest": "/frontend/blog-typeform-alternative-free-guide.html" },
     { "src": "/blog/client-intake-form-template-guide", "dest": "/frontend/blog-client-intake-form-template-guide.html" },
     { "src": "/blog/how-to-embed-form-on-website", "dest": "/frontend/blog-how-to-embed-form-on-website.html" },
+    { "src": "/blog/lead-capture-form-best-practices", "dest": "/frontend/blog-lead-capture-form-best-practices.html" },
     { "src": "/", "dest": "/frontend/marketing.html" },
     { "src": "/marketing", "dest": "/frontend/marketing.html" },
     { "src": "/marketing.html", "dest": "/frontend/marketing.html" },
