@@ -56,6 +56,7 @@ Every form is self-hosted on FormFlowX's infrastructure. Responses are stored se
 - [How to Embed a Form on Any Website (No Code Required)](https://formflowx.com/blog/how-to-embed-form-on-website): Step-by-step guide to embedding a form on WordPress, Squarespace, Wix, Webflow, Shopify, and plain HTML sites
 - [Lead Capture Form Best Practices: 8 Ways to Get More Sign-Ups](https://formflowx.com/blog/lead-capture-form-best-practices): Eight proven tactics — field count, copy, placement, conditional logic, and instant follow-up — to boost lead capture form conversions
 - [How to Add Conditional Logic to Forms — No Code Guide](https://formflowx.com/blog/conditional-logic-forms-guide): If-then rules and branching patterns to show respondents only the questions that apply to them, no code required
+- [Free Feedback Form Template — Get Actionable Customer Feedback](https://formflowx.com/blog/feedback-form-template-guide): The exact questions to include in a customer feedback form, plus best practices for turning responses into decisions
 
 ## About
 
