@@ -57,6 +57,7 @@ Every form is self-hosted on FormFlowX's infrastructure. Responses are stored se
 - [Lead Capture Form Best Practices: 8 Ways to Get More Sign-Ups](https://formflowx.com/blog/lead-capture-form-best-practices): Eight proven tactics — field count, copy, placement, conditional logic, and instant follow-up — to boost lead capture form conversions
 - [How to Add Conditional Logic to Forms — No Code Guide](https://formflowx.com/blog/conditional-logic-forms-guide): If-then rules and branching patterns to show respondents only the questions that apply to them, no code required
 - [Free Feedback Form Template — Get Actionable Customer Feedback](https://formflowx.com/blog/feedback-form-template-guide): The exact questions to include in a customer feedback form, plus best practices for turning responses into decisions
+- [How to Increase Survey Response Rate: 10 Proven Tactics](https://formflowx.com/blog/how-to-increase-survey-response-rate): Ten proven tactics — timing, incentives, length, and design — to boost survey completion, with benchmarks by survey type
 
 ## About
 
