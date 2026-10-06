@@ -99,6 +99,7 @@
     { "src": "/blog/conditional-logic-forms-guide", "dest": "/frontend/blog-conditional-logic-forms-guide.html" },
     { "src": "/blog/feedback-form-template-guide", "dest": "/frontend/blog-feedback-form-template-guide.html" },
     { "src": "/blog/how-to-increase-survey-response-rate", "dest": "/frontend/blog-how-to-increase-survey-response-rate.html" },
+    { "src": "/blog/job-application-form-template-guide", "dest": "/frontend/blog-job-application-form-template-guide.html" },
     { "src": "/", "dest": "/frontend/marketing.html" },
     { "src": "/marketing", "dest": "/frontend/marketing.html" },
     { "src": "/marketing.html", "dest": "/frontend/marketing.html" },
