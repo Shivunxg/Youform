@@ -408,9 +408,52 @@ img{max-width:100%;}
   transition:transform .12s,box-shadow .12s;
 }
 .tcard:hover{transform:translate(-2px,-2px);box-shadow:8px 8px 0 var(--ink);}
-.tcard-pre{height:108px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border-bottom:2.5px solid var(--ink);}
-.tcard-pre-icon{font-size:28px;}
-.tcard-pre-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;}
+.tcard-pre{height:136px;position:relative;overflow:hidden;display:block;border-bottom:2.5px solid var(--ink);}
+/* mini-UI preview system */
+.tc-tag{position:absolute;top:7px;left:7px;font-size:7px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:rgba(0,0,0,.09);border:1px solid rgba(0,0,0,.14);padding:2px 5px;border-radius:3px;z-index:2;color:rgba(0,0,0,.52)}
+.tc-win{position:absolute;top:23px;left:8px;right:8px;bottom:7px;background:#fff;border:1.5px solid #222;border-radius:4px;overflow:hidden;box-shadow:2px 2px 0 rgba(0,0,0,.18);padding:6px 8px;font-size:8px;line-height:1.3;font-family:'Space Grotesk',system-ui,sans-serif}
+.tc-lbl{font-size:7px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.04em;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tc-field{border:1px solid #d1d5db;border-radius:3px;padding:3px 6px;font-size:8px;color:#374151;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tc-ghost{border:1px solid #d1d5db;border-radius:3px;padding:3px 6px;font-size:8px;color:#9ca3af;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tc-sel{display:flex;justify-content:space-between;align-items:center;border:1px solid #d1d5db;border-radius:3px;padding:3px 6px;font-size:8px;color:#374151;margin-bottom:4px}
+.tc-sel::after{content:'▾';font-size:7px;color:#9ca3af;flex-shrink:0}
+.tc-btn{display:block;padding:4px 8px;border-radius:3px;font-size:8px;font-weight:700;color:#fff;background:var(--tc-a);text-align:center;width:100%;box-sizing:border-box;margin-top:3px}
+.tc-stars{display:flex;gap:2px;margin-bottom:4px;font-size:13px;line-height:1}
+.tc-q{font-size:8.5px;font-weight:700;color:#111;margin-bottom:4px;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.tc-radio{display:flex;align-items:center;gap:4px;font-size:8px;color:#374151;margin-bottom:2px}
+.tc-radio-dot{width:8px;height:8px;border-radius:50%;border:1.5px solid #d1d5db;flex-shrink:0}
+.tc-radio-dot.on{border-color:var(--tc-a);background:var(--tc-a)}
+.tc-check{display:flex;align-items:center;gap:4px;font-size:8px;color:#374151;margin-bottom:2px}
+.tc-cb{width:8px;height:8px;border-radius:1.5px;border:1.5px solid #d1d5db;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:6px}
+.tc-cb.on{border-color:var(--tc-a);background:var(--tc-a);color:#fff}
+.tc-prog{height:3px;background:#e5e7eb;border-radius:99px;margin-bottom:5px;overflow:hidden}
+.tc-prog-f{height:100%;background:var(--tc-a);border-radius:99px}
+.tc-nps{display:flex;gap:1.5px;margin-bottom:3px}
+.tc-nn{width:12px;height:12px;border:1px solid #d1d5db;border-radius:2px;font-size:6.5px;font-weight:700;display:flex;align-items:center;justify-content:center;color:#374151;flex-shrink:0}
+.tc-nn.on{background:var(--tc-a);border-color:var(--tc-a);color:#fff}
+.tc-opt{border:1px solid #e5e7eb;border-radius:3px;padding:2px 6px;font-size:8px;color:#374151;margin-bottom:2px}
+.tc-opt.on{border-color:var(--tc-a);color:var(--tc-a);font-weight:700;background:rgba(0,0,0,.03)}
+.tc-sc{display:flex;gap:2px;margin-bottom:3px}
+.tc-sd{flex:1;height:15px;border:1px solid #e5e7eb;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px}
+.tc-sd.on{background:var(--tc-a);border-color:var(--tc-a);color:#fff;font-weight:700}
+.tc-chips{display:flex;gap:3px;margin-bottom:4px}
+.tc-chip{padding:2px 6px;border:1px solid #e5e7eb;border-radius:99px;font-size:7.5px;color:#374151}
+.tc-chip.on{background:var(--tc-a);border-color:var(--tc-a);color:#fff}
+.tc-row{display:flex;justify-content:space-between;align-items:center;gap:4px}
+.tc-h{font-size:9px;font-weight:800;color:#111;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tc-anon{font-size:7px;background:#f3f4f6;border-radius:99px;padding:1px 5px;color:#6b7280;display:inline-block;margin-bottom:3px}
+.tc-badge{display:inline-flex;background:var(--tc-a);color:#fff;border-radius:99px;font-size:7px;font-weight:700;padding:1px 5px;white-space:nowrap}
+.tc-timer{background:var(--tc-a);color:#fff;border-radius:3px;font-size:7.5px;font-weight:700;padding:2px 5px;display:inline-block}
+.tc-correct{background:#dcfce7 !important;border-color:#16a34a !important;color:#16a34a !important;font-weight:700 !important}
+.tc-upload{border:1px dashed #d1d5db;border-radius:3px;padding:4px;font-size:7.5px;color:#9ca3af;text-align:center;margin-bottom:3px}
+.tc-prod-row{display:flex;align-items:center;gap:5px;border:1px solid #e5e7eb;border-radius:3px;padding:3px 5px;font-size:8px;margin-bottom:3px}
+.tc-prod-img{width:18px;height:18px;background:#e5e7eb;border-radius:2px;flex-shrink:0}
+.tc-optcard{border:1px solid #e5e7eb;border-radius:3px;padding:3px 6px;font-size:7.5px;margin-bottom:2px;color:#374151}
+.tc-optcard.on{border-color:var(--tc-a);background:rgba(0,0,0,.02);color:var(--tc-a);font-weight:700}
+.tc-sep{border:none;border-top:1px solid #f3f4f6;margin:3px 0}
+.tc-dots{display:flex;gap:2px;margin-top:2px}
+.tc-dot{width:5px;height:5px;border-radius:50%;background:#e5e7eb}
+.tc-dot.on{background:var(--tc-a)}
 .tcard-body{padding:14px;}
 .tcard-body h4{font-family:'Archivo',sans-serif;font-size:14px;font-weight:900;margin-bottom:3px;letter-spacing:-.01em;}
 .tcard-body p{font-size:12px;color:#666;}
@@ -746,7 +789,7 @@ h1, h2, h3, h4, .logo, .logo-mark, .pnum {
 .ttab.on { background: #6366f1 !important; color: #fff !important; border-color: #6366f1 !important; box-shadow: 0 2px 8px rgba(99,102,241,.3) !important; }
 .tcard { border: 1px solid #e5e7eb !important; box-shadow: 0 2px 8px rgba(0,0,0,.06) !important; border-radius: 16px !important; }
 .tcard:hover { transform: translateY(-3px) !important; box-shadow: 0 8px 24px rgba(0,0,0,.10) !important; }
-.tcard-pre { border-bottom: 1px solid #f3f4f6 !important; }
+.tcard-pre { border-bottom: 1px solid #e5e7eb !important; height:136px !important; }
 
 /* Testimonials */
 .testi { border: 1px solid #e5e7eb !important; box-shadow: 0 2px 8px rgba(0,0,0,.06) !important; border-radius: 16px !important; }
@@ -1180,33 +1223,321 @@ footer { border-top: none !important; }
     <a href="/signup" class="btn btn-white">Browse all →</a>
   </div>
   <div class="tmpl-tabs">
-    <button class="ttab on" onclick="swTmpl('forms',this)">📋 Forms</button>
-    <button class="ttab" onclick="swTmpl('surveys',this)">📊 Surveys</button>
-    <button class="ttab" onclick="swTmpl('quizzes',this)">🧠 Quizzes</button>
+    <button class="ttab on" onclick="swTmpl('forms',this)" style="display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/></svg>Forms</button>
+    <button class="ttab" onclick="swTmpl('surveys',this)" style="display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Surveys</button>
+    <button class="ttab" onclick="swTmpl('quizzes',this)" style="display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg>Quizzes</button>
   </div>
+
+  <!-- FORMS -->
   <div id="tg-forms" class="tgrid on">
-    <div class="tcard" onclick="openTpl('testimonial')"><div class="tcard-pre" style="background:#FEF9C3"><div class="tcard-pre-icon">⭐</div><div class="tcard-pre-lbl" style="color:#92400E">Testimonial</div></div><div class="tcard-body"><h4>Testimonial Collection</h4><p>Collect reviews &amp; social proof</p><div class="tcard-meta"><span class="tcard-count">7 questions</span><button class="tcard-use">Edit →</button></div></div></div>
-    <div class="tcard" onclick="openTpl('client-intake')"><div class="tcard-pre" style="background:#EDE9FE"><div class="tcard-pre-icon">📋</div><div class="tcard-pre-lbl" style="color:#5B21B6">Client Intake</div></div><div class="tcard-body"><h4>Client Intake Form</h4><p>Onboard new clients efficiently</p><div class="tcard-meta"><span class="tcard-count">9 questions</span><button class="tcard-use">Edit →</button></div></div></div>
-    <div class="tcard" onclick="openTpl('lead-capture')"><div class="tcard-pre" style="background:#DCFCE7"><div class="tcard-pre-icon">🎯</div><div class="tcard-pre-lbl" style="color:#15803D">Lead Capture</div></div><div class="tcard-body"><h4>Lead Capture Form</h4><p>Turn visitors into qualified leads</p><div class="tcard-meta"><span class="tcard-count">6 questions</span><button class="tcard-use">Edit →</button></div></div></div>
-    <div class="tcard" onclick="openTpl('contact')"><div class="tcard-pre" style="background:#FEE2E2"><div class="tcard-pre-icon">📞</div><div class="tcard-pre-lbl" style="color:#B91C1C">Contact</div></div><div class="tcard-body"><h4>Contact Form</h4><p>A friendly way to hear from visitors</p><div class="tcard-meta"><span class="tcard-count">5 questions</span><button class="tcard-use">Edit →</button></div></div></div>
-    <div class="tcard" onclick="openTpl('job-application')"><div class="tcard-pre" style="background:#E0F2FE"><div class="tcard-pre-icon">📝</div><div class="tcard-pre-lbl" style="color:#0369A1">Job Application</div></div><div class="tcard-body"><h4>Job Application</h4><p>Streamline hiring with a polished form</p><div class="tcard-meta"><span class="tcard-count">10 questions</span><button class="tcard-use">Edit →</button></div></div></div>
-    <div class="tcard" onclick="openTpl('order')"><div class="tcard-pre" style="background:#FFEDD5"><div class="tcard-pre-icon">🛒</div><div class="tcard-pre-lbl" style="color:#C2410C">Order Form</div></div><div class="tcard-body"><h4>Product Order Form</h4><p>Sell products with Stripe integration</p><div class="tcard-meta"><span class="tcard-count">7 questions</span><button class="tcard-use">Edit →</button></div></div></div>
+
+    <!-- 1. Testimonial Collection -->
+    <div class="tcard" onclick="openTpl('testimonial')">
+      <div class="tcard-pre" style="background:#FEF9C3;--tc-a:#d97706">
+        <div class="tc-tag">Testimonial</div>
+        <div class="tc-win">
+          <div class="tc-stars"><span style="color:#d97706">★★★★</span><span style="color:#d1d5db">★</span></div>
+          <div class="tc-lbl">What did you love most?</div>
+          <div class="tc-ghost">The onboarding was seamless…</div>
+          <div class="tc-row"><div style="flex:1"><div class="tc-lbl">Full name</div><div class="tc-field">Priya Sharma</div></div></div>
+          <div class="tc-btn">Submit →</div>
+        </div>
+      </div>
+      <div class="tcard-body"><h4>Testimonial Collection</h4><p>Collect reviews &amp; social proof</p><div class="tcard-meta"><span class="tcard-count">7 questions</span><button class="tcard-use">Edit →</button></div></div>
+    </div>
+
+    <!-- 2. Client Intake Form -->
+    <div class="tcard" onclick="openTpl('client-intake')">
+      <div class="tcard-pre" style="background:#EDE9FE;--tc-a:#7c3aed">
+        <div class="tc-tag">Client Intake</div>
+        <div class="tc-win">
+          <div class="tc-row" style="gap:6px;margin-bottom:4px">
+            <div style="flex:1"><div class="tc-lbl">Full name</div><div class="tc-field">Priya Sharma</div></div>
+            <div style="flex:1"><div class="tc-lbl">Company</div><div class="tc-field">Studio 44</div></div>
+          </div>
+          <div class="tc-lbl">Project type</div>
+          <div class="tc-sel">Website redesign</div>
+          <div class="tc-lbl">Budget range</div>
+          <div class="tc-sel">₹2L – ₹5L</div>
+          <div class="tc-btn">Submit →</div>
+        </div>
+      </div>
+      <div class="tcard-body"><h4>Client Intake Form</h4><p>Onboard new clients efficiently</p><div class="tcard-meta"><span class="tcard-count">9 questions</span><button class="tcard-use">Edit →</button></div></div>
+    </div>
+
+    <!-- 3. Lead Capture Form -->
+    <div class="tcard" onclick="openTpl('lead-capture')">
+      <div class="tcard-pre" style="background:#DCFCE7;--tc-a:#16a34a">
+        <div class="tc-tag">Lead Capture</div>
+        <div class="tc-win">
+          <div class="tc-lbl">Work email</div>
+          <div class="tc-field">alex@growthco.in</div>
+          <div class="tc-lbl">Company size</div>
+          <div class="tc-sel">10–50 employees</div>
+          <div class="tc-lbl">How can we help?</div>
+          <div class="tc-ghost">Automate our lead pipeline…</div>
+          <div class="tc-btn">Get early access →</div>
+        </div>
+      </div>
+      <div class="tcard-body"><h4>Lead Capture Form</h4><p>Turn visitors into qualified leads</p><div class="tcard-meta"><span class="tcard-count">6 questions</span><button class="tcard-use">Edit →</button></div></div>
+    </div>
+
+    <!-- 4. Contact Form -->
+    <div class="tcard" onclick="openTpl('contact')">
+      <div class="tcard-pre" style="background:#FEE2E2;--tc-a:#dc2626">
+        <div class="tc-tag">Contact</div>
+        <div class="tc-win">
+          <div class="tc-row" style="gap:6px;margin-bottom:4px">
+            <div style="flex:1"><div class="tc-lbl">Name</div><div class="tc-field">Rohan Verma</div></div>
+            <div style="flex:1"><div class="tc-lbl">Email</div><div class="tc-field">r@agency.co</div></div>
+          </div>
+          <div class="tc-lbl">Message</div>
+          <div class="tc-ghost" style="height:22px;line-height:22px">Hi, I'd like to discuss…</div>
+          <div class="tc-btn" style="margin-top:4px">Send message →</div>
+        </div>
+      </div>
+      <div class="tcard-body"><h4>Contact Form</h4><p>A friendly way to hear from visitors</p><div class="tcard-meta"><span class="tcard-count">5 questions</span><button class="tcard-use">Edit →</button></div></div>
+    </div>
+
+    <!-- 5. Job Application -->
+    <div class="tcard" onclick="openTpl('job-application')">
+      <div class="tcard-pre" style="background:#E0F2FE;--tc-a:#0284c7">
+        <div class="tc-tag">Job Application</div>
+        <div class="tc-win">
+          <div class="tc-row" style="gap:6px;margin-bottom:4px">
+            <div style="flex:1"><div class="tc-lbl">Name</div><div class="tc-field">Arjun Mehta</div></div>
+            <div style="flex:1"><div class="tc-lbl">Role applied for</div><div class="tc-field" style="font-size:7px">UI/UX Designer</div></div>
+          </div>
+          <div class="tc-lbl">Resume</div>
+          <div class="tc-upload">Drop PDF here or click to browse</div>
+          <div class="tc-btn">Submit application →</div>
+        </div>
+      </div>
+      <div class="tcard-body"><h4>Job Application</h4><p>Streamline hiring with a polished form</p><div class="tcard-meta"><span class="tcard-count">10 questions</span><button class="tcard-use">Edit →</button></div></div>
+    </div>
+
+    <!-- 6. Product Order Form -->
+    <div class="tcard" onclick="openTpl('order')">
+      <div class="tcard-pre" style="background:#FFEDD5;--tc-a:#ea580c">
+        <div class="tc-tag">Order Form</div>
+        <div class="tc-win">
+          <div class="tc-lbl">Product</div>
+          <div class="tc-prod-row"><div class="tc-prod-img"></div><div><div style="font-weight:700;color:#111;font-size:8px">Ceramic Mug</div><div style="color:#6b7280;font-size:7px">Handcrafted, 350ml</div></div></div>
+          <div class="tc-row" style="margin-bottom:4px">
+            <div style="font-size:8px;color:#374151">Qty</div>
+            <div style="display:flex;align-items:center;gap:4px;font-size:8px"><span style="border:1px solid #d1d5db;border-radius:2px;padding:0 4px">−</span><span style="font-weight:700">2</span><span style="border:1px solid #d1d5db;border-radius:2px;padding:0 4px">+</span></div>
+            <div style="font-size:9px;font-weight:800;color:#111">₹1,298</div>
+          </div>
+          <div class="tc-btn">Pay with Stripe →</div>
+        </div>
+      </div>
+      <div class="tcard-body"><h4>Product Order Form</h4><p>Sell products with Stripe integration</p><div class="tcard-meta"><span class="tcard-count">7 questions</span><button class="tcard-use">Edit →</button></div></div>
+    </div>
+
   </div>
+
+  <!-- SURVEYS -->
   <div id="tg-surveys" class="tgrid">
-    <div class="tcard" onclick="openTpl('market-research')"><div class="tcard-pre" style="background:#F0FDF4"><div class="tcard-pre-icon">🔍</div><div class="tcard-pre-lbl" style="color:#15803D">Market Research</div></div><div class="tcard-body"><h4>Market Research Survey</h4><p>Validate product-market fit</p><div class="tcard-meta"><span class="tcard-count">8 questions</span><button class="tcard-use">Edit →</button></div></div></div>
-    <div class="tcard" onclick="openTpl('nps')"><div class="tcard-pre" style="background:#FEFCE8"><div class="tcard-pre-icon">📊</div><div class="tcard-pre-lbl" style="color:#854D0E">NPS Survey</div></div><div class="tcard-body"><h4>Net Promoter Score</h4><p>Measure customer loyalty</p><div class="tcard-meta"><span class="tcard-count">4 questions</span><button class="tcard-use">Edit →</button></div></div></div>
-    <div class="tcard" onclick="openTpl('cancellation')"><div class="tcard-pre" style="background:#FFF1F2"><div class="tcard-pre-icon">👋</div><div class="tcard-pre-lbl" style="color:#BE123C">Cancellation</div></div><div class="tcard-body"><h4>Cancellation Survey</h4><p>Learn why customers churn</p><div class="tcard-meta"><span class="tcard-count">6 questions</span><button class="tcard-use">Edit →</button></div></div></div>
-    <div class="tcard" onclick="openTpl('employee')"><div class="tcard-pre" style="background:#F5F5F4"><div class="tcard-pre-icon">💼</div><div class="tcard-pre-lbl" style="color:#44403C">Employee</div></div><div class="tcard-body"><h4>Employee Satisfaction</h4><p>Keep your team happy</p><div class="tcard-meta"><span class="tcard-count">7 questions</span><button class="tcard-use">Edit →</button></div></div></div>
-    <div class="tcard" onclick="openTpl('saas-onboarding')"><div class="tcard-pre" style="background:#EFF6FF"><div class="tcard-pre-icon">🚀</div><div class="tcard-pre-lbl" style="color:#1D4ED8">SaaS Onboarding</div></div><div class="tcard-body"><h4>SaaS Onboarding Survey</h4><p>Understand new user goals</p><div class="tcard-meta"><span class="tcard-count">7 questions</span><button class="tcard-use">Edit →</button></div></div></div>
-    <div class="tcard" onclick="openTpl('post-event')"><div class="tcard-pre" style="background:#F5F3FF"><div class="tcard-pre-icon">🎓</div><div class="tcard-pre-lbl" style="color:#6D28D9">Post-Event</div></div><div class="tcard-body"><h4>Post-Event Feedback</h4><p>Capture insights while fresh</p><div class="tcard-meta"><span class="tcard-count">7 questions</span><button class="tcard-use">Edit →</button></div></div></div>
+
+    <!-- 7. Market Research Survey -->
+    <div class="tcard" onclick="openTpl('market-research')">
+      <div class="tcard-pre" style="background:#F0FDF4;--tc-a:#16a34a">
+        <div class="tc-tag">Market Research</div>
+        <div class="tc-win">
+          <div class="tc-row" style="margin-bottom:4px"><span style="font-size:7.5px;font-weight:700;color:#374151">Q2 of 8</span><div class="tc-prog" style="flex:1;margin:0 6px 0 6px"><div class="tc-prog-f" style="width:25%"></div></div></div>
+          <div class="tc-q">How often do you shop for groceries online?</div>
+          <div class="tc-radio"><div class="tc-radio-dot"></div>Daily</div>
+          <div class="tc-radio"><div class="tc-radio-dot on"></div><span style="color:var(--tc-a);font-weight:700">Weekly</span></div>
+          <div class="tc-radio"><div class="tc-radio-dot"></div>Monthly</div>
+          <div class="tc-btn" style="margin-top:2px">Next →</div>
+        </div>
+      </div>
+      <div class="tcard-body"><h4>Market Research Survey</h4><p>Validate product-market fit</p><div class="tcard-meta"><span class="tcard-count">8 questions</span><button class="tcard-use">Edit →</button></div></div>
+    </div>
+
+    <!-- 8. Net Promoter Score -->
+    <div class="tcard" onclick="openTpl('nps')">
+      <div class="tcard-pre" style="background:#FEFCE8;--tc-a:#d97706">
+        <div class="tc-tag">NPS Survey</div>
+        <div class="tc-win">
+          <div class="tc-q" style="-webkit-line-clamp:1">How likely are you to recommend us?</div>
+          <div class="tc-nps">
+            <div class="tc-nn">0</div><div class="tc-nn">1</div><div class="tc-nn">2</div><div class="tc-nn">3</div><div class="tc-nn">4</div><div class="tc-nn">5</div><div class="tc-nn">6</div><div class="tc-nn">7</div><div class="tc-nn">8</div><div class="tc-nn on">9</div><div class="tc-nn">10</div>
+          </div>
+          <div class="tc-row" style="margin-bottom:4px"><span style="font-size:7px;color:#9ca3af">Not likely</span><span style="font-size:7px;color:#9ca3af">Very likely</span></div>
+          <div class="tc-btn">Submit →</div>
+        </div>
+      </div>
+      <div class="tcard-body"><h4>Net Promoter Score</h4><p>Measure customer loyalty</p><div class="tcard-meta"><span class="tcard-count">4 questions</span><button class="tcard-use">Edit →</button></div></div>
+    </div>
+
+    <!-- 9. Cancellation Survey -->
+    <div class="tcard" onclick="openTpl('cancellation')">
+      <div class="tcard-pre" style="background:#FFF1F2;--tc-a:#dc2626">
+        <div class="tc-tag">Cancellation</div>
+        <div class="tc-win">
+          <div class="tc-h">Sorry to see you go</div>
+          <div class="tc-lbl" style="margin-bottom:3px">What's the main reason?</div>
+          <div class="tc-check"><div class="tc-cb on">✓</div><span style="color:var(--tc-a);font-weight:700">Too expensive</span></div>
+          <div class="tc-check"><div class="tc-cb"></div>Missing features</div>
+          <div class="tc-check"><div class="tc-cb"></div>Switched to another tool</div>
+          <div class="tc-btn" style="margin-top:3px">Confirm cancellation</div>
+        </div>
+      </div>
+      <div class="tcard-body"><h4>Cancellation Survey</h4><p>Learn why customers churn</p><div class="tcard-meta"><span class="tcard-count">6 questions</span><button class="tcard-use">Edit →</button></div></div>
+    </div>
+
+    <!-- 10. Employee Satisfaction -->
+    <div class="tcard" onclick="openTpl('employee')">
+      <div class="tcard-pre" style="background:#F4F4F2;--tc-a:#1f2937">
+        <div class="tc-tag">Employee</div>
+        <div class="tc-win">
+          <div class="tc-row" style="margin-bottom:4px"><div class="tc-h" style="margin:0">Quarterly pulse check</div><span class="tc-anon" style="margin:0">Anonymous</span></div>
+          <div style="font-size:7.5px;color:#374151;margin-bottom:3px">I feel supported by my manager</div>
+          <div class="tc-sc">
+            <div class="tc-sd" style="font-size:6px">SD</div><div class="tc-sd" style="font-size:6px">D</div><div class="tc-sd" style="font-size:6px">N</div><div class="tc-sd on" style="font-size:6px">A</div><div class="tc-sd" style="font-size:6px">SA</div>
+          </div>
+          <div style="font-size:7.5px;color:#374151;margin-bottom:3px">I have the tools I need</div>
+          <div class="tc-sc">
+            <div class="tc-sd" style="font-size:6px">SD</div><div class="tc-sd" style="font-size:6px">D</div><div class="tc-sd" style="font-size:6px">N</div><div class="tc-sd" style="font-size:6px">A</div><div class="tc-sd" style="font-size:6px">SA</div>
+          </div>
+        </div>
+      </div>
+      <div class="tcard-body"><h4>Employee Satisfaction</h4><p>Keep your team happy</p><div class="tcard-meta"><span class="tcard-count">7 questions</span><button class="tcard-use">Edit →</button></div></div>
+    </div>
+
+    <!-- 11. SaaS Onboarding Survey -->
+    <div class="tcard" onclick="openTpl('saas-onboarding')">
+      <div class="tcard-pre" style="background:#EFF6FF;--tc-a:#2563eb">
+        <div class="tc-tag">SaaS Onboarding</div>
+        <div class="tc-win">
+          <div class="tc-h">Let's personalise your workspace</div>
+          <div class="tc-lbl" style="margin-bottom:3px">What do you want to achieve first?</div>
+          <div class="tc-optcard on">Collect leads</div>
+          <div class="tc-optcard">Run surveys</div>
+          <div class="tc-optcard">Take payments</div>
+          <div class="tc-btn" style="margin-top:3px">Continue →</div>
+        </div>
+      </div>
+      <div class="tcard-body"><h4>SaaS Onboarding Survey</h4><p>Understand new user goals</p><div class="tcard-meta"><span class="tcard-count">7 questions</span><button class="tcard-use">Edit →</button></div></div>
+    </div>
+
+    <!-- 12. Post-Event Feedback -->
+    <div class="tcard" onclick="openTpl('post-event')">
+      <div class="tcard-pre" style="background:#F5F3FF;--tc-a:#7c3aed">
+        <div class="tc-tag">Post-Event</div>
+        <div class="tc-win">
+          <div class="tc-h">How was DesignConf Bengaluru?</div>
+          <div class="tc-stars" style="margin-bottom:4px"><span style="color:#7c3aed">★★★★</span><span style="color:#d1d5db">★</span></div>
+          <div class="tc-lbl">Favourite session?</div>
+          <div class="tc-sel" style="font-size:7px">Keynote: Design Systems at Scale</div>
+          <div class="tc-btn">Send feedback →</div>
+        </div>
+      </div>
+      <div class="tcard-body"><h4>Post-Event Feedback</h4><p>Capture insights while fresh</p><div class="tcard-meta"><span class="tcard-count">7 questions</span><button class="tcard-use">Edit →</button></div></div>
+    </div>
+
   </div>
+
+  <!-- QUIZZES -->
   <div id="tg-quizzes" class="tgrid">
-    <div class="tcard" onclick="openTpl('personality')"><div class="tcard-pre" style="background:#E0F2FE"><div class="tcard-pre-icon">🧠</div><div class="tcard-pre-lbl" style="color:#0369A1">Personality Quiz</div></div><div class="tcard-body"><h4>Personality Quiz</h4><p>Engage with fun personality insights</p><div class="tcard-meta"><span class="tcard-count">7 questions</span><button class="tcard-use">Edit →</button></div></div></div>
-    <div class="tcard" onclick="openTpl('lead-gen-quiz')"><div class="tcard-pre" style="background:#DCFCE7"><div class="tcard-pre-icon">💡</div><div class="tcard-pre-lbl" style="color:#15803D">Lead Gen Quiz</div></div><div class="tcard-body"><h4>Lead Generation Quiz</h4><p>Qualify leads while delivering value</p><div class="tcard-meta"><span class="tcard-count">8 questions</span><button class="tcard-use">Edit →</button></div></div></div>
-    <div class="tcard" onclick="openTpl('product-recommender')"><div class="tcard-pre" style="background:#FAE8FF"><div class="tcard-pre-icon">🎯</div><div class="tcard-pre-lbl" style="color:#86198F">Recommender</div></div><div class="tcard-body"><h4>Product Recommender</h4><p>Help customers find the right fit</p><div class="tcard-meta"><span class="tcard-count">6 questions</span><button class="tcard-use">Edit →</button></div></div></div>
-    <div class="tcard" onclick="openTpl('trivia')"><div class="tcard-pre" style="background:#FEF9C3"><div class="tcard-pre-icon">🏆</div><div class="tcard-pre-lbl" style="color:#854D0E">Trivia</div></div><div class="tcard-body"><h4>Trivia Challenge</h4><p>Gamify your content</p><div class="tcard-meta"><span class="tcard-count">5 questions</span><button class="tcard-use">Edit →</button></div></div></div>
-    <div class="tcard" onclick="openTpl('skills')"><div class="tcard-pre" style="background:#FEE2E2"><div class="tcard-pre-icon">🔥</div><div class="tcard-pre-lbl" style="color:#B91C1C">Skills</div></div><div class="tcard-body"><h4>Skills Assessment</h4><p>Evaluate competencies with scoring</p><div class="tcard-meta"><span class="tcard-count">8 questions</span><button class="tcard-use">Edit →</button></div></div></div>
-    <div class="tcard" onclick="openTpl('digital-marketing')"><div class="tcard-pre" style="background:#FFEDD5"><div class="tcard-pre-icon">📱</div><div class="tcard-pre-lbl" style="color:#C2410C">Marketing Quiz</div></div><div class="tcard-body"><h4>Digital Marketing Quiz</h4><p>Test your audience's knowledge</p><div class="tcard-meta"><span class="tcard-count">6 questions</span><button class="tcard-use">Edit →</button></div></div></div>
+
+    <!-- 13. Personality Quiz -->
+    <div class="tcard" onclick="openTpl('personality')">
+      <div class="tcard-pre" style="background:#DCF1FF;--tc-a:#0284c7">
+        <div class="tc-tag">Personality Quiz</div>
+        <div class="tc-win">
+          <div class="tc-row" style="margin-bottom:4px"><span style="font-size:8px;font-weight:700;color:#374151">3 / 7</span><div class="tc-prog" style="flex:1;margin-left:6px"><div class="tc-prog-f" style="width:43%"></div></div></div>
+          <div class="tc-q" style="-webkit-line-clamp:1">Your ideal weekend looks like…</div>
+          <div class="tc-radio"><div class="tc-radio-dot"></div>A quiet day with a book</div>
+          <div class="tc-radio"><div class="tc-radio-dot on"></div><span style="color:var(--tc-a);font-weight:700">Brunch with friends</span></div>
+          <div class="tc-radio"><div class="tc-radio-dot"></div>Exploring a new city</div>
+          <div class="tc-btn" style="margin-top:2px">Next →</div>
+        </div>
+      </div>
+      <div class="tcard-body"><h4>Personality Quiz</h4><p>Engage with fun personality insights</p><div class="tcard-meta"><span class="tcard-count">7 questions</span><button class="tcard-use">Edit →</button></div></div>
+    </div>
+
+    <!-- 14. Lead Generation Quiz -->
+    <div class="tcard" onclick="openTpl('lead-gen-quiz')">
+      <div class="tcard-pre" style="background:#D5FBE5;--tc-a:#16a34a">
+        <div class="tc-tag">Lead Gen Quiz</div>
+        <div class="tc-win">
+          <div class="tc-h">Is your business ready to scale?</div>
+          <div class="tc-prog" style="margin-bottom:4px"><div class="tc-prog-f" style="width:50%"></div></div>
+          <div class="tc-lbl" style="margin-bottom:3px">Leads per month?</div>
+          <div class="tc-radio"><div class="tc-radio-dot"></div>Under 50</div>
+          <div class="tc-radio"><div class="tc-radio-dot on"></div><span style="color:var(--tc-a);font-weight:700">50–200</span></div>
+          <div class="tc-radio"><div class="tc-radio-dot"></div>200+</div>
+          <div class="tc-btn" style="margin-top:2px">Show my score →</div>
+        </div>
+      </div>
+      <div class="tcard-body"><h4>Lead Generation Quiz</h4><p>Qualify leads while delivering value</p><div class="tcard-meta"><span class="tcard-count">8 questions</span><button class="tcard-use">Edit →</button></div></div>
+    </div>
+
+    <!-- 15. Product Recommender -->
+    <div class="tcard" onclick="openTpl('product-recommender')">
+      <div class="tcard-pre" style="background:#FDE4FF;--tc-a:#a21caf">
+        <div class="tc-tag">Recommender</div>
+        <div class="tc-win">
+          <div class="tc-h">Find your skincare routine</div>
+          <div class="tc-lbl" style="margin-bottom:3px">What's your skin type?</div>
+          <div class="tc-chips"><div class="tc-chip">Oily</div><div class="tc-chip">Dry</div><div class="tc-chip on">Combination</div></div>
+          <hr class="tc-sep">
+          <div style="font-size:7.5px;font-weight:700;color:#374151;margin-bottom:3px">Recommended for you</div>
+          <div class="tc-prod-row"><div class="tc-prod-img"></div><div><div style="font-weight:700;color:#111;font-size:8px">Gentle Gel Cleanser</div><div style="color:var(--tc-a);font-size:7.5px;font-weight:700">₹649</div></div></div>
+        </div>
+      </div>
+      <div class="tcard-body"><h4>Product Recommender</h4><p>Help customers find the right fit</p><div class="tcard-meta"><span class="tcard-count">6 questions</span><button class="tcard-use">Edit →</button></div></div>
+    </div>
+
+    <!-- 16. Trivia Challenge -->
+    <div class="tcard" onclick="openTpl('trivia')">
+      <div class="tcard-pre" style="background:#FDFBB8;--tc-a:#d97706">
+        <div class="tc-tag">Trivia</div>
+        <div class="tc-win">
+          <div class="tc-row" style="margin-bottom:4px"><span style="font-size:8px;font-weight:700;color:#374151">Q4 of 5</span><span class="tc-badge">Score: 30</span></div>
+          <div class="tc-q">Which Indian city is known as the Garden City?</div>
+          <div class="tc-opt on tc-correct">Bengaluru</div>
+          <div class="tc-opt" style="margin-bottom:2px">Mumbai</div>
+          <div class="tc-opt" style="margin-bottom:2px">Hyderabad</div>
+        </div>
+      </div>
+      <div class="tcard-body"><h4>Trivia Challenge</h4><p>Gamify your content</p><div class="tcard-meta"><span class="tcard-count">5 questions</span><button class="tcard-use">Edit →</button></div></div>
+    </div>
+
+    <!-- 17. Skills Assessment -->
+    <div class="tcard" onclick="openTpl('skills')">
+      <div class="tcard-pre" style="background:#FFE0E0;--tc-a:#dc2626">
+        <div class="tc-tag">Skills</div>
+        <div class="tc-win">
+          <div class="tc-row" style="margin-bottom:3px"><span style="font-size:8.5px;font-weight:800;color:#111">Excel proficiency test</span><span class="tc-timer">08:42</span></div>
+          <div class="tc-q" style="-webkit-line-clamp:1;margin-bottom:3px">Which function looks up a value in a table?</div>
+          <div class="tc-radio"><div class="tc-radio-dot on"></div><span style="color:var(--tc-a);font-weight:700">VLOOKUP</span></div>
+          <div class="tc-radio"><div class="tc-radio-dot"></div>HLOOKUP</div>
+          <div class="tc-radio"><div class="tc-radio-dot"></div>INDEX</div>
+          <div class="tc-dots" style="margin-top:3px"><div class="tc-dot on"></div><div class="tc-dot on"></div><div class="tc-dot on"></div><div class="tc-dot on"></div><div class="tc-dot on"></div><div class="tc-dot"></div><div class="tc-dot"></div><div class="tc-dot"></div></div>
+        </div>
+      </div>
+      <div class="tcard-body"><h4>Skills Assessment</h4><p>Evaluate competencies with scoring</p><div class="tcard-meta"><span class="tcard-count">8 questions</span><button class="tcard-use">Edit →</button></div></div>
+    </div>
+
+    <!-- 18. Digital Marketing Quiz -->
+    <div class="tcard" onclick="openTpl('digital-marketing')">
+      <div class="tcard-pre" style="background:#FFEDD0;--tc-a:#ea580c">
+        <div class="tc-tag">Marketing Quiz</div>
+        <div class="tc-win">
+          <div class="tc-h">How well do you know SEO?</div>
+          <div class="tc-lbl" style="margin-bottom:3px">What does CTR stand for?</div>
+          <div class="tc-opt on" style="margin-bottom:2px">Click-through rate</div>
+          <div class="tc-opt" style="margin-bottom:2px">Cost to retarget</div>
+          <div class="tc-opt" style="margin-bottom:2px">Content traffic ratio</div>
+          <div class="tc-btn" style="margin-top:2px">Check answer →</div>
+        </div>
+      </div>
+      <div class="tcard-body"><h4>Digital Marketing Quiz</h4><p>Test your audience's knowledge</p><div class="tcard-meta"><span class="tcard-count">6 questions</span><button class="tcard-use">Edit →</button></div></div>
+    </div>
+
   </div>
 </section>
 
