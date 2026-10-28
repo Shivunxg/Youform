@@ -147,6 +147,25 @@ export const api = {
     rewriteBlock: (body)  => post('/ai/rewrite-block', body),
   },
 
+  // ── API Endpoints (web3forms-style HTML form backend) ──────
+  endpoints: {
+    list: ()                    => get('/endpoints'),
+    create: (body)              => post('/endpoints', body),
+    update: (id, body)          => patch(`/endpoints/${id}`, body),
+    delete: (id)                => del(`/endpoints/${id}`),
+    submissions: (id, params={}) => {
+      const q = new URLSearchParams(params).toString();
+      return get(`/endpoints/${id}/submissions${q ? `?${q}` : ''}`);
+    },
+  },
+
+  // ── Linked Emails ──────────────────────────────────────────
+  linkedEmails: {
+    list: ()         => get('/linked-emails'),
+    add: (email)     => post('/linked-emails', { email }),
+    remove: (id)     => del(`/linked-emails/${id}`),
+  },
+
   // ── Billing ────────────────────────────────────────────────
   billing: {
     get: (wsId)            => get(`/billing/${wsId}`),
