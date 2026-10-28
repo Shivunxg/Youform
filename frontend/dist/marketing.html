@@ -290,8 +290,9 @@ img{max-width:100%;}
 .ccard.good{box-shadow:6px 6px 0 var(--lime);}
 .ccard h4{font-family:'Archivo',sans-serif;font-size:17px;font-weight:900;margin-bottom:18px;}
 .clist{list-style:none;padding:0;display:flex;flex-direction:column;gap:11px;}
-.clist li{font-size:14px;color:#444;display:flex;align-items:flex-start;gap:10px;line-height:1.45;}
+.clist li{font-size:14px;color:#444;display:flex;align-items:center;gap:12px;line-height:1.45;}
 .clist .ci{flex-shrink:0;font-size:15px;}
+.icon-tile{flex-shrink:0;width:36px;height:36px;border-radius:8px;border:1.5px solid #111;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:2px 2px 0 #111;}
 
 /* ── Features ─────────────────────────────────────── */
 .feat-grid{
@@ -1158,11 +1159,31 @@ footer { border-top: none !important; }
       <div class="badge badge-lime" style="margin-bottom:18px"><span>●</span> Analytics</div>
       <h2>Know where people drop off.</h2>
       <p style="font-size:16px;color:#444;line-height:1.6;margin:16px 0 24px;font-weight:500">Built-in analytics show views, starts, and completions for every form — and question-level drop-off so you can fix what's losing you responses.</p>
-      <ul class="clist" style="gap:12px">
-        <li><span class="ci" style="font-size:17px">👁</span>Views, starts &amp; completion tracking</li>
-        <li><span class="ci" style="font-size:17px">📉</span>Question-level drop-off rates</li>
-        <li><span class="ci" style="font-size:17px">⏱</span>Average time to complete</li>
-        <li><span class="ci" style="font-size:17px">📊</span>Response summaries &amp; distributions</li>
+      <ul class="clist" style="gap:14px">
+        <li>
+          <span class="icon-tile">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+          </span>
+          Views, starts &amp; completion tracking
+        </li>
+        <li>
+          <span class="icon-tile">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></svg>
+          </span>
+          Question-level drop-off rates
+        </li>
+        <li>
+          <span class="icon-tile">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </span>
+          Average time to complete
+        </li>
+        <li>
+          <span class="icon-tile">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          </span>
+          Response summaries &amp; distributions
+        </li>
       </ul>
     </div>
     <div>
