@@ -5,6 +5,15 @@
 const S = '#111111'; // stroke
 const O = '#f97316'; // orange accent
 
+function SvgStar({ cx, cy, R = 11, r = 4.2, fill = O, stroke = 'none', strokeWidth = 0, opacity = 1 }) {
+  const pts = Array.from({ length: 10 }, (_, i) => {
+    const a = (i * 36 - 90) * (Math.PI / 180);
+    const radius = i % 2 === 0 ? R : r;
+    return `${(cx + radius * Math.cos(a)).toFixed(2)},${(cy + radius * Math.sin(a)).toFixed(2)}`;
+  }).join(' ');
+  return <polygon points={pts} fill={fill} stroke={stroke} strokeWidth={strokeWidth} opacity={opacity} />;
+}
+
 // ── Individual themes ────────────────────────────────────────────────
 
 function Testimonial({ color, textColor }) {
@@ -18,7 +27,7 @@ function Testimonial({ color, textColor }) {
       {/* Large open-quote decoration */}
       <text x="68" y="98" fontSize="76" fontFamily="Georgia, serif" fill={textColor} opacity="0.12" fontWeight="900">"</text>
       {/* Stars */}
-      <text x="162" y="74" textAnchor="middle" fontSize="22" fill={O} letterSpacing="4">★★★★★</text>
+      <g>{[104, 130, 156, 182, 208].map(cx => <SvgStar key={cx} cx={cx} cy={66} R={11} r={4.2} fill={O} />)}</g>
       {/* Text-line stubs */}
       <rect x="76" y="86" width="136" height="7" rx="3.5" fill={S} opacity="0.08" />
       <rect x="76" y="98" width="100" height="7" rx="3.5" fill={S} opacity="0.08" />
@@ -119,7 +128,7 @@ function JobApplication({ color, textColor }) {
       {/* HIRED stamp */}
       <circle cx="240" cy="80" r="32" fill={color} stroke={textColor} strokeWidth="2.5" strokeDasharray="5 3" opacity="0.9" />
       <text x="240" y="77" textAnchor="middle" fontSize="10" fill={textColor} fontWeight="900">APPLIED</text>
-      <text x="240" y="92" textAnchor="middle" fontSize="20" fill={O} fontWeight="900">✓</text>
+      <path d="M230 82 L237 90 L252 75" fill="none" stroke={O} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -197,10 +206,10 @@ function SaasOnboarding({ color, textColor }) {
       <ellipse cx="185" cy="116" rx="9" ry="14" fill={O} stroke={S} strokeWidth="2" transform="rotate(35 185 116)" />
       <ellipse cx="187" cy="117" rx="4" ry="8" fill="#FEF9C3" transform="rotate(35 187 117)" />
       {/* Stars */}
-      <text x="68" y="48" fontSize="16" fill={textColor} opacity="0.4">★</text>
-      <text x="108" y="24" fontSize="11" fill={textColor} opacity="0.35">★</text>
-      <text x="288" y="68" fontSize="13" fill={textColor} opacity="0.4">★</text>
-      <text x="82" y="90" fontSize="9" fill={textColor} opacity="0.25">★</text>
+      <SvgStar cx={68} cy={40} R={8} r={3.2} fill={textColor} opacity={0.4} />
+      <SvgStar cx={108} cy={18} R={5.5} r={2.2} fill={textColor} opacity={0.35} />
+      <SvgStar cx={288} cy={62} R={6.5} r={2.6} fill={textColor} opacity={0.4} />
+      <SvgStar cx={82} cy={84} R={4.5} r={1.8} fill={textColor} opacity={0.25} />
     </svg>
   );
 }
@@ -251,10 +260,19 @@ function NPS({ color, textColor }) {
       {/* Labels */}
       <text x="14" y="78" fontSize="8" fill={textColor} opacity="0.65">Not likely</text>
       <text x="306" y="78" fontSize="8" textAnchor="end" fill={textColor} opacity="0.65">Extremely likely</text>
-      {/* Smiley row */}
-      <text x="66" y="118" fontSize="28" textAnchor="middle" opacity="0.45">😞</text>
-      <text x="160" y="118" fontSize="28" textAnchor="middle" opacity="0.5">😐</text>
-      <text x="254" y="118" fontSize="28" textAnchor="middle">😊</text>
+      {/* Face row: sad / neutral / happy */}
+      {[
+        { cx: 66,  mouth: 'M57,110 Q66,104 75,110', op: 0.45 },
+        { cx: 160, mouth: 'M151,109 L169,109',       op: 0.5  },
+        { cx: 254, mouth: 'M245,104 Q254,110 263,104', op: 1  },
+      ].map(({ cx, mouth, op }) => (
+        <g key={cx} opacity={op}>
+          <circle cx={cx} cy={106} r={13} fill="white" stroke={S} strokeWidth="2" />
+          <circle cx={cx - 4} cy={102} r={1.5} fill={S} />
+          <circle cx={cx + 4} cy={102} r={1.5} fill={S} />
+          <path d={mouth} fill="none" stroke={S} strokeWidth="2" strokeLinecap="round" />
+        </g>
+      ))}
     </svg>
   );
 }
@@ -277,9 +295,12 @@ function EmployeeSatisfaction({ color, textColor }) {
             fill="none" stroke={i === 0 ? S : O} strokeWidth="2" strokeLinecap="round"
           />
           {/* Stars */}
-          <text x={cx} y="122" textAnchor="middle" fontSize={i === 0 ? 11 : 13} fill={O} letterSpacing="1">
-            {'★'.repeat(3 + Math.min(i + 1, 2))}{'☆'.repeat(2 - Math.min(i + 1, 2))}
-          </text>
+          {Array.from({ length: 5 }, (_, si) => {
+            const filled = si < (3 + Math.min(i + 1, 2));
+            const R = i === 0 ? 5 : 6;
+            const starCx = cx - (R * 2.2 * 2) + si * (R * 2.2);
+            return <SvgStar key={si} cx={starCx} cy={122} R={R} r={R * 0.38} fill={filled ? O : 'none'} stroke={O} strokeWidth={1.2} />;
+          })}
         </g>
       ))}
       {/* Pulse line at bottom */}
@@ -344,7 +365,10 @@ function DigitalMarketing({ color, textColor }) {
       {/* Ad frame — left */}
       <rect x="24" y="36" width="66" height="80" rx="7" fill="white" stroke={S} strokeWidth="2" strokeDasharray="5 3" />
       <rect x="34" y="46" width="46" height="36" rx="4" fill={color} />
-      <text x="57" y="68" textAnchor="middle" fontSize="20">📱</text>
+      {/* Mini phone icon */}
+      <rect x="47" y="50" width="20" height="30" rx="3" fill="white" stroke={S} strokeWidth="1.5" />
+      <rect x="51" y="54" width="12" height="18" rx="1.5" fill={color} />
+      <circle cx="57" cy="76" r="2" fill={S} opacity="0.4" />
       <rect x="34" y="88" width="46" height="5" rx="2.5" fill={S} opacity="0.15" />
       <rect x="34" y="97" width="46" height="12" rx="4" fill={O} opacity="0.85" />
     </svg>
@@ -419,21 +443,25 @@ function ProductRecommender({ color, textColor }) {
       {/* Left card */}
       <rect x="24" y="22" width="74" height="108" rx="8" fill="white" stroke={S} strokeWidth="2" opacity="0.7" />
       <rect x="34" y="32" width="54" height="40" rx="5" fill={color} opacity="0.85" />
-      <text x="61" y="58" textAnchor="middle" fontSize="9" fill={S} opacity="0.45">★★★★☆</text>
+      <g opacity="0.45">{[42,51,60,69].map(cx => <SvgStar key={cx} cx={cx} cy={54} R={4} r={1.6} fill={S} />)}<SvgStar cx={78} cy={54} R={4} r={1.6} fill="none" stroke={S} strokeWidth={0.8} /></g>
       <text x="61" y="104" textAnchor="middle" fontSize="10" fill={S} opacity="0.5" fontWeight="500">$29</text>
       {/* Middle card — highlighted */}
       <rect x="120" y="10" width="80" height="124" rx="9" fill="white" stroke={S} strokeWidth="2.5" />
       <rect x="116" y="6" width="88" height="132" rx="11" fill="none" stroke={O} strokeWidth="3" />
       <rect x="130" y="20" width="60" height="46" rx="5" fill={color} />
-      <text x="160" y="50" textAnchor="middle" fontSize="22" fill={textColor} opacity="0.6">🎯</text>
-      <text x="160" y="82" textAnchor="middle" fontSize="10" fill={O}>★★★★★</text>
+      {/* Target icon */}
+      <circle cx="160" cy="42" r="12" fill="none" stroke={textColor} strokeWidth="2" opacity="0.6" />
+      <circle cx="160" cy="42" r="7" fill="none" stroke={textColor} strokeWidth="1.5" opacity="0.6" />
+      <circle cx="160" cy="42" r="2.5" fill={textColor} opacity="0.6" />
+      <g>{[139,150,161,172,183].map(cx => <SvgStar key={cx} cx={cx} cy={78} R={5} r={2} fill={O} />)}</g>
       <text x="160" y="100" textAnchor="middle" fontSize="14" fill={S} fontWeight="700">$79</text>
       <rect x="128" y="112" width="64" height="16" rx="5" fill={O} stroke={S} strokeWidth="1.5" />
-      <text x="160" y="123" textAnchor="middle" fontSize="8" fill="white" fontWeight="700">BEST MATCH ✓</text>
+      <text x="155" y="123" textAnchor="middle" fontSize="8" fill="white" fontWeight="700">BEST MATCH</text>
+      <path d="M192,118 l2.5,3 l5,-6" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       {/* Right card */}
       <rect x="222" y="22" width="74" height="108" rx="8" fill="white" stroke={S} strokeWidth="2" opacity="0.7" />
       <rect x="232" y="32" width="54" height="40" rx="5" fill={color} opacity="0.85" />
-      <text x="259" y="58" textAnchor="middle" fontSize="9" fill={S} opacity="0.45">★★★☆☆</text>
+      <g opacity="0.45">{[240,249,258].map(cx => <SvgStar key={cx} cx={cx} cy={54} R={4} r={1.6} fill={S} />)}{[267,276].map(cx => <SvgStar key={cx} cx={cx} cy={54} R={4} r={1.6} fill="none" stroke={S} strokeWidth={0.8} />)}</g>
       <text x="259" y="104" textAnchor="middle" fontSize="10" fill={S} opacity="0.5" fontWeight="500">$199</text>
       {/* Arrows pointing to middle */}
       <polyline points="100,72 116,72 108,64" fill="none" stroke={O} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -460,7 +488,7 @@ function Trivia({ color, textColor }) {
       <path d="M108 36 Q84 36 84 58 Q84 80 108 76" fill="none" stroke={S} strokeWidth="3.5" strokeLinecap="round" />
       <path d="M212 36 Q236 36 236 58 Q236 80 212 76" fill="none" stroke={S} strokeWidth="3.5" strokeLinecap="round" />
       {/* Star inside trophy */}
-      <text x="160" y="76" textAnchor="middle" fontSize="40" fill={O}>★</text>
+      <SvgStar cx={160} cy={62} R={22} r={9} fill={O} />
       {/* Score badge */}
       <rect x="224" y="14" width="74" height="44" rx="12" fill={O} stroke={S} strokeWidth="2.5" />
       <text x="261" y="31" textAnchor="middle" fontSize="9" fill="white" fontWeight="700" letterSpacing="1">SCORE</text>

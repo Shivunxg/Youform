@@ -4,7 +4,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import FormHeader from '@/components/builder/FormHeader';
 import toast from 'react-hot-toast';
-import { ExternalLink, RefreshCw, Unlink, Plus, Check } from 'lucide-react';
+import { ExternalLink, RefreshCw, Unlink, Plus, Check, Sheet, Webhook, MessageSquare, FileText, Settings2 } from 'lucide-react';
 
 const SG = { fontFamily: 'Space Grotesk, system-ui, sans-serif' };
 
@@ -13,7 +13,7 @@ const CATALOG = [
     id: 'google_sheets',
     name: 'Google Sheets',
     description: 'Send every new response as a new row in a Google Sheet automatically.',
-    icon: '📊',
+    icon: <Sheet size={20} strokeWidth={1.75} />,
     category: 'Spreadsheets',
     available: true,
   },
@@ -21,7 +21,7 @@ const CATALOG = [
     id: 'webhook',
     name: 'Webhook',
     description: 'POST response data as JSON to any URL — connect any service or backend.',
-    icon: '⚡',
+    icon: <Webhook size={20} strokeWidth={1.75} />,
     category: 'Developer',
     available: true,
   },
@@ -29,7 +29,7 @@ const CATALOG = [
     id: 'slack',
     name: 'Slack',
     description: 'Get a Slack channel notification with a response summary on every submission.',
-    icon: '💬',
+    icon: <MessageSquare size={20} strokeWidth={1.75} />,
     category: 'Notifications',
     available: true,
   },
@@ -37,7 +37,7 @@ const CATALOG = [
     id: 'notion',
     name: 'Notion',
     description: 'Push form responses directly into a Notion database as new pages.',
-    icon: '📝',
+    icon: <FileText size={20} strokeWidth={1.75} />,
     category: 'Productivity',
     available: true,
   },
@@ -45,7 +45,7 @@ const CATALOG = [
     id: 'zapier',
     name: 'Zapier',
     description: 'Connect to 5,000+ apps — send response data to any Zapier workflow.',
-    icon: '⚙️',
+    icon: <Settings2 size={20} strokeWidth={1.75} />,
     category: 'Automation',
     available: true,
   },
@@ -128,7 +128,7 @@ export default function IntegratePage() {
               Use Webhook to connect any system, or reach out for enterprise support.
             </p>
             <button onClick={() => toggle('webhook')} className="btn btn-secondary text-xs">
-              Set up a Webhook ⚡
+              Set up a Webhook
             </button>
           </div>
         </div>

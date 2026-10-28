@@ -296,7 +296,7 @@ export default function DesignPanel({ onClose }) {
           if (!warnings.length) return null;
           return (
             <div className="mx-4 mb-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg space-y-0.5">
-              <p className="text-xs font-semibold text-amber-700">⚠ Low contrast detected</p>
+              <p className="text-xs font-semibold text-amber-700">Low contrast detected</p>
               {warnings.map(w => (
                 <p key={w} className="text-[10px] text-amber-600 leading-snug">• {w}</p>
               ))}

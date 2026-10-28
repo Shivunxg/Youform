@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ZoomIn, ZoomOut, Maximize2, RotateCcw, X, ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, RotateCcw, X, ChevronRight, Plus, Trash2, Shuffle } from 'lucide-react';
 import { useBuilderStore } from '@/stores/builderStore';
 import FormHeader from '@/components/builder/FormHeader';
 import { nanoid } from 'nanoid';
@@ -390,7 +390,7 @@ export default function LogicBuilderPage() {
           {questions.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
-                <div className="text-4xl mb-3">🔀</div>
+                <Shuffle size={40} className="mx-auto mb-3 text-gray-300" strokeWidth={1.5} />
                 <p className="text-sm font-bold text-gray-500" style={SG}>No questions yet</p>
                 <p className="text-xs text-gray-400 mt-1">Add questions in the builder first.</p>
                 <button

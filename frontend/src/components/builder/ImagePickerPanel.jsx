@@ -301,7 +301,7 @@ function LinkTab({ onSelect }) {
       {status === 'ok'      && (
         <div className="rounded-xl overflow-hidden border-2 border-emerald-400" style={{ boxShadow: '2px 2px 0 #34d399' }}>
           <img src={url.trim()} alt="" className="w-full h-20 object-cover" />
-          <p className="text-[9px] text-center text-emerald-600 py-1 font-semibold" style={SG}>✓ Image applied</p>
+          <p className="text-[9px] text-center text-emerald-600 py-1 font-semibold" style={SG}>Image applied</p>
         </div>
       )}
     </div>

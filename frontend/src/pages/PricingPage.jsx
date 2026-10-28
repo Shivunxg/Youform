@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, Minus, Zap } from 'lucide-react';
+import { Check, Minus, Zap, Sparkles, Crown, Building2 } from 'lucide-react';
 import SEO from '@/components/SEO';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
@@ -207,7 +207,7 @@ export default function PricingPage() {
                 {/* Header */}
                 <div style={{ padding: '28px 28px 20px', borderBottom: '1px solid #f0f0f0' }}>
                   <div style={{ width: 36, height: 36, borderRadius: 10, background: plan.id === 'free' ? '#f5f5f5' : plan.accent, marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ fontSize: 16 }}>{plan.id === 'free' ? '✦' : plan.id === 'pro' ? '⚡' : '◆'}</span>
+                    {plan.id === 'free' ? <Sparkles size={16} /> : plan.id === 'pro' ? <Zap size={16} /> : <Building2 size={16} />}
                   </div>
                   <h2 style={{ fontSize: 22, fontWeight: 800, color: '#111', margin: '0 0 4px', fontFamily: 'Space Grotesk, system-ui' }}>{plan.name}</h2>
                   <p style={{ fontSize: 13, color: '#888', margin: '0 0 20px', lineHeight: 1.5 }}>{plan.tagline}</p>

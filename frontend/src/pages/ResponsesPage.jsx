@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Download } from 'lucide-react';
+import { ArrowLeft, Download, MailX } from 'lucide-react';
 import { api } from '@/lib/api';
 import AppShell from '@/components/ui/AppShell';
 
@@ -61,7 +61,7 @@ export default function ResponsesPage() {
           <p className="text-gray-400">Loading...</p>
         ) : responses.length === 0 ? (
           <div className="card p-16 text-center">
-            <p className="text-4xl mb-3">📭</p>
+            <MailX size={40} className="mx-auto mb-3 text-gray-300" strokeWidth={1.5} />
             <p className="font-medium text-gray-700">No responses yet</p>
           </div>
         ) : (

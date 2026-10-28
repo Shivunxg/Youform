@@ -131,10 +131,10 @@ export default function Canvas({ onToggleDesign }) {
         {/* PRO badge — only for free plan */}
         {plan === 'free' && (
           <button
-            onClick={() => toast('Upgrade to PRO for custom domains, branding removal & more!', { icon: '⚡' })}
+            onClick={() => toast('Upgrade to PRO for custom domains, branding removal & more!')}
             className="text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white px-2.5 py-1 rounded-lg transition-colors ml-1"
           >
-            ⚡ PRO
+            PRO
           </button>
         )}
       </div>

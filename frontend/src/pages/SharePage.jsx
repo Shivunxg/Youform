@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Link, Code, QrCode, ExternalLink, Copy, Check, Download } from 'lucide-react';
+import { Link, Code, QrCode, ExternalLink, Copy, Check, Download, AlertTriangle, MessageSquare } from 'lucide-react';
 import QRCode from 'qrcode';
 import { api } from '@/lib/api';
 import FormHeader from '@/components/builder/FormHeader';
@@ -108,7 +108,7 @@ export default function SharePage() {
 
           {form?.status !== 'published' && (
             <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
-              <span className="text-amber-500 text-lg shrink-0">⚠️</span>
+              <AlertTriangle size={18} className="text-amber-500 shrink-0" strokeWidth={1.75} />
               <div>
                 <p className="text-sm font-semibold text-amber-800">This form is not published yet</p>
                 <p className="text-xs text-amber-600 mt-0.5">
@@ -176,7 +176,7 @@ export default function SharePage() {
                     : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
                 )}
               >
-                {copied === 'embed' ? '✓ Copied' : 'Copy code'}
+                {copied === 'embed' ? 'Copied' : 'Copy code'}
               </button>
             </div>
           </Section>
@@ -199,7 +199,7 @@ export default function SharePage() {
                   href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(publicUrl)}`,
                 },
                 {
-                  label: 'WhatsApp', emoji: '💬', color: '#25D366',
+                  label: 'WhatsApp', emoji: 'W', color: '#25D366',
                   href: `https://wa.me/?text=${encodeURIComponent(`Fill out my form: ${publicUrl}`)}`,
                 },
                 {

@@ -150,7 +150,7 @@ function TypeSwitcherDropdown({ currentType, onSelect, onClose }) {
                     {meta.Icon && <meta.Icon className="w-3.5 h-3.5" style={{ color: meta.color }} />}
                   </span>
                   <span className="text-xs font-medium">{meta.label}</span>
-                  {type === currentType && <span className="ml-auto text-[10px] text-brand-500">✓</span>}
+                  {type === currentType && <span className="ml-auto w-2 h-2 rounded-full bg-brand-500 inline-block" />}
                 </button>
               );
             })}
@@ -508,7 +508,7 @@ function TypeConfig({ question, onConfig, quizMode }) {
         <SelectField label="Number of steps" value={config.steps ?? 5} onChange={v => update({ steps: +v })}
           options={[3,4,5,6,7,8,9,10].map(n => ({ value: n, label: String(n) }))} />
         <SelectField label="Shape" value={config.shape ?? 'star'} onChange={v => update({ shape: v })}
-          options={[{ value: 'star', label: '⭐ Star' }, { value: 'heart', label: '❤️ Heart' }, { value: 'thumb', label: '👍 Thumb' }, { value: 'circle', label: '⬤ Circle' }]} />
+          options={[{ value: 'star', label: 'Star' }, { value: 'heart', label: 'Heart' }, { value: 'thumb', label: 'Thumb' }, { value: 'circle', label: 'Circle' }]} />
       </div>
     );
   }

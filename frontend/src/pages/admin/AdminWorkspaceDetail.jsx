@@ -166,7 +166,7 @@ export default function AdminWorkspaceDetail() {
               className="w-full py-2.5 bg-[#f97316] text-white font-bold text-sm rounded-lg border-2 border-[#111] transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:translate-y-0"
               style={{ ...SG, boxShadow: '3px 3px 0 #111' }}
             >
-              {overridePlan.isPending ? 'Applying…' : planSaved ? '✓ Plan updated' : 'Apply plan'}
+              {overridePlan.isPending ? 'Applying…' : planSaved ? 'Plan updated' : 'Apply plan'}
             </button>
           </div>
 

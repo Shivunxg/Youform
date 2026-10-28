@@ -1,18 +1,18 @@
 import { useState } from 'react';
-import { ClipboardList, Lock, RefreshCw } from 'lucide-react';
+import { ClipboardList, Lock, RefreshCw, FileText, Rocket, Trash2, X, UserPlus, UserMinus, Settings, Clipboard } from 'lucide-react';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { hasFeature } from '@/lib/plans';
 
 const ACTION_ICONS = {
-  form_created:     '📝',
-  form_published:   '🚀',
-  form_deleted:     '🗑️',
-  response_deleted: '❌',
-  member_invited:   '👋',
-  member_removed:   '👤',
-  settings_updated: '⚙️',
+  form_created:     FileText,
+  form_published:   Rocket,
+  form_deleted:     Trash2,
+  response_deleted: X,
+  member_invited:   UserPlus,
+  member_removed:   UserMinus,
+  settings_updated: Settings,
 };
 
 function formatTime(iso) {
@@ -98,7 +98,7 @@ export default function ActivityLog() {
             const email = activity.profiles?.email;
             return (
               <div key={activity.id} className="flex items-start gap-3 py-3 border-b border-gray-100">
-                <span className="text-xl mt-0.5 shrink-0">{ACTION_ICONS[activity.action] ?? '📋'}</span>
+                {(() => { const Ic = ACTION_ICONS[activity.action] ?? Clipboard; return <Ic size={18} className="mt-0.5 shrink-0 text-gray-400" strokeWidth={1.75} />; })()}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-gray-800">{activity.description}</p>
                   <p className="text-xs text-gray-400 mt-0.5">{name}{email && name !== email ? ` · ${email}` : ''}</p>

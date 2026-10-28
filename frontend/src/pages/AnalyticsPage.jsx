@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import FormHeader from '@/components/builder/FormHeader';
+import { MessageSquare, AlertTriangle, BarChart2 } from 'lucide-react';
 
 const SG = { fontFamily: 'Space Grotesk, system-ui, sans-serif' };
 
@@ -134,7 +135,7 @@ function OpenEndedSection({ questions, textAnswers }) {
   return (
     <div className="bg-white rounded-xl border-2 border-[#111] mb-6" style={{ boxShadow: '4px 4px 0 #111' }}>
       <div className="px-6 py-4 border-b-2 border-[#111] flex items-center gap-2">
-        <span className="text-base">💬</span>
+        <MessageSquare size={16} strokeWidth={1.75} />
         <h2 className="text-sm font-bold text-[#111]" style={SG}>Open-ended answers</h2>
         <span className="ml-auto text-[10px] font-bold text-gray-400 uppercase tracking-wider">{withAnswers.length} question{withAnswers.length !== 1 ? 's' : ''}</span>
       </div>
@@ -362,7 +363,7 @@ export default function AnalyticsPage() {
 
               {analytics?.partial > 0 && (
                 <div className="mb-8 p-4 bg-amber-50 border-2 border-amber-300 rounded-xl flex items-center gap-3">
-                  <span className="text-2xl">⚠️</span>
+                  <AlertTriangle size={22} strokeWidth={1.75} className="text-amber-500 shrink-0" />
                   <div>
                     <p className="text-sm font-bold text-amber-800" style={SG}>
                       {analytics.partial} partial submission{analytics.partial !== 1 ? 's' : ''}
@@ -445,7 +446,7 @@ export default function AnalyticsPage() {
 
               {!hasData && (
                 <div className="text-center py-12">
-                  <p className="text-4xl mb-3">📊</p>
+                  <BarChart2 size={40} className="mx-auto mb-3 text-gray-300" strokeWidth={1.5} />
                   <p className="font-bold text-[#111]" style={SG}>No data yet</p>
                   <p className="text-sm text-gray-500 mt-1">Share your form to start collecting analytics.</p>
                 </div>

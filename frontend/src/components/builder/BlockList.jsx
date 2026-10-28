@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Plus, GripVertical, Copy, Trash2 } from 'lucide-react';
+import { Plus, GripVertical, Copy, Trash2, X } from 'lucide-react';
 import { useBuilderStore } from '@/stores/builderStore';
 import { QUESTION_META } from './questionMeta';
 import { clsx } from 'clsx';
@@ -19,7 +19,7 @@ export function TypePickerDropdown({ onSelect, onClose, anchor = 'right' }) {
     )}>
       <div className="px-3 py-2 border-b border-gray-100 flex items-center justify-between">
         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Block type</span>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xs leading-none">✕</button>
+        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 leading-none"><X size={12} /></button>
       </div>
       <div className="p-1 max-h-60 overflow-y-auto">
         {ADD_BLOCK_TYPES.map(type => {

@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Monitor } from 'lucide-react';
 import {
   DndContext, closestCenter, PointerSensor,
   useSensor, useSensors,
@@ -85,7 +86,7 @@ export default function BuilderPage() {
     <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
       {/* Mobile: desktop-only notice */}
       <div className="md:hidden flex flex-col items-center justify-center h-screen bg-[#FFFBF2] px-6 text-center">
-        <div className="text-5xl mb-4">🖥️</div>
+        <Monitor size={48} className="mx-auto mb-4 text-gray-400" strokeWidth={1.5} />
         <h1 className="text-2xl font-bold text-[#111] mb-2" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
           Form builder requires a desktop
         </h1>

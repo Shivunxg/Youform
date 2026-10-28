@@ -19,7 +19,7 @@ const RAW = [
     category: 'forms',
     color: '#FDE68A',
     textColor: '#92400E',
-    icon: '⭐',
+    icon: 'star',
     questions: [
       q('welcome_screen', 'Would you like to share your experience with us?', {
         description: 'Your feedback helps other people discover us — and it means the world to our team.',
@@ -46,7 +46,7 @@ const RAW = [
       q('yes_no', 'Would you recommend us to a colleague or friend?', { required: true }),
       q('yes_no', 'Can we feature this testimonial publicly on our website?', { required: true }),
       q('short_text', 'Your website or LinkedIn URL (optional)', { config: { placeholder: 'https://' } }),
-      q('thank_you_screen', 'Thank you — this means everything! 🙏', {
+      q('thank_you_screen', 'Thank you — this means everything!', {
         config: { message: 'We\'ve received your testimonial and truly appreciate you taking the time to share your story.' },
       }),
     ],
@@ -58,7 +58,7 @@ const RAW = [
     category: 'forms',
     color: '#DDD6FE',
     textColor: '#5B21B6',
-    icon: '📋',
+    icon: 'clipboard',
     questions: [
       q('welcome_screen', 'Welcome — let\'s get started on your project', {
         config: { buttonLabel: 'Begin →', description: 'This form takes about 5 minutes. Your answers help us hit the ground running.' },
@@ -106,7 +106,7 @@ const RAW = [
     category: 'forms',
     color: '#BBF7D0',
     textColor: '#15803D',
-    icon: '🎯',
+    icon: 'target',
     questions: [
       q('welcome_screen', 'Get a free personalised demo', {
         config: { buttonLabel: 'Claim my demo', description: 'Takes 2 minutes. No credit card required.' },
@@ -131,7 +131,7 @@ const RAW = [
       q('long_text', "Anything specific you'd like us to cover in the demo?", {
         config: { placeholder: 'Optional — the more context, the more tailored your demo will be…', minRows: 3 },
       }),
-      q('thank_you_screen', 'You\'re on the list! 🎉', {
+      q('thank_you_screen', 'You\'re on the list!', {
         config: { message: 'One of our team members will reach out within 1 business day to schedule your personalised demo.' },
       }),
     ],
@@ -143,7 +143,7 @@ const RAW = [
     category: 'forms',
     color: '#FECACA',
     textColor: '#B91C1C',
-    icon: '📞',
+    icon: 'phone',
     questions: [
       q('welcome_screen', 'We\'d love to hear from you', {
         config: { buttonLabel: 'Send a message', description: 'We typically reply within one business day.' },
@@ -163,7 +163,7 @@ const RAW = [
         description: 'The more detail you share, the faster we can help.',
         config: { placeholder: 'Hi, I\'m reaching out because…', minRows: 4 },
       }),
-      q('thank_you_screen', 'Message received! 📬', {
+      q('thank_you_screen', 'Message received!', {
         config: { message: 'Thanks for getting in touch. We\'ll review your message and get back to you within one business day.' },
       }),
     ],
@@ -175,7 +175,7 @@ const RAW = [
     category: 'forms',
     color: '#BAE6FD',
     textColor: '#0369A1',
-    icon: '📝',
+    icon: 'file-text',
     questions: [
       q('welcome_screen', 'Apply to join our team', {
         config: { buttonLabel: 'Start application', description: 'This application takes about 10 minutes. We review every submission.' },
@@ -205,7 +205,7 @@ const RAW = [
         config: { placeholder: 'I\'m applying because…', minRows: 5 },
       }),
       q('file_upload', 'Upload your resume / CV', { required: true, config: { allowedTypes: ['pdf', 'doc', 'docx'], maxSizeMb: 10, maxFiles: 1 } }),
-      q('thank_you_screen', 'Application submitted! 🎉', {
+      q('thank_you_screen', 'Application submitted!', {
         config: { message: 'Thank you for applying. We review every application and will be in touch if you\'re shortlisted.' },
       }),
     ],
@@ -217,7 +217,7 @@ const RAW = [
     category: 'forms',
     color: '#FFEDD5',
     textColor: '#C2410C',
-    icon: '🛒',
+    icon: 'shopping-cart',
     questions: [
       q('welcome_screen', 'Place your order', {
         config: { buttonLabel: 'Order now', description: 'Secure checkout. Orders are processed within 1–2 business days.' },
@@ -236,7 +236,7 @@ const RAW = [
       }),
       q('short_text', 'Promo code (optional)', { config: { placeholder: 'DISCOUNT20' } }),
       q('long_text', 'Any special instructions?', { config: { placeholder: 'Gift message, delivery notes, etc.', minRows: 2 } }),
-      q('thank_you_screen', 'Order received! 🛒', {
+      q('thank_you_screen', 'Order received!', {
         config: { message: 'Thank you for your order. You\'ll receive a confirmation email shortly with your order details and tracking information.' },
       }),
     ],
@@ -250,7 +250,7 @@ const RAW = [
     category: 'surveys',
     color: '#DCFCE7',
     textColor: '#15803D',
-    icon: '🔍',
+    icon: 'search',
     questions: [
       q('welcome_screen', 'Help us build the right product for you', {
         config: { buttonLabel: 'Share my input', description: '8 quick questions · ~4 minutes · completely anonymous' },
@@ -284,7 +284,7 @@ const RAW = [
         config: { choices: choices('Free trial', 'Demo / sales call', 'Online reviews & case studies', 'Recommendation from a peer', 'LinkedIn / social media'), allowMultiple: false, allowOther: false },
       }),
       q('short_text', 'Email address to receive the research summary (optional)', { config: { placeholder: 'your@email.com' } }),
-      q('thank_you_screen', 'Your input is invaluable — thank you! 🔍', {
+      q('thank_you_screen', 'Your input is invaluable — thank you!', {
         config: { message: 'We\'ll share a summary of our findings with everyone who provided an email. This helps ensure we build something you\'ll actually love.' },
       }),
     ],
@@ -296,7 +296,7 @@ const RAW = [
     category: 'surveys',
     color: '#DBEAFE',
     textColor: '#1D4ED8',
-    icon: '🚀',
+    icon: 'rocket',
     questions: [
       q('welcome_screen', 'Help us personalise your experience', {
         config: { buttonLabel: 'Get started →', description: '7 quick questions — we\'ll use your answers to tailor what you see next.' },
@@ -317,7 +317,7 @@ const RAW = [
       q('rating', 'How easy was our signup process?', { required: true, config: { steps: 5, shape: 'star' } }),
       q('long_text', 'What should we build next? Any early feedback for our team?', { config: { placeholder: 'Your thoughts…', minRows: 3 } }),
       q('short_text', 'How did you hear about us?', { config: { placeholder: 'Referral, Google, Twitter / X, podcast…' } }),
-      q('thank_you_screen', 'You\'re all set! 🚀', {
+      q('thank_you_screen', 'You\'re all set!', {
         config: { message: 'Thanks for telling us about yourself. We\'ve noted your preferences and will use them to personalise your experience.' },
       }),
     ],
@@ -329,7 +329,7 @@ const RAW = [
     category: 'surveys',
     color: '#FFE4E6',
     textColor: '#BE123C',
-    icon: '👋',
+    icon: 'log-out',
     questions: [
       q('welcome_screen', 'Before you go — one minute of your time?', {
         config: { buttonLabel: 'Sure, why not', description: 'Your feedback shapes what we build next. It takes less than 60 seconds.' },
@@ -358,7 +358,7 @@ const RAW = [
     category: 'surveys',
     color: '#FEF9C3',
     textColor: '#854D0E',
-    icon: '📊',
+    icon: 'bar-chart-2',
     questions: [
       q('welcome_screen', 'We\'d love your feedback', {
         config: { buttonLabel: 'Share feedback', description: 'Takes 2 minutes. Completely anonymous unless you choose to share your name.' },
@@ -386,7 +386,7 @@ const RAW = [
     category: 'surveys',
     color: '#E7E5E4',
     textColor: '#44403C',
-    icon: '💼',
+    icon: 'briefcase',
     questions: [
       q('welcome_screen', 'Your voice matters', {
         config: { buttonLabel: 'Start survey', description: 'This is an anonymous pulse survey — your answers are confidential and help shape how we work together.' },
@@ -416,9 +416,9 @@ const RAW = [
     category: 'surveys',
     color: '#EDE9FE',
     textColor: '#6D28D9',
-    icon: '🎓',
+    icon: 'graduation-cap',
     questions: [
-      q('welcome_screen', 'How did we do? 🎓', {
+      q('welcome_screen', 'How did we do?', {
         config: { buttonLabel: 'Leave feedback', description: 'Share your thoughts on today\'s event — takes 2 minutes and helps us make the next one even better.' },
       }),
       q('rating', 'How would you rate the event overall?', { required: true, config: { steps: 5, shape: 'star' } }),
@@ -450,9 +450,9 @@ const RAW = [
     category: 'quizzes',
     color: '#FFEDD5',
     textColor: '#C2410C',
-    icon: '📱',
+    icon: 'smartphone',
     questions: [
-      q('welcome_screen', 'Test your Digital Marketing knowledge! 🎯', { config: { buttonLabel: 'Start quiz', description: '5 questions · ~2 minutes' } }),
+      q('welcome_screen', 'Test your Digital Marketing knowledge!', { config: { buttonLabel: 'Start quiz', description: '5 questions · ~2 minutes' } }),
       q('multiple_choice', 'What does CTR stand for?', {
         required: true,
         config: { choices: choices('Click-Through Rate', 'Cost To Reach', 'Customer Track Record', 'Content Traffic Ratio'), allowMultiple: false, allowOther: false },
@@ -483,9 +483,9 @@ const RAW = [
     category: 'quizzes',
     color: '#E0F2FE',
     textColor: '#0369A1',
-    icon: '🧠',
+    icon: 'brain',
     questions: [
-      q('welcome_screen', 'Discover your creator personality type! 🎨', { config: { buttonLabel: 'Find out', description: 'Answer 5 quick questions' } }),
+      q('welcome_screen', 'Discover your creator personality type!', { config: { buttonLabel: 'Find out', description: 'Answer 5 quick questions' } }),
       q('multiple_choice', 'When starting a new project, you tend to…', {
         required: true,
         config: { choices: choices('Plan everything out in detail first', 'Dive straight in and figure it out', 'Research what others have done', 'Collaborate with someone immediately'), allowMultiple: false, allowOther: false },
@@ -516,7 +516,7 @@ const RAW = [
     category: 'quizzes',
     color: '#DCFCE7',
     textColor: '#15803D',
-    icon: '💡',
+    icon: 'lightbulb',
     questions: [
       q('welcome_screen', 'Find the right plan for your team in 2 minutes', { config: { buttonLabel: "Let's go →", description: '6 quick questions' } }),
       q('multiple_choice', 'What type of forms do you need most?', {
@@ -546,7 +546,7 @@ const RAW = [
     category: 'quizzes',
     color: '#FAE8FF',
     textColor: '#86198F',
-    icon: '🎯',
+    icon: 'target',
     questions: [
       q('welcome_screen', 'Find your perfect product in under a minute', { config: { buttonLabel: 'Start', description: '' } }),
       q('multiple_choice', 'What is your primary goal?', {
@@ -572,9 +572,9 @@ const RAW = [
     category: 'quizzes',
     color: '#FEF9C3',
     textColor: '#854D0E',
-    icon: '🏆',
+    icon: 'trophy',
     questions: [
-      q('welcome_screen', "Ready for today's trivia? 🏆", { config: { buttonLabel: 'Start', description: '5 questions — no time limit!' } }),
+      q('welcome_screen', "Ready for today's trivia? ", { config: { buttonLabel: 'Start', description: '5 questions — no time limit!' } }),
       q('multiple_choice', 'What year was the World Wide Web invented?', {
         required: true,
         config: { choices: choices('1985', '1989', '1993', '1997'), allowMultiple: false, allowOther: false },
@@ -601,9 +601,9 @@ const RAW = [
     category: 'quizzes',
     color: '#FEE2E2',
     textColor: '#B91C1C',
-    icon: '🔥',
+    icon: 'zap',
     questions: [
-      q('welcome_screen', 'Skills Assessment 🔥', {
+      q('welcome_screen', 'Skills Assessment', {
         config: { buttonLabel: 'Begin assessment', description: 'Rate your proficiency honestly — there are no wrong answers. This helps us match you with the right opportunities.' },
       }),
       q('short_text', 'Full name', { required: true, config: { placeholder: 'Your full name' } }),

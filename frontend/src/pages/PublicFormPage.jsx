@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { ChevronRight, ChevronLeft } from 'lucide-react';
+import { ChevronRight, ChevronLeft, ThumbsUp, ThumbsDown, Star, Heart, Paperclip, CheckCircle, PartyPopper, HelpCircle } from 'lucide-react';
 import { api } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { nanoid } from 'nanoid';
@@ -269,7 +269,7 @@ function PublicAnswerInput({ question, answer, onAnswer, primary }) {
             className="flex-1 py-4 rounded-xl border-2 text-base font-semibold transition-all"
             style={answer === opt ? { borderColor: primary, backgroundColor: primary, color: '#fff' } : { borderColor: '#e5e7eb', color: '#374151' }}
           >
-            {opt === 'Yes' ? '👍  Yes' : '👎  No'}
+            {opt === 'Yes' ? <><ThumbsUp size={16} className="inline mr-1.5" />Yes</> : <><ThumbsDown size={16} className="inline mr-1.5" />No</>}
           </button>
         ))}
       </div>
@@ -278,17 +278,18 @@ function PublicAnswerInput({ question, answer, onAnswer, primary }) {
 
   if (type === 'rating') {
     const steps = config?.steps ?? 5;
-    const shapes = { star: '★', heart: '♥', thumb: '👍', circle: '●' };
+    const shapeIcons = { star: Star, heart: Heart, thumb: ThumbsUp };
+    const RatingIcon = shapeIcons[config?.shape] ?? Star;
     return (
       <div className="flex gap-2">
         {[...Array(steps)].map((_, i) => (
           <button
             key={i}
             onClick={() => onAnswer(i + 1)}
-            className="text-3xl transition-all hover:scale-110 focus:outline-none"
+            className="transition-all hover:scale-110 focus:outline-none"
             style={{ color: (answer ?? 0) > i ? primary : '#d1d5db' }}
           >
-            {shapes[config?.shape] ?? '★'}
+            <RatingIcon size={30} strokeWidth={1.5} />
           </button>
         ))}
       </div>
@@ -389,13 +390,13 @@ function FileUploadInput({ config, answer, onAnswer, primary }) {
           </>
         ) : answer ? (
           <>
-            <span className="text-3xl mb-2">✅</span>
+            <CheckCircle size={32} className="mx-auto mb-2 text-green-500" strokeWidth={1.75} />
             <span className="text-sm font-medium text-green-700">{answer.name}</span>
             <span className="text-xs text-gray-400 mt-1">{(answer.size / 1024).toFixed(0)} KB uploaded</span>
           </>
         ) : (
           <>
-            <span className="text-4xl mb-3">📎</span>
+            <Paperclip size={40} className="mx-auto mb-3 text-gray-400" strokeWidth={1.5} />
             <span className="text-gray-600 font-medium">Click to upload a file</span>
             <span className="text-sm text-gray-400 mt-1">
               {config?.allowedTypes?.length ? config.allowedTypes.join(', ').toUpperCase() + ' · ' : ''}Max {config?.maxSizeMb ?? 10}MB
@@ -413,7 +414,7 @@ function FileUploadInput({ config, answer, onAnswer, primary }) {
 function ThankYouScreen({ question, primary, formTitle }) {
   return (
     <div className="text-center animate-fade-in">
-      <div className="text-6xl mb-6">🎉</div>
+      <div className="mb-6 flex justify-center"><PartyPopper size={56} strokeWidth={1.5} /></div>
       <h2 className="text-3xl font-bold text-gray-900 mb-3">
         {question?.title ?? 'Thank you!'}
       </h2>
@@ -441,7 +442,7 @@ function FullPageSpinner() {
 function ErrorPage({ message }) {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center text-center px-4">
-      <p className="text-5xl mb-4">😕</p>
+      <HelpCircle size={48} className="mx-auto mb-4 text-gray-300" strokeWidth={1.5} />
       <h1 className="text-xl font-semibold text-gray-900 mb-2">Form not available</h1>
       <p className="text-gray-500 text-sm">{message}</p>
     </div>

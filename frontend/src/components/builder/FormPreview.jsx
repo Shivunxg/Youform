@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { X, Monitor, Smartphone, RefreshCw, ChevronRight, ChevronLeft, ChevronUp, ChevronDown } from 'lucide-react';
+import { X, Monitor, Smartphone, RefreshCw, ChevronRight, ChevronLeft, ChevronUp, ChevronDown, PartyPopper, ThumbsUp, ThumbsDown, Star, Heart, Circle, Paperclip } from 'lucide-react';
 import { useBuilderStore } from '@/stores/builderStore';
 import { clsx } from 'clsx';
 import EmbedBlock from '@/components/EmbedBlock';
@@ -290,7 +290,7 @@ export default function FormPreview() {
 function ThankYouView({ thankYou, onReset, primary }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center text-center">
-      <div className="text-5xl mb-4">🎉</div>
+      <div className="mb-4 flex items-center justify-center"><PartyPopper size={48} strokeWidth={1.5} /></div>
       <h2 className="text-2xl font-semibold mb-2 text-balance">
         {thankYou?.title || 'Thank you!'}
       </h2>
@@ -472,7 +472,7 @@ function AnswerInput({ question, answer, onAnswer, primary }) {
             )}
             style={answer === opt ? { borderColor: primary, backgroundColor: primary } : {}}
           >
-            {opt === 'Yes' ? '👍 Yes' : '👎 No'}
+            {opt === 'Yes' ? <><ThumbsUp size={16} className="inline mr-1.5" />Yes</> : <><ThumbsDown size={16} className="inline mr-1.5" />No</>}
           </button>
         ))}
       </div>
@@ -481,17 +481,17 @@ function AnswerInput({ question, answer, onAnswer, primary }) {
 
   if (type === 'rating') {
     const steps = config?.steps ?? 5;
-    const icons = { star: '⭐', heart: '❤️', thumb: '👍', circle: '●' };
-    const icon = icons[config?.shape ?? 'star'];
+    const shapeIcons = { star: Star, heart: Heart, thumb: ThumbsUp, circle: Circle };
+    const RatingIcon = shapeIcons[config?.shape ?? 'star'] ?? Star;
     return (
       <div className="flex gap-2">
         {[...Array(steps)].map((_, i) => (
           <button
             key={i}
             onClick={() => onAnswer(i + 1)}
-            className={clsx('text-2xl transition-transform hover:scale-110', (answer ?? 0) > i ? 'opacity-100' : 'opacity-25')}
+            className={clsx('transition-transform hover:scale-110', (answer ?? 0) > i ? 'opacity-100' : 'opacity-25')}
           >
-            {icon}
+            <RatingIcon size={28} strokeWidth={1.5} />
           </button>
         ))}
       </div>
@@ -538,7 +538,7 @@ function AnswerInput({ question, answer, onAnswer, primary }) {
   if (type === 'file_upload') {
     return (
       <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center">
-        <p className="text-3xl mb-2">📎</p>
+        <Paperclip size={32} className="mx-auto mb-2 text-gray-400" strokeWidth={1.5} />
         <p className="text-sm text-gray-500">Click to upload or drag & drop</p>
         <p className="text-xs text-gray-400 mt-1">
           {(config?.allowedTypes ?? []).join(', ').toUpperCase()} · Max {config?.maxSizeMb ?? 10}MB

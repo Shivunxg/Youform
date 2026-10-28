@@ -36,9 +36,11 @@ function FieldUI({ q, accent }) {
 
     case 'rating':
       return (
-        <div style={{ display: 'flex', gap: 2, marginTop: 8 }}>
+        <div style={{ display: 'flex', gap: 3, marginTop: 8 }}>
           {[1, 2, 3, 4, 5].map(i => (
-            <span key={i} style={{ fontSize: 14, lineHeight: 1, color: i <= 4 ? BRAND : `${accent}22` }}>★</span>
+            <svg key={i} width="12" height="12" viewBox="0 0 24 24" fill={i <= 4 ? BRAND : 'none'} stroke={i <= 4 ? BRAND : `${accent}44`} strokeWidth="1.75">
+              <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
+            </svg>
           ))}
         </div>
       );

@@ -31,7 +31,7 @@ export default function FormHeader({ staticTitle, isBuilder = false }) {
   };
 
   const handlePublish = async () => {
-    try { await publish(); toast.success('Published! 🎉'); }
+    try { await publish(); toast.success('Published!'); }
     catch (err) { toast.error(err.message || 'Publish failed'); }
   };
 
@@ -101,7 +101,7 @@ export default function FormHeader({ staticTitle, isBuilder = false }) {
 
             <button onClick={handlePublish} className="btn-primary text-xs h-8 px-3 gap-1.5">
               <Globe className="w-3.5 h-3.5" />
-              {form.status === 'published' ? 'Published ✓' : 'Publish'}
+              {form.status === 'published' ? 'Published' : 'Publish'}
             </button>
           </>
         )}
