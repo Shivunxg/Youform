@@ -1,0 +1,567 @@
+import { Router } from 'express';
+import { body, validationResult } from 'express-validator';
+import multer from 'multer';
+import bcrypt from 'bcryptjs';
+import rateLimit from 'express-rate-limit';
+import { nanoid } from 'nanoid';
+import { supabaseAdmin } from '../lib/supabase.js';
+import { requireAuth, optionalAuth } from '../lib/auth.js';
+import { createError } from '../lib/errorHandler.js';
+import { canAcceptResponse, hasFeature, getPlan } from '../lib/plans.js';
+import { responseQueue } from '../lib/queues.js';
+
+const router = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+
+// Tighter per-IP limit on public write endpoints (submit + upload)
+const publicWriteLimit = rateLimit({
+  windowMs: 60_000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many submissions from this IP, please try again later.' },
+});
+
+// Strict limit for password verification to prevent brute-force
+const passwordVerifyLimit = rateLimit({
+  windowMs: 60_000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many password attempts, please try again later.' },
+});
+
+// MIME types accepted for file uploads — stored as-is in Supabase Storage,
+// so we must exclude types browsers render (html, svg, xml) to prevent XSS.
+const ALLOWED_MIME_TYPES = new Set([
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain', 'text/csv',
+  'video/mp4', 'video/webm', 'video/quicktime',
+  'audio/mpeg', 'audio/wav', 'audio/ogg',
+  'application/zip',
+]);
+
+// Derive file extension from validated MIME type rather than trusting the
+// client-supplied filename, which could carry a spoofed extension (e.g. evil.html
+// sent as image/jpeg).
+const MIME_EXT = {
+  'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp',
+  'application/pdf': 'pdf', 'application/msword': 'doc',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+  'application/vnd.ms-excel': 'xls',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+  'text/plain': 'txt', 'text/csv': 'csv',
+  'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov',
+  'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/ogg': 'ogg',
+  'application/zip': 'zip',
+};
+
+// ============================================================
+// PUBLIC: GET /public/forms/:slug
+// Fetch published form for public rendering (no auth)
+// ============================================================
+router.get('/public/forms/:slug', async (req, res, next) => {
+  try {
+    const { slug } = req.params;
+    const { workspace } = req.query; // optional workspace slug for disambiguation
+
+    let q = supabaseAdmin
+      .from('forms')
+      .select('id, title, description, layout, theme, settings, workspace_id, closes_at, opens_at, response_limit, responses_count, questions(id, type, title, description, required, config, logic), workspaces(name, logo_url, plan, remove_branding, custom_domain)')
+      .eq('slug', slug)
+      .eq('status', 'published')
+      .order('position', { referencedTable: 'questions' })
+      .single();
+
+    const { data: form, error } = await q;
+    if (error || !form) throw createError(404, 'Form not found');
+
+    // Check if form is open
+    const now = new Date();
+    if (form.opens_at && new Date(form.opens_at) > now) throw createError(403, 'Form not open yet');
+    if (form.closes_at && new Date(form.closes_at) < now) throw createError(410, 'Form is closed');
+    if (form.response_limit && form.responses_count >= form.response_limit) throw createError(410, 'Form has reached its response limit');
+
+    // Atomic increment — no read-then-write race (fire-and-forget)
+    supabaseAdmin.rpc('increment_form_counter', { p_form_id: form.id, p_column: 'views_count' }).then(() => {});
+
+    // Strip sensitive settings (password_hash etc.)
+    const { password_hash, ...safeForm } = form;
+    res.json({ form: safeForm, requiresPassword: !!password_hash });
+  } catch (err) { next(err); }
+});
+
+// ============================================================
+// PUBLIC: POST /public/forms/:formId/start
+// Record a form start (for analytics)
+// ============================================================
+router.post('/public/forms/:formId/start', publicWriteLimit, async (req, res, next) => {
+  try {
+    const { error: incErr } = await supabaseAdmin.rpc('increment_form_counter', { p_form_id: req.params.formId, p_column: 'starts_count' });
+    if (incErr) throw incErr;
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
+// ============================================================
+// PUBLIC: POST /public/forms/:slug/verify-password
+// ============================================================
+router.post('/public/forms/:slug/verify-password', passwordVerifyLimit, async (req, res, next) => {
+  try {
+    const { data: form } = await supabaseAdmin.from('forms')
+      .select('password_hash').eq('slug', req.params.slug).single();
+    if (!form) throw createError(404, 'Form not found');
+    if (!form.password_hash) return res.json({ valid: true });
+    const valid = await bcrypt.compare(String(req.body.password ?? ''), form.password_hash);
+    res.json({ valid });
+  } catch (err) { next(err); }
+});
+
+// ============================================================
+// PUBLIC: POST /public/forms/:formId/upload
+// Upload a file for a file_upload question answer
+// ============================================================
+router.post('/public/forms/:formId/upload', publicWriteLimit, upload.single('file'), async (req, res, next) => {
+  try {
+    const { formId } = req.params;
+    if (!req.file) throw createError(400, 'No file provided');
+    if (!ALLOWED_MIME_TYPES.has(req.file.mimetype)) throw createError(415, `File type "${req.file.mimetype}" is not allowed`);
+
+    const { data: form } = await supabaseAdmin.from('forms')
+      .select('id, status, workspaces(plan)').eq('id', formId).single();
+    if (!form || form.status !== 'published') throw createError(404, 'Form not found');
+
+    const planCfg = getPlan(form.workspaces?.plan);
+    const limitMb = planCfg.file_upload_limit_mb;
+    if (limitMb !== null && req.file.size > limitMb * 1024 * 1024) {
+      throw createError(413, `File exceeds your plan's ${limitMb} MB upload limit`);
+    }
+
+    const ext = MIME_EXT[req.file.mimetype] ?? 'bin';
+    const path = `${formId}/${nanoid()}.${ext}`;
+
+    const { data, error } = await supabaseAdmin.storage
+      .from('form-uploads')
+      .upload(path, req.file.buffer, { contentType: req.file.mimetype, upsert: false });
+
+    if (error) {
+      console.error('[upload] Supabase storage error:', error.message, error);
+      throw createError(500, 'File could not be stored. Please try again.');
+    }
+
+    const { data: { publicUrl } } = supabaseAdmin.storage.from('form-uploads').getPublicUrl(data.path);
+
+    res.json({ url: publicUrl, name: req.file.originalname, size: req.file.size, type: req.file.mimetype });
+  } catch (err) { next(err); }
+});
+
+// ============================================================
+// PUBLIC: POST /public/forms/:formId/responses
+// Submit a response (core ingestion endpoint)
+// ============================================================
+router.post(
+  '/public/forms/:formId/responses',
+  publicWriteLimit,
+  optionalAuth,
+  [
+    body('answers').isObject(),
+    body('respondent_email').optional({ values: 'falsy' }).isEmail(),
+    body('utm_source').optional({ values: 'falsy' }).isString(),
+    body('utm_medium').optional({ values: 'falsy' }).isString(),
+    body('utm_campaign').optional({ values: 'falsy' }).isString(),
+    body('referrer').optional({ values: 'falsy' }).isURL({ require_tld: false }),
+    body('started_at').optional({ values: 'falsy' }).isISO8601(),
+    body('is_test').optional().isBoolean(),
+  ],
+  async (req, res, next) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        console.error('[submit] Validation errors:', JSON.stringify(errors.array()));
+        throw Object.assign(new Error('Validation failed'), { type: 'validation', errors: errors.array() });
+      }
+
+      const { formId } = req.params;
+
+      // Fetch form + workspace
+      const { data: form, error: fErr } = await supabaseAdmin
+        .from('forms')
+        .select('id, workspace_id, status, closes_at, opens_at, response_limit, responses_count, settings, questions(id, required, type), workspaces(plan)')
+        .eq('id', formId).single();
+
+      if (fErr || !form) throw createError(404, 'Form not found');
+      if (form.status !== 'published') throw createError(403, 'Form is not accepting responses');
+
+      const now = new Date();
+      if (form.closes_at && new Date(form.closes_at) < now) throw createError(410, 'Form is closed');
+      if (form.response_limit && form.responses_count >= form.response_limit) throw createError(410, 'Response limit reached');
+
+      // is_test is only honoured for authenticated workspace members — never anonymous submitters,
+      // who could otherwise bypass the monthly quota by setting is_test: true.
+      let isTest = false;
+      if (req.body.is_test === true && req.user) {
+        const { data: testMember } = await supabaseAdmin.from('workspace_members')
+          .select('role').eq('workspace_id', form.workspace_id).eq('user_id', req.user.id).maybeSingle();
+        if (testMember) isTest = true;
+      }
+
+      // Check plan response quota (skip for authenticated test submissions)
+      if (!isTest) {
+        const { allowed, used, limit } = await canAcceptResponse(supabaseAdmin, form.workspace_id, form.workspaces?.plan);
+        if (!allowed) {
+          return res.status(429).json({
+            error: 'Monthly response limit reached',
+            used, limit,
+            upgrade_url: `${process.env.APP_URL}/settings/billing`,
+          });
+        }
+      }
+
+      // Validate required questions
+      const { answers = {} } = req.body;
+      const required = form.questions.filter(q => q.required);
+      const missing = required.filter(q => {
+        const a = answers[q.id];
+        return a === undefined || a === null || a === '' || (Array.isArray(a) && a.length === 0);
+      });
+      if (missing.length > 0) {
+        return res.status(422).json({ error: 'Required questions not answered', missing_question_ids: missing.map(q => q.id) });
+      }
+
+      // Build response record
+      const { data: response, error } = await supabaseAdmin.from('responses').insert({
+        form_id: formId,
+        workspace_id: form.workspace_id,
+        respondent_id: req.body.respondent_id ?? null,
+        respondent_email: req.body.respondent_email ?? req.user?.email ?? null,
+        answers,
+        is_partial: false,
+        is_test: isTest,
+        started_at: req.body.started_at ?? now.toISOString(),
+        submitted_at: now.toISOString(),
+        completion_time_ms: req.body.completion_time_ms ?? null,
+        utm_source: req.body.utm_source ?? null,
+        utm_medium: req.body.utm_medium ?? null,
+        utm_campaign: req.body.utm_campaign ?? null,
+        referrer: req.body.referrer ?? null,
+        user_agent: req.headers['user-agent']?.substring(0, 512) ?? null,
+        ip_hash: null, // TODO: hash req.ip for GDPR compliance
+      }).select().single();
+
+      if (error) {
+        console.error('[submit] Supabase insert error:', error.message, JSON.stringify(error));
+        throw error;
+      }
+
+      // Fire-and-forget: notifications + integrations run after response is sent
+      responseQueue.add('process-response', {
+        responseId: response.id,
+        formId,
+        workspaceId: form.workspace_id,
+      });
+
+      res.status(201).json({
+        success: true,
+        responseId: response.id,
+        redirect_url: form.settings?.redirectUrl ?? null,
+      });
+    } catch (err) { next(err); }
+  }
+);
+
+// ============================================================
+// PUBLIC: POST /public/forms/:formId/responses/partial
+// Save partial response (for drop-off analytics)
+// ============================================================
+router.post('/public/forms/:formId/responses/partial', publicWriteLimit, async (req, res, next) => {
+  try {
+    const { formId } = req.params;
+    const { answers = {}, respondent_id, started_at } = req.body;
+
+    const { data: form } = await supabaseAdmin.from('forms')
+      .select('workspace_id, status, workspaces(plan)').eq('id', formId).single();
+    if (!form) throw createError(404, 'Form not found');
+    if (form.status !== 'published') throw createError(403, 'Form is not accepting responses');
+    if (!hasFeature(form.workspaces?.plan, 'partial_submissions')) {
+      return res.status(403).json({ error: 'Partial submissions require a Pro plan or higher.' });
+    }
+
+    const { data, error } = await supabaseAdmin.from('responses').insert({
+      form_id: formId,
+      workspace_id: form.workspace_id,
+      respondent_id: respondent_id ?? null,
+      answers,
+      is_partial: true,
+      started_at: started_at ?? new Date().toISOString(),
+    }).select('id').single();
+
+    if (error) throw error;
+    res.json({ partialId: data.id });
+  } catch (err) { next(err); }
+});
+
+// ============================================================
+// AUTHENTICATED: GET /forms/:formId/responses
+// List responses for dashboard
+// ============================================================
+router.get('/forms/:formId/responses', requireAuth, async (req, res, next) => {
+  try {
+    const { formId } = req.params;
+    const { page = 1, limit = 50, partial, search } = req.query;
+
+    const { data: form } = await supabaseAdmin.from('forms').select('workspace_id').eq('id', formId).single();
+    if (!form) throw createError(404, 'Form not found');
+
+    const { data: member } = await supabaseAdmin.from('workspace_members')
+      .select('role').eq('workspace_id', form.workspace_id).eq('user_id', req.user.id).single();
+    if (!member) throw createError(403, 'Access denied');
+
+    let q = supabaseAdmin
+      .from('responses')
+      .select('*', { count: 'exact' })
+      .eq('form_id', formId)
+      .eq('is_test', false)
+      .order('submitted_at', { ascending: false })
+      .range((+page - 1) * +limit, +page * +limit - 1);
+
+    if (partial !== undefined) q = q.eq('is_partial', partial === 'true');
+    else q = q.eq('is_partial', false);
+
+    const { data: responses, error, count } = await q;
+    if (error) throw error;
+
+    res.json({ responses, total: count, page: +page, limit: +limit });
+  } catch (err) { next(err); }
+});
+
+// ============================================================
+// AUTHENTICATED: GET /forms/:formId/responses/:responseId
+// Get a single response
+// ============================================================
+router.get('/forms/:formId/responses/:responseId', requireAuth, async (req, res, next) => {
+  try {
+    const { formId, responseId } = req.params;
+
+    const { data: form } = await supabaseAdmin.from('forms').select('workspace_id').eq('id', formId).single();
+    if (!form) throw createError(404, 'Form not found');
+
+    const { data: member } = await supabaseAdmin.from('workspace_members')
+      .select('role').eq('workspace_id', form.workspace_id).eq('user_id', req.user.id).single();
+    if (!member) throw createError(403, 'Access denied');
+
+    const { data: response, error } = await supabaseAdmin.from('responses')
+      .select('*, response_files(*)')
+      .eq('id', responseId).eq('form_id', formId).single();
+    if (error || !response) throw createError(404, 'Response not found');
+
+    res.json({ response });
+  } catch (err) { next(err); }
+});
+
+// ============================================================
+// AUTHENTICATED: DELETE /forms/:formId/responses/:responseId
+// Delete a response
+// ============================================================
+router.delete('/forms/:formId/responses/:responseId', requireAuth, async (req, res, next) => {
+  try {
+    const { formId, responseId } = req.params;
+
+    const { data: form } = await supabaseAdmin.from('forms').select('workspace_id').eq('id', formId).single();
+    if (!form) throw createError(404, 'Form not found');
+
+    const { data: member } = await supabaseAdmin.from('workspace_members')
+      .select('role').eq('workspace_id', form.workspace_id).eq('user_id', req.user.id).single();
+    if (!member || !['owner', 'admin'].includes(member.role)) throw createError(403, 'Admin access required');
+
+    await supabaseAdmin.from('responses').delete().eq('id', responseId).eq('form_id', formId);
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
+// ============================================================
+// AUTHENTICATED: GET /forms/:formId/responses/export/csv
+// Export all responses as CSV
+// ============================================================
+router.get('/forms/:formId/responses/export/csv', requireAuth, async (req, res, next) => {
+  try {
+    const { formId } = req.params;
+
+    const { data: form } = await supabaseAdmin.from('forms')
+      .select('workspace_id, title, questions(id, title, type)')
+      .eq('id', formId).order('position', { referencedTable: 'questions' }).single();
+    if (!form) throw createError(404, 'Form not found');
+
+    const { data: member } = await supabaseAdmin.from('workspace_members')
+      .select('role').eq('workspace_id', form.workspace_id).eq('user_id', req.user.id).single();
+    if (!member) throw createError(403, 'Access denied');
+
+    // Capped at 5k rows to prevent OOM; large exports need a streaming/chunked approach.
+    const { data: responses } = await supabaseAdmin.from('responses')
+      .select('*').eq('form_id', formId).eq('is_partial', false).eq('is_test', false)
+      .order('submitted_at', { ascending: false })
+      .limit(5000);
+
+    // Build CSV
+    const questions = form.questions;
+    const headers = ['Response ID', 'Submitted At', 'Respondent Email', 'Completion Time (s)', ...questions.map(q => q.title)];
+
+    const rows = (responses ?? []).map(r => [
+      r.id,
+      r.submitted_at ?? '',
+      r.respondent_email ?? '',
+      r.completion_time_ms ? Math.round(r.completion_time_ms / 1000) : '',
+      ...questions.map(q => {
+        const a = r.answers?.[q.id];
+        if (a === undefined || a === null) return '';
+        if (Array.isArray(a)) return a.join('; ');
+        return String(a);
+      }),
+    ]);
+
+    const escape = (v) => `"${String(v).replace(/"/g, '""')}"`;
+    const csv = [headers, ...rows].map(row => row.map(escape).join(',')).join('\n');
+
+    const filename = `${form.title.replace(/[^a-z0-9]/gi, '_')}_responses_${Date.now()}.csv`;
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csv);
+  } catch (err) { next(err); }
+});
+
+// ============================================================
+// AUTHENTICATED: GET /forms/:formId/analytics
+// Aggregated analytics (views, completions, drop-off)
+// ============================================================
+router.get('/forms/:formId/analytics', requireAuth, async (req, res, next) => {
+  try {
+    const { formId } = req.params;
+
+    // Auth check before running any analytics queries — prevent unauthorized RPC calls.
+    const { data: form } = await supabaseAdmin.from('forms')
+      .select('workspace_id, views_count, starts_count, questions(id, title, type, config)')
+      .eq('id', formId).order('position', { referencedTable: 'questions' }).single();
+    if (!form) throw createError(404, 'Form not found');
+
+    const { data: member } = await supabaseAdmin.from('workspace_members')
+      .select('role').eq('workspace_id', form.workspace_id).eq('user_id', req.user.id).single();
+    if (!member) throw createError(403, 'Access denied');
+
+    const { data: agg, error: aggErr } = await supabaseAdmin.rpc('get_form_analytics', { p_form_id: formId });
+    if (aggErr) throw aggErr;
+
+    const stats = agg ?? {};
+    const total     = Number(stats.total     ?? 0);
+    const completed = Number(stats.completed ?? 0);
+    const partial   = Number(stats.partial   ?? 0);
+    const avgMs     = stats.avg_ms ? Number(stats.avg_ms) : null;
+
+    const answeredByQ = {};
+    for (const qs of (stats.q_stats ?? [])) answeredByQ[qs.question_id] = Number(qs.answered ?? 0);
+
+    // One fetch covers distributions, avg scores, text answers, sources, and timeline
+    const { data: responseRows } = await supabaseAdmin.from('responses')
+      .select('answers, utm_source, utm_medium, utm_campaign, referrer, submitted_at')
+      .eq('form_id', formId).eq('is_test', false).eq('is_partial', false)
+      .order('submitted_at', { ascending: false })
+      .limit(5000);
+
+    const rows = responseRows ?? [];
+
+    // ── Choice distributions + average scores ──────────────────
+    const CHOICE_TYPES = new Set(['multiple_choice', 'dropdown', 'yes_no', 'rating', 'nps']);
+    const distributionByQ = {};
+    const avgScoreByQ = {};
+
+    for (const q of form.questions.filter(q => CHOICE_TYPES.has(q.type))) {
+      const dist = {};
+      const scores = [];
+      for (const r of rows) {
+        const a = r.answers?.[q.id];
+        if (a == null || a === '') continue;
+        const ids = Array.isArray(a) ? a : [String(a)];
+        ids.forEach(id => { dist[id] = (dist[id] ?? 0) + 1; });
+        if (q.type === 'rating' || q.type === 'nps') {
+          const num = Number(a);
+          if (!isNaN(num)) scores.push(num);
+        }
+      }
+      distributionByQ[q.id] = dist;
+      if (scores.length > 0) {
+        avgScoreByQ[q.id] = scores.reduce((a, b) => a + b, 0) / scores.length;
+      }
+    }
+
+    // ── Text answers (short_text, long_text, email, phone, address) ─
+    const TEXT_TYPES = new Set(['short_text', 'long_text', 'email', 'phone', 'address']);
+    const textAnswersByQ = {};
+    for (const q of form.questions.filter(q => TEXT_TYPES.has(q.type))) {
+      textAnswersByQ[q.id] = rows
+        .map(r => r.answers?.[q.id])
+        .filter(a => a !== null && a !== undefined && a !== '')
+        .slice(0, 200);
+    }
+
+    // ── Source breakdown ───────────────────────────────────────
+    const sourceCounts = {};
+    for (const r of rows) {
+      let src = r.utm_source?.trim() || null;
+      if (!src && r.referrer) {
+        try { src = new URL(r.referrer).hostname.replace(/^www\./, ''); } catch {}
+      }
+      src = src || 'Direct';
+      sourceCounts[src] = (sourceCounts[src] ?? 0) + 1;
+    }
+    const sourceBreakdown = Object.entries(sourceCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 10)
+      .map(([source, count]) => ({ source, count }));
+
+    // ── Submission timeline (last 30 days) ─────────────────────
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const dailyCounts = {};
+    for (const r of rows) {
+      if (!r.submitted_at) continue;
+      const d = new Date(r.submitted_at);
+      if (d < thirtyDaysAgo) continue;
+      const key = d.toISOString().split('T')[0];
+      dailyCounts[key] = (dailyCounts[key] ?? 0) + 1;
+    }
+    const timeline = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+      const key = d.toISOString().split('T')[0];
+      timeline.push({ date: key, count: dailyCounts[key] ?? 0 });
+    }
+
+    // ── Question stats ─────────────────────────────────────────
+    const questionStats = form.questions.map(q => ({
+      question_id: q.id,
+      title: q.title,
+      type: q.type,
+      answered: answeredByQ[q.id] ?? 0,
+      drop_off: total - (answeredByQ[q.id] ?? 0),
+      ...(CHOICE_TYPES.has(q.type) ? { distribution: distributionByQ[q.id] ?? {} } : {}),
+    }));
+
+    res.json({
+      views: form.views_count,
+      starts: form.starts_count,
+      completions: completed,
+      partial,
+      completion_rate: form.starts_count > 0 ? Math.round((completed / form.starts_count) * 100) : 0,
+      avg_completion_seconds: avgMs ? Math.round(avgMs / 1000) : null,
+      question_stats: questionStats,
+      avg_scores: avgScoreByQ,
+      text_answers: textAnswersByQ,
+      source_breakdown: sourceBreakdown,
+      timeline,
+    });
+  } catch (err) { next(err); }
+});
+
+export default router;

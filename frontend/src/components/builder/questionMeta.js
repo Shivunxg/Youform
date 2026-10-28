@@ -1,0 +1,30 @@
+import {
+  Type, AlignJustify, ListChecks, ChevronDown, Star, BarChart2, ToggleLeft,
+  Mail, Phone, Hash, Calendar, Clock, Paperclip, MessageSquare, Sparkles,
+  CheckCircle, MapPin, PenLine, ArrowUpDown, LayoutGrid, ImageIcon, CreditCard,
+} from 'lucide-react';
+
+export const QUESTION_META = {
+  short_text:       { label: 'Short text',       Icon: Type,          color: '#64748b' },
+  long_text:        { label: 'Long text',         Icon: AlignJustify,  color: '#64748b' },
+  multiple_choice:  { label: 'Multiple choice',   Icon: ListChecks,    color: '#7c3aed' },
+  dropdown:         { label: 'Dropdown',          Icon: ChevronDown,   color: '#2563eb' },
+  rating:           { label: 'Rating',            Icon: Star,          color: '#d97706' },
+  nps:              { label: 'NPS',               Icon: BarChart2,     color: '#ea580c' },
+  yes_no:           { label: 'Yes / No',          Icon: ToggleLeft,    color: '#059669' },
+  date:             { label: 'Date',              Icon: Calendar,      color: '#7c3aed' },
+  time:             { label: 'Time',              Icon: Clock,         color: '#7c3aed' },
+  file_upload:      { label: 'File upload',       Icon: Paperclip,     color: '#ea580c' },
+  phone:            { label: 'Phone number',      Icon: Phone,         color: '#2563eb' },
+  email:            { label: 'Email',             Icon: Mail,          color: '#2563eb' },
+  number:           { label: 'Number',            Icon: Hash,          color: '#64748b' },
+  address:          { label: 'Address',           Icon: MapPin,        color: '#059669' },
+  signature:        { label: 'Signature',         Icon: PenLine,       color: '#64748b' },
+  ranking:          { label: 'Ranking',           Icon: ArrowUpDown,   color: '#64748b' },
+  matrix:           { label: 'Matrix',            Icon: LayoutGrid,    color: '#64748b' },
+  picture_choice:   { label: 'Picture choice',    Icon: ImageIcon,     color: '#7c3aed' },
+  payment:          { label: 'Payment',           Icon: CreditCard,    color: '#059669' },
+  statement:        { label: 'Statement',         Icon: MessageSquare, color: '#64748b' },
+  welcome_screen:   { label: 'Welcome screen',    Icon: Sparkles,      color: '#7c3aed' },
+  thank_you_screen: { label: 'Thank you screen',  Icon: CheckCircle,   color: '#059669' },
+};

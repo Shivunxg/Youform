@@ -1,0 +1,160 @@
+import { Router } from 'express';
+import { supabaseAdmin } from '../lib/supabase.js';
+import { requirePlatformAdmin } from '../lib/auth.js';
+import { createError } from '../lib/errorHandler.js';
+import { PLANS } from '../lib/plans.js';
+
+const PLAN_PRICES = { free: 0, pro: 25, business: 89 };
+
+// Emails that are platform admins (from env var, no DB column needed)
+const ADMIN_EMAILS = (process.env.PLATFORM_ADMIN_EMAILS ?? '')
+  .split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+
+const router = Router();
+router.use(requirePlatformAdmin);
+
+// GET /admin/stats
+router.get('/stats', async (req, res, next) => {
+  try {
+    const thisMonth = new Date();
+    thisMonth.setDate(1); thisMonth.setHours(0, 0, 0, 0);
+
+    const [
+      { count: totalUsers },
+      { count: totalWorkspaces },
+      { count: totalForms },
+      { count: totalResponses },
+      { data: planRows },
+      { count: activeWorkspaces },
+    ] = await Promise.all([
+      supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('workspaces').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('forms').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('responses').select('*', { count: 'exact', head: true }).eq('is_test', false),
+      supabaseAdmin.from('workspaces').select('plan'),
+      supabaseAdmin.from('workspace_usage')
+        .select('*', { count: 'exact', head: true })
+        .eq('month', thisMonth.toISOString().split('T')[0])
+        .gt('responses_used', 0),
+    ]);
+
+    const plans = { free: 0, pro: 0, business: 0 };
+    for (const w of planRows ?? []) {
+      const tier = w.plan ?? 'free';
+      // Treat any legacy enterprise workspaces as business for stats purposes
+      const normalized = tier === 'enterprise' ? 'business' : tier;
+      plans[normalized] = (plans[normalized] ?? 0) + 1;
+    }
+
+    const mrr = Object.entries(plans).reduce(
+      (sum, [plan, count]) => sum + count * (PLAN_PRICES[plan] ?? 0), 0
+    );
+
+    res.json({
+      totalUsers, totalWorkspaces, totalForms, totalResponses,
+      plans,
+      mrr,
+      arr: mrr * 12,
+      paidWorkspaces: (plans.pro ?? 0) + (plans.business ?? 0),
+      freeWorkspaces: plans.free ?? 0,
+      activeWorkspaces: activeWorkspaces ?? 0,
+    });
+  } catch (err) { next(err); }
+});
+
+// GET /admin/users?search=&page=&limit=
+router.get('/users', async (req, res, next) => {
+  try {
+    const { page = 1, limit = 25, search } = req.query;
+    const pg = Math.max(1, parseInt(page, 10) || 1), lim = Math.min(200, Math.max(1, parseInt(limit, 10) || 25));
+    let q = supabaseAdmin
+      .from('profiles')
+      .select(
+        'id, email, full_name, avatar_url, created_at, is_platform_admin, workspace_members!user_id(role, workspaces(id, name, plan))',
+        { count: 'exact' }
+      )
+      .order('created_at', { ascending: false })
+      .range((pg - 1) * lim, pg * lim - 1);
+    if (search) q = q.ilike('email', `%${search}%`);
+    const { data, count, error } = await q;
+    if (error) throw error;
+    // Supplement DB flag with env-var list so newly-added admins get the badge
+    const users = (data ?? []).map(u => ({
+      ...u,
+      is_platform_admin: u.is_platform_admin || ADMIN_EMAILS.includes(u.email?.toLowerCase()),
+    }));
+    res.json({ users, total: count ?? 0, page: pg, limit: lim });
+  } catch (err) { next(err); }
+});
+
+// PATCH /admin/users/:userId/admin
+router.patch('/users/:userId/admin', async (req, res, next) => {
+  try {
+    const { is_platform_admin } = req.body;
+    if (typeof is_platform_admin !== 'boolean') throw createError(400, 'is_platform_admin must be boolean');
+    if (req.user.id === req.params.userId && !is_platform_admin) {
+      throw createError(400, 'Cannot remove your own admin access');
+    }
+    const { error } = await supabaseAdmin.from('profiles')
+      .update({ is_platform_admin }).eq('id', req.params.userId);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
+// GET /admin/workspaces?search=&plan=&page=&limit=
+router.get('/workspaces', async (req, res, next) => {
+  try {
+    const { page = 1, limit = 25, search, plan } = req.query;
+    const pg = Math.max(1, parseInt(page, 10) || 1), lim = Math.min(200, Math.max(1, parseInt(limit, 10) || 25));
+    let q = supabaseAdmin
+      .from('workspaces')
+      .select('id, name, slug, plan, created_at, subscription_status', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range((pg - 1) * lim, pg * lim - 1);
+    if (search) q = q.ilike('name', `%${search}%`);
+    if (plan) q = q.eq('plan', plan);
+    const { data, count, error } = await q;
+    if (error) throw error;
+    res.json({ workspaces: data ?? [], total: count ?? 0, page: pg, limit: lim });
+  } catch (err) { next(err); }
+});
+
+// GET /admin/workspaces/:workspaceId
+router.get('/workspaces/:workspaceId', async (req, res, next) => {
+  try {
+    const { data: workspace, error } = await supabaseAdmin
+      .from('workspaces')
+      .select('*, workspace_members(role, profiles!user_id(id, email, full_name))')
+      .eq('id', req.params.workspaceId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!workspace) throw createError(404, 'Workspace not found');
+
+    const [{ count: formCount }, { count: responseCount }] = await Promise.all([
+      supabaseAdmin.from('forms').select('*', { count: 'exact', head: true }).eq('workspace_id', req.params.workspaceId),
+      supabaseAdmin.from('responses').select('*', { count: 'exact', head: true }).eq('workspace_id', req.params.workspaceId).eq('is_test', false),
+    ]);
+
+    res.json({ workspace: { ...workspace, form_count: formCount ?? 0, response_count: responseCount ?? 0 } });
+  } catch (err) { next(err); }
+});
+
+// PATCH /admin/workspaces/:workspaceId/plan
+router.patch('/workspaces/:workspaceId/plan', async (req, res, next) => {
+  try {
+    const { plan } = req.body;
+    if (!['free', 'pro', 'business'].includes(plan)) throw createError(400, 'Invalid plan');
+    const config = PLANS[plan];
+    const { error } = await supabaseAdmin.from('workspaces').update({
+      plan,
+      responses_limit: config.responses_limit ?? 999999999,
+      storage_limit_mb: config.storage_limit_mb ?? 999999,
+      remove_branding: config.remove_branding,
+    }).eq('id', req.params.workspaceId);
+    if (error) throw error;
+    res.json({ success: true, plan });
+  } catch (err) { next(err); }
+});
+
+export default router;

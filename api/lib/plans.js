@@ -1,0 +1,95 @@
+export const PLANS = {
+  free: {
+    tier: 'free',
+    // Usage
+    responses_limit: 10,
+    forms_limit: 3,
+    storage_limit_mb: 100,
+    seat_limit: 1,
+    file_upload_limit_mb: 10,
+    // Branding & customisation
+    remove_branding: false,
+    custom_domain: false,
+    custom_thank_you: false,
+    // Response collection
+    respondent_notifications: false,
+    partial_submissions: false,
+    // Integrations & automation
+    integrations: false,
+    ai_features: false,
+    imports: false,
+    // Admin & compliance
+    activity_log: false,
+  },
+  pro: {
+    tier: 'pro',
+    responses_limit: 5000,
+    forms_limit: null,
+    storage_limit_mb: 2048,    // 2 GB
+    seat_limit: 3,
+    file_upload_limit_mb: null, // unlimited
+    remove_branding: true,
+    custom_domain: true,
+    custom_thank_you: true,
+    respondent_notifications: true,
+    partial_submissions: true,
+    integrations: true,
+    ai_features: true,
+    imports: true,
+    email_otp: false,
+    activity_log: false,
+  },
+  business: {
+    tier: 'business',
+    responses_limit: 25000,
+    forms_limit: null,
+    storage_limit_mb: 10240,   // 10 GB
+    seat_limit: 10,
+    file_upload_limit_mb: null,
+    remove_branding: true,
+    custom_domain: true,
+    custom_thank_you: true,
+    respondent_notifications: true,
+    partial_submissions: true,
+    integrations: true,
+    ai_features: true,
+    imports: true,
+    email_otp: true,
+    activity_log: true,
+  },
+};
+
+export function getPlan(tier) { return PLANS[tier] ?? PLANS.free; }
+
+export function isPlanAtLeast(plan, minPlan) {
+  const order = ['free', 'pro', 'business'];
+  return order.indexOf(plan ?? 'free') >= order.indexOf(minPlan);
+}
+
+const FEATURE_MIN_PLAN = {
+  remove_branding:          'pro',
+  custom_domain:            'pro',
+  custom_thank_you:         'pro',
+  respondent_notifications: 'pro',
+  partial_submissions:      'pro',
+  integrations:             'pro',
+  ai_features:              'pro',
+  imports:                  'pro',
+  email_otp:                'business',
+  activity_log:             'business',
+};
+
+export function hasFeature(plan, feature) {
+  const minPlan = FEATURE_MIN_PLAN[feature];
+  if (!minPlan) return true;
+  return isPlanAtLeast(plan, minPlan);
+}
+
+export async function canAcceptResponse(supabaseAdmin, workspaceId, plan) {
+  const limits = getPlan(plan);
+  if (!limits.responses_limit) return { allowed: true };
+  const month = new Date(); month.setDate(1); month.setHours(0, 0, 0, 0);
+  const { data } = await supabaseAdmin.from('workspace_usage').select('responses_used').eq('workspace_id', workspaceId).eq('month', month.toISOString().split('T')[0]).single();
+  const used = data?.responses_used ?? 0;
+  return { allowed: used < limits.responses_limit, used, limit: limits.responses_limit };
+}

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-TQ8ZRTKH');</script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-CHWTGH05KS"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-CHWTGH05KS');</script>
+<title>How to Add Conditional Logic to Forms — No Code Guide | FormFlowX</title>
+<meta name="description" content="Learn how to add conditional logic to forms with if-then rules that show or hide questions. Free no-code guide with examples, use cases, and setup steps." />
+<link rel="canonical" href="https://formflowx.com/blog/conditional-logic-forms-guide" />
+<meta name="robots" content="index, follow" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="FormFlowX" />
+<meta property="og:url" content="https://formflowx.com/blog/conditional-logic-forms-guide" />
+<meta property="og:title" content="How to Add Conditional Logic to Forms — No Code Guide" />
+<meta property="og:description" content="Learn how to add conditional logic to forms with if-then rules that show or hide questions. Free no-code guide with examples and setup steps." />
+<meta property="og:image" content="https://formflowx.com/og-image.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="How to Add Conditional Logic to Forms — FormFlowX" />
+<meta name="twitter:description" content="Free no-code guide to conditional logic forms — if-then rules, examples, and setup steps." />
+<meta name="twitter:image" content="https://formflowx.com/og-image.png" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" /><link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<meta name="theme-color" content="#FCE8A8" />
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"How to Add Conditional Logic to Forms — No Code Guide","description":"Learn how to add conditional logic to forms with if-then rules that show or hide questions. Free no-code guide with examples, use cases, and setup steps.","url":"https://formflowx.com/blog/conditional-logic-forms-guide","datePublished":"2026-09-15","dateModified":"2026-09-15","author":{"@type":"Organization","name":"FormFlowX","url":"https://formflowx.com"},"publisher":{"@type":"Organization","name":"FormFlowX","url":"https://formflowx.com","logo":{"@type":"ImageObject","url":"https://formflowx.com/og-image.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://formflowx.com/blog/conditional-logic-forms-guide"}}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+:root{--ink:#111111;--paper:#FCE8A8;--card:#FFFFFF;--lime:#C3F53B;--coral:#FF6B4A;--orange:#f97316;--b:2.5px solid var(--ink);--sh:6px 6px 0 var(--ink);--sh-sm:3px 3px 0 var(--ink);--r:12px;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}html{scroll-behavior:smooth;}
+body{background:var(--paper);color:var(--ink);font-family:'Space Grotesk',system-ui,sans-serif;font-weight:500;line-height:1.6;-webkit-font-smoothing:antialiased;}
+h1,h2,h3,h4{font-family:'Archivo',system-ui,sans-serif;font-weight:900;letter-spacing:-0.015em;line-height:1.1;}
+a{color:inherit;text-decoration:none;}
+.nav{position:sticky;top:0;z-index:100;background:var(--card);border-bottom:var(--b);padding:0 32px;height:64px;display:flex;align-items:center;justify-content:space-between;}
+.logo{display:flex;align-items:center;gap:10px;font-family:'Archivo',sans-serif;font-size:18px;font-weight:900;}
+.logo-mark{width:34px;height:34px;background:var(--ink);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Archivo',sans-serif;font-weight:900;font-size:17px;}
+.nav-links{display:flex;align-items:center;gap:24px;}.nav-links a{font-size:14px;font-weight:600;color:#444;}.nav-links a:hover{color:var(--ink);}
+.btn{display:inline-flex;align-items:center;gap:8px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;padding:11px 22px;border-radius:10px;border:var(--b);cursor:pointer;transition:transform .1s,box-shadow .1s;text-decoration:none;white-space:nowrap;}
+.btn-lime{background:var(--lime);color:var(--ink);box-shadow:4px 4px 0 var(--ink);}.btn-lime:hover{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--ink);}
+.btn-ink{background:var(--ink);color:#fff;box-shadow:4px 4px 0 var(--orange);}.btn-ink:hover{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--orange);}
+
+.article-wrap{max-width:740px;margin:0 auto;padding:48px 32px 80px;}
+.breadcrumb{font-size:13px;color:#777;font-weight:600;margin-bottom:24px;}
+.breadcrumb a{color:#777;text-decoration:underline;}
+.breadcrumb span{margin:0 6px;}
+.post-tag{display:inline-block;background:var(--ink);color:#fff;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:16px;}
+.article-wrap h1{font-size:clamp(32px,5vw,52px);margin-bottom:16px;line-height:1.05;}
+.article-meta{font-size:13px;color:#888;font-weight:600;margin-bottom:40px;padding-bottom:24px;border-bottom:var(--b);}
+.article-body{font-size:16px;line-height:1.8;color:#222;}
+.article-body h2{font-size:clamp(22px,3vw,30px);margin:48px 0 16px;}
+.article-body h3{font-size:20px;margin:32px 0 12px;}
+.article-body p{margin-bottom:20px;}
+.article-body ul,.article-body ol{margin:0 0 20px 24px;}
+.article-body li{margin-bottom:10px;}
+.article-body strong{font-weight:700;color:#111;}
+.article-body a{color:var(--orange);text-decoration:underline;font-weight:600;}
+
+.callout{background:var(--card);border:var(--b);border-radius:var(--r);padding:20px 24px;margin:28px 0;box-shadow:var(--sh-sm);}
+.callout-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--orange);margin-bottom:8px;}
+.callout p{margin:0;font-size:15px;}
+
+.formula-box{background:var(--ink);color:#fff;border-radius:var(--r);padding:24px 28px;margin:28px 0;text-align:center;}
+.formula-box .formula{font-family:'Archivo',sans-serif;font-size:clamp(18px,3vw,26px);font-weight:900;margin-bottom:8px;color:var(--lime);}
+.formula-box p{font-size:13px;color:rgba(255,255,255,.7);margin:0;}
+
+.q-block{background:var(--card);border:var(--b);border-radius:var(--r);padding:20px 24px;margin:12px 0;box-shadow:var(--sh-sm);display:flex;gap:16px;align-items:flex-start;}
+.q-num{font-family:'Archivo',sans-serif;font-weight:900;font-size:18px;color:var(--orange);min-width:28px;}
+.q-text{font-size:15px;font-weight:600;}
+.q-type{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#aaa;margin-top:4px;}
+
+.score-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:28px 0;}
+.score-card{background:var(--card);border:var(--b);border-radius:var(--r);padding:20px;text-align:center;box-shadow:var(--sh-sm);}
+.score-card .score-range{font-family:'Archivo',sans-serif;font-size:24px;font-weight:900;margin-bottom:6px;}
+.score-card .score-label{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;}
+.score-card.detractor .score-range{color:#dc2626;}
+.score-card.passive .score-range{color:#d97706;}
+.score-card.promoter .score-range{color:#16a34a;}
+
+.cta-box{background:var(--lime);border:var(--b);border-radius:var(--r);padding:32px;margin:48px 0;text-align:center;box-shadow:var(--sh);}
+.cta-box h3{font-size:24px;margin-bottom:8px;}
+.cta-box p{font-size:15px;color:#444;margin-bottom:20px;}
+
+.related-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;}
+.related-card{background:var(--card);border:var(--b);border-radius:var(--r);padding:20px;box-shadow:var(--sh-sm);transition:transform .15s,box-shadow .15s;}
+.related-card:hover{transform:translate(-2px,-2px);box-shadow:var(--sh);}
+.related-card .tag{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--orange);margin-bottom:8px;}
+.related-card h4{font-size:16px;margin-bottom:6px;}
+.related-card p{font-size:13px;color:#555;}
+
+.cta-strip{background:var(--ink);border-top:var(--b);padding:56px 32px;text-align:center;}
+.cta-strip h2{font-size:clamp(26px,4vw,40px);color:#fff;margin-bottom:10px;}
+.cta-strip p{font-size:15px;color:rgba(255,255,255,.6);margin-bottom:28px;}
+footer{background:var(--card);border-top:var(--b);padding:32px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;}
+.foot-links{display:flex;gap:20px;}.foot-links a{font-size:13px;color:#666;font-weight:600;}.foot-links a:hover{color:var(--ink);}
+.foot-copy{font-size:13px;color:#888;}
+@media(max-width:640px){
+  .nav-links{display:none;}.article-wrap{padding:32px 20px 60px;}
+  .score-grid{grid-template-columns:1fr;}.related-grid{grid-template-columns:1fr;}
+  footer{flex-direction:column;text-align:center;}
+}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="/" class="logo"><div class="logo-mark">F</div>FormFlowX</a>
+  <div class="nav-links">
+    <a href="/features">Features</a><a href="/pricing">Pricing</a>
+    <a href="/templates">Templates</a><a href="/blog" style="color:var(--ink)">Blog</a>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <a href="/login" style="font-size:14px;font-weight:700;">Log in</a>
+    <a href="/signup" class="btn btn-lime">Start for free</a>
+  </div>
+</nav>
+
+<div class="article-wrap">
+  <div class="breadcrumb">
+    <a href="/">Home</a><span>›</span><a href="/blog">Blog</a><span>›</span>Conditional Logic Guide
+  </div>
+
+  <div class="post-tag">● No-Code Guide</div>
+  <h1>How to Add Conditional Logic to Forms — No Code Guide</h1>
+  <div class="article-meta">Sep 15, 2026 · 11 min read · <a href="/features/logic" style="color:var(--orange);">See conditional logic in action →</a></div>
+
+  <div class="article-body">
+
+    <p><strong>Conditional logic</strong> turns a static list of questions into a form that reacts to what someone just answered. Instead of forcing every respondent through every field, you show only the questions that apply to them — which means shorter forms, better data, and higher completion rates.</p>
+
+    <p>This guide covers what conditional logic is, the most useful if-then patterns, real examples you can copy, and how to set it up in FormFlowX without writing a single line of code.</p>
+
+    <div class="callout">
+      <div class="callout-label">Quick start</div>
+      <p>Already know what you want to build? Start from a template with logic pre-configured — the <a href="/templates/client-intake">client intake form</a> and <a href="/templates/job-application">job application form</a> both ship with conditional branching you can customize in minutes.</p>
+    </div>
+
+    <h2>What Is Conditional Logic in a Form?</h2>
+    <p>Conditional logic (also called branching logic, skip logic, or "if-then" logic) is a rule that changes what a respondent sees next based on how they answered a previous question. The basic structure is always the same:</p>
+    <p><em>IF [question] [condition] [value], THEN [show/hide/jump to] [question or page].</em></p>
+    <p>For example: "IF 'What do you need help with?' equals 'Billing', THEN show the billing questions and hide the technical support questions." The respondent never sees the branch they didn't need — they just experience a form that feels like it's asking the right questions at the right time.</p>
+    <p>Without conditional logic, every form has to be built for the "worst case" respondent — one long list of fields that covers every possible scenario, whether or not it applies to the person filling it out. That's the single biggest reason long forms feel exhausting.</p>
+
+    <h2>Why Conditional Logic Improves Response Rates</h2>
+    <p>The relationship between form length and completion rate is well documented: shorter forms convert better, but many forms genuinely need to collect different information from different types of respondents. Conditional logic resolves that tension by keeping each individual respondent's path short, even if the form as a whole covers a lot of ground.</p>
+    <ul>
+      <li><strong>Perceived length drops.</strong> A respondent who only sees 6 of a form's 20 possible questions experiences it as a 6-question form.</li>
+      <li><strong>Irrelevant questions disappear.</strong> Nobody has to select "N/A" or skip a field that doesn't apply to them.</li>
+      <li><strong>Data quality improves.</strong> Follow-up questions are more specific, so answers are more useful — compare a generic "Any other comments?" to a targeted "You said you're a Detractor — what went wrong?"</li>
+      <li><strong>One form replaces several.</strong> Instead of maintaining a separate form for each audience segment, one form with logic branches serves all of them.</li>
+    </ul>
+
+    <h2>Common Conditional Logic Patterns</h2>
+    <p>Most real-world use cases fall into a handful of repeatable patterns. Once you recognize them, building the logic for your own form gets much faster.</p>
+
+    <h3>1. Show/hide a single question</h3>
+    <div class="q-block">
+      <div class="q-num">→</div>
+      <div><div class="q-text">IF "Do you have a referral code?" = Yes, THEN show "Enter your referral code"</div><div class="q-type">Show/hide field</div></div>
+    </div>
+    <p>The simplest pattern. One yes/no or multiple-choice question controls whether a single follow-up field appears.</p>
+
+    <h3>2. Route to different question sets</h3>
+    <div class="q-block">
+      <div class="q-num">→</div>
+      <div><div class="q-text">IF "What are you contacting us about?" = "Sales", THEN show sales questions. IF = "Support", THEN show support questions.</div><div class="q-type">Branching by category</div></div>
+    </div>
+    <p>Used heavily in <a href="/templates/contact-form">contact forms</a> and support intake — one entry point, multiple paths depending on the reason for contact.</p>
+
+    <h3>3. Score-based routing</h3>
+    <div class="q-block">
+      <div class="q-num">→</div>
+      <div><div class="q-text">IF rating is 0–6, show "What went wrong?" IF 7–8, show "What could be better?" IF 9–10, show "What do you love?"</div><div class="q-type">Numeric range branching</div></div>
+    </div>
+    <p>This is the pattern behind every good <a href="/templates/nps-survey">NPS survey</a> — the same 0–10 question feeds three completely different follow-ups depending on the score.</p>
+
+    <h3>4. Skip entire pages</h3>
+    <div class="q-block">
+      <div class="q-num">→</div>
+      <div><div class="q-text">IF "Are you applying for a remote role?" = Yes, THEN skip the "Office Location Preference" page entirely</div><div class="q-type">Page-level skip logic</div></div>
+    </div>
+    <p>Useful for multi-step forms like a <a href="/templates/job-application">job application form</a>, where entire sections only apply to some applicants.</p>
+
+    <h3>5. Jump to the end</h3>
+    <div class="q-block">
+      <div class="q-num">→</div>
+      <div><div class="q-text">IF "Are you 18 or older?" = No, THEN jump to the end screen and disqualify</div><div class="q-type">Termination logic</div></div>
+    </div>
+    <p>Common in eligibility screening and <a href="/templates/market-research">market research surveys</a> where a screening question determines whether someone qualifies to continue.</p>
+
+    <h2>Real Examples by Use Case</h2>
+
+    <h3>Client intake forms</h3>
+    <p>A single intake form can serve multiple service types. "What service are you interested in?" branches into different sets of scoping questions — a web design client answers questions about brand assets and page count, while a consulting client answers questions about timeline and team size. See the <a href="/templates/client-intake">client intake form template</a> for a working example.</p>
+
+    <h3>Lead capture and qualification</h3>
+    <p>A <a href="/templates/lead-capture">lead capture form</a> can use conditional logic to qualify leads on the fly. "What's your company size?" routes enterprise leads to a "Book a call" step and self-serve leads straight to signup — so your sales team only sees the leads worth a manual follow-up.</p>
+
+    <h3>Feedback and support forms</h3>
+    <p>A <a href="/templates/feedback">feedback form</a> can ask "What are you giving feedback on?" and then show product-specific, support-specific, or billing-specific follow-up questions — instead of one generic "tell us more" box that produces vague answers.</p>
+
+    <h3>Job applications</h3>
+    <p>Different roles need different questions. Conditional logic lets one <a href="/templates/job-application">job application form</a> ask engineers about their GitHub and technical stack while asking sales candidates about quota attainment — without maintaining two separate forms.</p>
+
+    <div class="cta-box">
+      <h3>Build a form with conditional logic — free</h3>
+      <p>Add if-then rules visually, no code required. Free for up to 100 responses/month.</p>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+        <a href="/templates/contact-form" class="btn btn-ink">Start from a template →</a>
+        <a href="/signup" class="btn btn-lime">Create free account</a>
+      </div>
+    </div>
+
+    <h2>How to Add Conditional Logic in FormFlowX</h2>
+    <p>Setting up if-then rules takes a few minutes once you know the pattern:</p>
+    <ol>
+      <li><strong>Add your questions first.</strong> Build the full form as if there were no logic — every question that might be needed, in order.</li>
+      <li><strong>Pick the "controller" question.</strong> This is the question whose answer will decide what happens next — usually a multiple-choice, dropdown, or rating field.</li>
+      <li><strong>Open logic settings on the question you want to control.</strong> Choose "Show this question if…" and select the controller question, the condition (equals, is one of, is greater than, etc.), and the value.</li>
+      <li><strong>Repeat for each branch.</strong> Set a separate rule for each answer option that needs a different follow-up.</li>
+      <li><strong>Test every path.</strong> Preview the form and answer it once per branch to confirm the right questions appear — and that no path leads to a dead end.</li>
+    </ol>
+
+    <h2>Conditional Logic Best Practices</h2>
+
+    <h3>Keep rules simple and single-condition where possible</h3>
+    <p>A rule with one clear condition ("IF X = Y") is easy to test and easy to debug. Stacking multiple AND/OR conditions on a single rule makes it much harder to catch a mistake before it reaches real respondents.</p>
+
+    <h3>Always test every branch before publishing</h3>
+    <p>The most common conditional logic bug is a branch nobody tested — an answer option that leads to a blank page or skips a required field. Walk through the form once for every possible answer to your controller questions before sharing the link.</p>
+
+    <h3>Don't over-branch</h3>
+    <p>Logic should reduce a respondent's cognitive load, not multiply your own maintenance burden. If a form has more than 4–5 branches, consider whether it should be split into two separate forms instead.</p>
+
+    <h3>Use logic to shorten, not to hide required steps</h3>
+    <p>Conditional logic should remove questions that genuinely don't apply — not bury a mandatory step behind a rule that's easy to trigger accidentally. If every respondent eventually needs a piece of information, don't gate it behind logic just to make the form look shorter.</p>
+
+    <h3>Label branches clearly when building</h3>
+    <p>As a form grows, it gets harder to remember which rule does what. Name your logic branches descriptively ("Show for Enterprise leads," "Skip if remote applicant") so anyone editing the form later — including future you — can follow the structure at a glance.</p>
+
+    <h2>Frequently Asked Questions</h2>
+
+    <h3>Is conditional logic the same as skip logic?</h3>
+    <p>They're closely related. "Skip logic" usually refers specifically to jumping over a question or page, while "conditional logic" is the broader term that also covers showing/hiding individual fields, routing to different question sets, and disqualifying respondents. Most form builders, including FormFlowX, use the terms interchangeably.</p>
+
+    <h3>Can I use conditional logic on a free plan?</h3>
+    <p>Yes. FormFlowX includes conditional logic on the free plan, along with up to 100 responses per month, no credit card required. Business plans add more advanced logic options like multi-condition rules and calculated scoring.</p>
+
+    <h3>Does conditional logic slow down my form?</h3>
+    <p>No — logic rules evaluate instantly in the respondent's browser. There's no noticeable delay between answering a question and seeing the next one, even with several branches configured.</p>
+
+    <h3>What's the difference between conditional logic and calculated fields?</h3>
+    <p>Conditional logic controls what a respondent sees. Calculated fields compute a value (like a price quote or a score) from earlier answers, usually shown at the end. Many forms use both together — logic to route the respondent, and a calculation to summarize the result.</p>
+
+    <div class="related-grid">
+      <a href="/templates/client-intake" class="related-card">
+        <div class="tag">Template</div>
+        <h4>Client Intake Form Template</h4>
+        <p>Free template with service-based branching for agencies and freelancers.</p>
+      </a>
+      <a href="/templates/nps-survey" class="related-card">
+        <div class="tag">Template</div>
+        <h4>NPS Survey Template</h4>
+        <p>Score-based conditional logic that routes promoters, passives, and detractors.</p>
+      </a>
+      <a href="/blog/lead-capture-form-best-practices" class="related-card">
+        <div class="tag">Guide</div>
+        <h4>Lead Capture Form Best Practices</h4>
+        <p>8 proven tactics, including conditional logic, to boost sign-ups.</p>
+      </a>
+      <a href="/blog/how-to-embed-form-on-website" class="related-card">
+        <div class="tag">Guide</div>
+        <h4>How to Embed a Form on Any Website</h4>
+        <p>Add any FormFlowX form, logic included, to WordPress, Webflow, Shopify, and more.</p>
+      </a>
+    </div>
+
+  </div>
+</div>
+
+<div class="cta-strip">
+  <h2>Build smarter forms with logic.</h2>
+  <p>Free template library. Conditional logic included on every plan. No credit card required.</p>
+  <a href="/signup" class="btn btn-lime" style="font-size:15px;padding:14px 32px;">Start for free →</a>
+</div>
+
+<footer>
+  <a href="/" class="logo"><div class="logo-mark">F</div>FormFlowX</a>
+  <div class="foot-links">
+    <a href="/features">Features</a><a href="/pricing">Pricing</a>
+    <a href="/templates">Templates</a><a href="/blog">Blog</a>
+    <a href="/integrations">Integrations</a><a href="/privacy">Privacy</a>
+  </div>
+  <div class="foot-copy">© 2026 FormFlowX. All rights reserved.</div>
+</footer>
+</body>
+</html>

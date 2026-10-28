@@ -1,0 +1,911 @@
+import { useState, useEffect, useRef } from 'react';
+import { nanoid } from 'nanoid';
+import { Plus, Trash2, X, GitBranch, AtSign, ChevronDown, Loader, Sparkles, AlignLeft, AlignCenter, AlignRight, Image } from 'lucide-react';
+import { useBuilderStore, defaultConfig } from '@/stores/builderStore';
+import { QUESTION_META } from './questionMeta';
+import ImagePickerPanel from './ImagePickerPanel';
+import { api } from '@/lib/api';
+import { clsx } from 'clsx';
+import { parseEmbed } from '@/lib/embed';
+
+// ── Block type groups for the type-switcher dropdown ──────────────────────────
+const TYPE_GROUPS = [
+  {
+    label: 'Layout',
+    types: ['welcome_screen', 'statement', 'thank_you_screen'],
+  },
+  {
+    label: 'Text inputs',
+    types: ['short_text', 'long_text', 'email', 'phone', 'number', 'date', 'time', 'address', 'signature'],
+  },
+  {
+    label: 'Choice',
+    types: ['multiple_choice', 'picture_choice', 'dropdown', 'yes_no', 'rating', 'nps', 'ranking', 'matrix'],
+  },
+  {
+    label: 'Media & other',
+    types: ['file_upload', 'payment'],
+  },
+];
+
+// ── @-variable textarea ───────────────────────────────────────────────────────
+function PipingTextarea({ value, onChange, placeholder, rows = 2, pipableQuestions }) {
+  const [showPicker, setShowPicker] = useState(false);
+  const textareaRef = useRef(null);
+  const pickerRef  = useRef(null);
+
+  useEffect(() => {
+    if (!showPicker) return;
+    const handler = (e) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target) &&
+          textareaRef.current && !textareaRef.current.contains(e.target)) {
+        setShowPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showPicker]);
+
+  const insertVariable = (qId) => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end   = el.selectionEnd;
+    const snippet = `@{${qId}}`;
+    const next = value.slice(0, start) + snippet + value.slice(end);
+    onChange(next);
+    setShowPicker(false);
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(start + snippet.length, start + snippet.length);
+    }, 0);
+  };
+
+  return (
+    <div className="relative">
+      <textarea
+        ref={textareaRef}
+        rows={rows}
+        className="input resize-none text-sm pr-7"
+        placeholder={placeholder}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+      />
+      {pipableQuestions.length > 0 && (
+        <button
+          type="button"
+          title="Insert answer from previous question"
+          onClick={() => setShowPicker(v => !v)}
+          className={clsx(
+            'absolute right-2 top-2 p-0.5 rounded transition-colors',
+            showPicker ? 'text-[#f97316]' : 'text-gray-300 hover:text-gray-500'
+          )}
+        >
+          <AtSign className="w-3.5 h-3.5" />
+        </button>
+      )}
+      {showPicker && (
+        <div
+          ref={pickerRef}
+          className="absolute right-0 top-8 z-50 w-56 bg-white border-2 border-[#111] rounded-xl shadow-lg overflow-hidden"
+          style={{ boxShadow: '4px 4px 0 #111' }}
+        >
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-3 py-2 border-b border-gray-100">
+            Insert answer from…
+          </p>
+          <div className="max-h-48 overflow-y-auto p-1">
+            {pipableQuestions.map(q => (
+              <button
+                key={q.id}
+                onClick={() => insertVariable(q.id)}
+                className="w-full text-left px-2.5 py-1.5 text-xs font-medium text-[#111] hover:bg-orange-50 rounded-lg transition-colors truncate"
+              >
+                <span className="text-[#f97316] font-mono mr-1.5">@</span>
+                {q.title || 'Untitled'}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Type switcher dropdown ────────────────────────────────────────────────────
+function TypeSwitcherDropdown({ currentType, onSelect, onClose }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  return (
+    <div
+      ref={ref}
+      className="absolute left-0 top-full mt-1 w-52 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden"
+    >
+      <div className="px-3 py-2 border-b border-gray-100">
+        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Switch block type</span>
+      </div>
+      <div className="p-1 max-h-72 overflow-y-auto">
+        {TYPE_GROUPS.map(group => (
+          <div key={group.label}>
+            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest px-2 pt-2 pb-0.5">{group.label}</p>
+            {group.types.map(type => {
+              const meta = QUESTION_META[type];
+              if (!meta) return null;
+              return (
+                <button
+                  key={type}
+                  onClick={() => onSelect(type)}
+                  className={clsx(
+                    'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left transition-colors',
+                    type === currentType
+                      ? 'bg-brand-50 text-brand-700'
+                      : 'hover:bg-gray-50 text-gray-700'
+                  )}
+                >
+                  <span className="w-5 flex items-center justify-center shrink-0">
+                    {meta.Icon && <meta.Icon className="w-3.5 h-3.5" style={{ color: meta.color }} />}
+                  </span>
+                  <span className="text-xs font-medium">{meta.label}</span>
+                  {type === currentType && <span className="ml-auto text-[10px] text-brand-500">✓</span>}
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Manual tab ────────────────────────────────────────────────────────────────
+const ANSWERABLE_TYPES = new Set(['short_text','long_text','multiple_choice','picture_choice','dropdown','yes_no','rating','nps','email','phone','number','date']);
+
+function ManualTab({ question, pipable, updateQuestion, updateQuestionConfig, quizMode }) {
+  const alignment = question.config?.alignment ?? 'left';
+
+  return (
+    <div className="p-4 space-y-4">
+      {/* Title */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Question</label>
+        <PipingTextarea
+          value={question.title}
+          onChange={v => updateQuestion(question.id, { title: v })}
+          placeholder="Your question…"
+          pipableQuestions={pipable}
+        />
+      </div>
+
+      {/* Description */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">
+          Description <span className="text-gray-400 font-normal">(optional)</span>
+        </label>
+        <PipingTextarea
+          value={question.description ?? ''}
+          onChange={v => updateQuestion(question.id, { description: v })}
+          placeholder="Add context or instructions…"
+          pipableQuestions={pipable}
+        />
+      </div>
+
+      {/* Embed URL */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">
+          Embed <span className="text-gray-400 font-normal">(YouTube, Loom, Vimeo, PDF)</span>
+        </label>
+        <input
+          type="url"
+          className="input text-sm"
+          placeholder="https://youtube.com/watch?v=…"
+          value={question.config?.embed ?? ''}
+          onChange={e => updateQuestionConfig(question.id, { embed: e.target.value || undefined })}
+        />
+        {question.config?.embed && !parseEmbed(question.config.embed)?.src && (
+          <p className="mt-1 text-xs text-amber-600">
+            Link not supported — try YouTube, Loom, Vimeo, or a direct PDF URL.
+          </p>
+        )}
+      </div>
+
+      {/* Alignment */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1.5">Alignment</label>
+        <div className="flex gap-1">
+          {[
+            { value: 'left',   Icon: AlignLeft   },
+            { value: 'center', Icon: AlignCenter  },
+            { value: 'right',  Icon: AlignRight   },
+          ].map(({ value, Icon }) => (
+            <button
+              key={value}
+              title={value.charAt(0).toUpperCase() + value.slice(1)}
+              onClick={() => updateQuestionConfig(question.id, { alignment: value === alignment ? undefined : value })}
+              className={clsx(
+                'flex-1 flex items-center justify-center py-1.5 rounded-lg border transition-colors',
+                alignment === value
+                  ? 'bg-brand-50 border-brand-300 text-brand-700'
+                  : 'border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-600'
+              )}
+            >
+              <Icon className="w-3.5 h-3.5" />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Required */}
+      <Toggle
+        label="Required"
+        hint="Respondents must answer this"
+        checked={question.required}
+        onChange={v => updateQuestion(question.id, { required: v })}
+      />
+
+      {/* Type-specific config */}
+      <TypeConfig question={question} onConfig={updateQuestionConfig} quizMode={quizMode} />
+
+      {/* Logic */}
+      {!['welcome_screen', 'thank_you_screen', 'statement'].includes(question.type) && (
+        <LogicEditor question={question} onUpdate={updateQuestion} />
+      )}
+    </div>
+  );
+}
+
+// ── AI tab ────────────────────────────────────────────────────────────────────
+function AITab({ question, formTitle, onApply }) {
+  const [hint, setHint]       = useState('');
+  const [loading, setLoading] = useState(false);
+  const [result, setResult]   = useState(null);
+  const [error, setError]     = useState(null);
+
+  const generate = async () => {
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const data = await api.ai.rewriteBlock({
+        blockType: question.type,
+        currentTitle: question.title,
+        currentDescription: question.description,
+        formTitle,
+        hint: hint.trim() || undefined,
+      });
+      setResult(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="p-4 space-y-4">
+      <div className="flex items-start gap-2 bg-brand-50 rounded-xl px-3 py-2.5 border border-brand-100">
+        <Sparkles className="w-3.5 h-3.5 text-brand-500 mt-0.5 shrink-0" />
+        <p className="text-xs text-brand-700 leading-relaxed">
+          AI will rewrite <strong>this block only</strong>. Review the suggestion before applying it.
+        </p>
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">
+          Hint <span className="text-gray-400 font-normal">(optional)</span>
+        </label>
+        <textarea
+          rows={2}
+          className="input resize-none text-sm"
+          placeholder="e.g. Make it more conversational, or focus on user pain points…"
+          value={hint}
+          onChange={e => setHint(e.target.value)}
+        />
+      </div>
+
+      <button
+        onClick={generate}
+        disabled={loading}
+        className="btn-primary w-full text-sm flex items-center justify-center gap-2 py-2"
+      >
+        {loading
+          ? <><Loader className="w-3.5 h-3.5 animate-spin" /> Rewriting…</>
+          : <><Sparkles className="w-3.5 h-3.5" /> Rewrite with AI</>}
+      </button>
+
+      {error && (
+        <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+      )}
+
+      {result && (
+        <div className="border border-brand-200 rounded-xl overflow-hidden">
+          <div className="bg-brand-50 px-3 py-2 border-b border-brand-100">
+            <p className="text-[10px] font-bold text-brand-600 uppercase tracking-wide">Suggested content</p>
+          </div>
+          <div className="p-3 space-y-3">
+            <div>
+              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Title</p>
+              <p className="text-sm text-gray-800 leading-snug">{result.title}</p>
+            </div>
+            {result.description && (
+              <div>
+                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Description</p>
+                <p className="text-xs text-gray-600 leading-relaxed">{result.description}</p>
+              </div>
+            )}
+          </div>
+          <div className="px-3 pb-3">
+            <button
+              onClick={() => onApply(result.title, result.description ?? '')}
+              className="btn-primary text-xs w-full py-1.5"
+            >
+              Apply to fields
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main panel ────────────────────────────────────────────────────────────────
+export default function QuestionPanel() {
+  const [tab, setTab] = useState('manual');
+  const [showTypePicker, setShowTypePicker] = useState(false);
+  const typePickerRef = useRef(null);
+
+  const {
+    getSelectedQuestion, updateQuestion, updateQuestionConfig,
+    changeQuestionType, deselect, form, questions,
+  } = useBuilderStore();
+
+  const question = getSelectedQuestion();
+  const quizMode = form?.settings?.quizMode ?? false;
+
+  // Reset to Manual tab when block changes
+  const prevIdRef = useRef(null);
+  useEffect(() => {
+    if (question?.id && question.id !== prevIdRef.current) {
+      setTab('manual');
+      prevIdRef.current = question.id;
+    }
+  }, [question?.id]);
+
+  if (!question) {
+    return (
+      <aside className="w-72 bg-white border-l border-gray-100 flex items-center justify-center shrink-0">
+        <p className="text-xs text-gray-400">Select a block to edit</p>
+      </aside>
+    );
+  }
+
+  const meta = QUESTION_META[question.type] ?? {};
+  const currentPos = question.position ?? 0;
+  const pipable = questions.filter(q =>
+    ANSWERABLE_TYPES.has(q.type) && (q.position ?? 0) < currentPos && q.id !== question.id
+  );
+
+  const handleApplyAI = (title, description) => {
+    updateQuestion(question.id, { title, description });
+    setTab('manual');
+  };
+
+  return (
+    <aside className="w-72 bg-white border-l border-gray-100 flex flex-col overflow-hidden shrink-0">
+      {/* Header: type switcher + tabs + close */}
+      <div className="flex items-center gap-1.5 px-3 py-2.5 border-b border-gray-100 sticky top-0 bg-white z-10 shrink-0">
+        {/* Type switcher */}
+        <div className="relative" ref={typePickerRef}>
+          <button
+            onClick={() => setShowTypePicker(v => !v)}
+            className={clsx(
+              'flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-gray-700 transition-colors',
+              showTypePicker ? 'bg-gray-100' : 'hover:bg-gray-100'
+            )}
+          >
+            {meta.Icon && <meta.Icon className="w-3.5 h-3.5 shrink-0" style={{ color: meta.color }} />}
+            <span className="max-w-[72px] truncate">{meta.label}</span>
+            <ChevronDown className="w-3 h-3 text-gray-400 shrink-0" />
+          </button>
+          {showTypePicker && (
+            <TypeSwitcherDropdown
+              currentType={question.type}
+              onSelect={(t) => { changeQuestionType(question.id, t); setShowTypePicker(false); }}
+              onClose={() => setShowTypePicker(false)}
+            />
+          )}
+        </div>
+
+        <div className="flex-1" />
+
+        {/* Manual / AI tabs */}
+        <div className="flex rounded-md bg-gray-100 p-0.5 shrink-0">
+          <button
+            onClick={() => setTab('manual')}
+            className={clsx(
+              'text-[10px] font-bold px-2 py-0.5 rounded transition-colors',
+              tab === 'manual' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400 hover:text-gray-600'
+            )}
+          >
+            Manual
+          </button>
+          <button
+            onClick={() => setTab('ai')}
+            className={clsx(
+              'text-[10px] font-bold px-2 py-0.5 rounded transition-colors flex items-center gap-0.5',
+              tab === 'ai' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400 hover:text-gray-600'
+            )}
+          >
+            <Sparkles className="w-2.5 h-2.5" /> AI
+          </button>
+        </div>
+
+        {/* Close */}
+        <button onClick={deselect} className="p-1 rounded-md hover:bg-gray-100 text-gray-400 shrink-0">
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* Panel body */}
+      <div className="flex-1 overflow-y-auto">
+        {tab === 'manual' ? (
+          <ManualTab
+            question={question}
+            pipable={pipable}
+            updateQuestion={updateQuestion}
+            updateQuestionConfig={updateQuestionConfig}
+            quizMode={quizMode}
+          />
+        ) : (
+          <AITab
+            question={question}
+            formTitle={form?.title ?? ''}
+            onApply={handleApplyAI}
+          />
+        )}
+      </div>
+    </aside>
+  );
+}
+
+// ── Type-specific config renderers ────────────────────────────────────────────
+function TypeConfig({ question, onConfig, quizMode }) {
+  const update = (updates) => onConfig(question.id, updates);
+  const { type, config } = question;
+
+  if (type === 'multiple_choice' || type === 'dropdown') {
+    return <ChoicesConfig config={config} onConfig={update} allowMultiple={type === 'multiple_choice'} quizMode={quizMode} />;
+  }
+  if (type === 'picture_choice') {
+    return <PictureChoicesConfig config={config} onConfig={update} />;
+  }
+  if (type === 'yes_no' && quizMode) {
+    return (
+      <div className="space-y-3">
+        <p className="text-xs font-medium text-gray-600">Quiz scores</p>
+        {['Yes', 'No'].map(opt => (
+          <div key={opt} className="flex items-center gap-2">
+            <span className="text-xs text-gray-600 w-8">{opt}</span>
+            <input
+              type="number"
+              className="input text-xs py-1 w-20"
+              placeholder="0"
+              value={config.scores?.[opt] ?? ''}
+              onChange={e => update({ scores: { ...(config.scores ?? {}), [opt]: e.target.value === '' ? undefined : +e.target.value } })}
+            />
+            <span className="text-xs text-gray-400">pts</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (type === 'rating') {
+    return (
+      <div className="space-y-3">
+        <SelectField label="Number of steps" value={config.steps ?? 5} onChange={v => update({ steps: +v })}
+          options={[3,4,5,6,7,8,9,10].map(n => ({ value: n, label: String(n) }))} />
+        <SelectField label="Shape" value={config.shape ?? 'star'} onChange={v => update({ shape: v })}
+          options={[{ value: 'star', label: '⭐ Star' }, { value: 'heart', label: '❤️ Heart' }, { value: 'thumb', label: '👍 Thumb' }, { value: 'circle', label: '⬤ Circle' }]} />
+      </div>
+    );
+  }
+  if (type === 'nps') {
+    return (
+      <div className="space-y-3">
+        <InputField label="Low label"  value={config.lowLabel ?? ''}  onChange={v => update({ lowLabel: v })}  placeholder="Not likely" />
+        <InputField label="High label" value={config.highLabel ?? ''} onChange={v => update({ highLabel: v })} placeholder="Extremely likely" />
+      </div>
+    );
+  }
+  if (type === 'short_text' || type === 'long_text') {
+    return (
+      <div className="space-y-3">
+        <InputField label="Placeholder" value={config.placeholder ?? ''} onChange={v => update({ placeholder: v })} placeholder="Placeholder text…" />
+        <InputField label="Max characters" type="number" value={config.maxLength ?? ''} onChange={v => update({ maxLength: v ? +v : null })} placeholder="No limit" />
+      </div>
+    );
+  }
+  if (type === 'file_upload') {
+    return (
+      <div className="space-y-3">
+        <InputField label="Max file size (MB)" type="number" value={config.maxSizeMb ?? 10} onChange={v => update({ maxSizeMb: +v })} />
+        <InputField label="Max number of files" type="number" value={config.maxFiles ?? 1} onChange={v => update({ maxFiles: +v })} />
+      </div>
+    );
+  }
+  if (type === 'welcome_screen') {
+    return (
+      <div className="space-y-3">
+        <InputField label="Button label" value={config.buttonLabel ?? 'Start'} onChange={v => update({ buttonLabel: v })} />
+        <TextareaField label="Description" value={config.description ?? ''} onChange={v => update({ description: v })} />
+      </div>
+    );
+  }
+  if (type === 'thank_you_screen') {
+    return (
+      <div className="space-y-3">
+        <TextareaField label="Message" value={config.message ?? ''} onChange={v => update({ message: v })} placeholder="Thank you for your response!" />
+        <InputField label="Redirect URL (optional)" value={config.redirectUrl ?? ''} onChange={v => update({ redirectUrl: v })} placeholder="https://…" />
+      </div>
+    );
+  }
+  if (type === 'matrix') {
+    return <MatrixConfig config={config} onConfig={update} />;
+  }
+  if (type === 'number') {
+    return (
+      <div className="space-y-3">
+        <InputField label="Placeholder" value={config.placeholder ?? ''} onChange={v => update({ placeholder: v })} />
+        <div className="grid grid-cols-2 gap-2">
+          <InputField label="Min" type="number" value={config.min ?? ''} onChange={v => update({ min: v ? +v : null })} />
+          <InputField label="Max" type="number" value={config.max ?? ''} onChange={v => update({ max: v ? +v : null })} />
+        </div>
+      </div>
+    );
+  }
+  if (type === 'ranking') {
+    return <RankingConfig config={config} onConfig={update} />;
+  }
+  if (type === 'payment') {
+    return (
+      <div className="space-y-3">
+        <SelectField label="Currency" value={config.currency ?? 'USD'} onChange={v => update({ currency: v })}
+          options={['USD','INR','EUR','GBP','AUD','CAD','SGD'].map(c => ({ value: c, label: c }))} />
+        <InputField label="Fixed amount" type="number" value={config.amount ?? ''} onChange={v => update({ amount: v ? +v : null })} placeholder="Leave blank for variable" />
+      </div>
+    );
+  }
+  return null;
+}
+
+// ── Logic Editor ──────────────────────────────────────────────────────────────
+const OPERATORS = [
+  { value: 'eq',       label: 'equals' },
+  { value: 'neq',      label: 'does not equal' },
+  { value: 'contains', label: 'contains' },
+  { value: 'gt',       label: 'is greater than' },
+  { value: 'lt',       label: 'is less than' },
+  { value: 'answered', label: 'is answered' },
+];
+
+function LogicEditor({ question, onUpdate }) {
+  const { questions, logicPanelOpen, closeLogicPanel } = useBuilderStore();
+  const [open, setOpen] = useState(false);
+  const sectionRef = useRef(null);
+
+  useEffect(() => {
+    if (logicPanelOpen) {
+      setOpen(true);
+      setTimeout(() => sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    }
+  }, [logicPanelOpen]);
+
+  const rules = question.logic ?? [];
+  const hasRules = rules.length > 0;
+
+  const addRule = () => {
+    const nextQ = questions.find(q => q.id !== question.id && !['welcome_screen', 'thank_you_screen'].includes(q.type));
+    const newRule = { id: nanoid(), condition: { op: 'eq', value: '' }, target: nextQ?.id ?? 'end' };
+    onUpdate(question.id, { logic: [...rules, newRule] });
+  };
+  const updateRule = (ruleId, patch) => onUpdate(question.id, { logic: rules.map(r => r.id === ruleId ? { ...r, ...patch } : r) });
+  const deleteRule = (ruleId) => onUpdate(question.id, { logic: rules.filter(r => r.id !== ruleId) });
+
+  const targetOptions = [
+    ...questions
+      .filter(q => !['welcome_screen', 'thank_you_screen', 'statement'].includes(q.type) && q.id !== question.id)
+      .map(q => ({ value: q.id, label: q.title?.slice(0, 40) || 'Untitled question' })),
+    { value: 'end', label: '→ Submit form' },
+  ];
+
+  return (
+    <div ref={sectionRef} className="border-t border-gray-100 pt-4 mt-2">
+      <button
+        onClick={() => { setOpen(v => !v); if (open) closeLogicPanel(); }}
+        className="flex items-center gap-2 w-full text-left"
+      >
+        <GitBranch className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+        <span className="text-xs font-medium text-gray-600 flex-1">Logic</span>
+        {hasRules && (
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-brand-100 text-brand-600">
+            {rules.length} rule{rules.length !== 1 ? 's' : ''}
+          </span>
+        )}
+        <span className="text-gray-400 text-xs">{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div className="mt-3 space-y-3">
+          {rules.length === 0 ? (
+            <p className="text-xs text-gray-400">No logic rules yet. Add a rule to skip or jump based on the answer.</p>
+          ) : (
+            rules.map(rule => (
+              <div key={rule.id} className="bg-gray-50 rounded-lg p-2.5 space-y-2 border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">If answer…</span>
+                  <button onClick={() => deleteRule(rule.id)} className="p-0.5 text-gray-300 hover:text-red-400">
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+                <select className="input text-xs py-1" value={rule.condition.op}
+                  onChange={e => updateRule(rule.id, { condition: { ...rule.condition, op: e.target.value } })}>
+                  {OPERATORS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+                {rule.condition.op !== 'answered' && (
+                  <input className="input text-xs py-1" placeholder="Value…" value={rule.condition.value ?? ''}
+                    onChange={e => updateRule(rule.id, { condition: { ...rule.condition, value: e.target.value } })} />
+                )}
+                <div>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide block mb-1">Then jump to…</span>
+                  <select className="input text-xs py-1" value={rule.target ?? 'end'}
+                    onChange={e => updateRule(rule.id, { target: e.target.value })}>
+                    {targetOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+              </div>
+            ))
+          )}
+          <button onClick={addRule} className="btn-ghost text-xs w-full justify-center py-1.5 border border-dashed border-gray-200">
+            <Plus className="w-3.5 h-3.5" /> Add rule
+          </button>
+          {hasRules && (
+            <p className="text-[10px] text-gray-400">Rules are evaluated top to bottom. First match wins.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ChoicesConfig({ config, onConfig, allowMultiple, quizMode }) {
+  const choices = config.choices ?? [];
+  const addChoice    = () => onConfig({ choices: [...choices, { id: nanoid(), label: '' }] });
+  const removeChoice = (id) => onConfig({ choices: choices.filter(c => c.id !== id) });
+  const updateChoice = (id, label) => onConfig({ choices: choices.map(c => c.id === id ? { ...c, label } : c) });
+  const updateScore  = (id, val) => onConfig({ scores: { ...(config.scores ?? {}), [id]: val === '' ? undefined : +val } });
+
+  return (
+    <div className="space-y-2">
+      <label className="block text-xs font-medium text-gray-600">
+        Choices {quizMode && <span className="text-[10px] text-[#f97316] font-bold ml-1">+ Score</span>}
+      </label>
+      <div className="space-y-1.5">
+        {choices.map(c => (
+          <div key={c.id} className="flex items-center gap-1.5">
+            <input className="input text-sm py-1.5 flex-1" value={c.label}
+              onChange={e => updateChoice(c.id, e.target.value)} placeholder="Option label" />
+            {quizMode && (
+              <input type="number" className="input text-xs py-1.5 w-14 text-center"
+                placeholder="0" title="Score for this choice"
+                value={config.scores?.[c.id] ?? ''}
+                onChange={e => updateScore(c.id, e.target.value)} />
+            )}
+            <button onClick={() => removeChoice(c.id)} className="p-1 text-gray-300 hover:text-red-400">
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ))}
+      </div>
+      <button onClick={addChoice} className="btn-ghost text-xs w-full justify-center py-1.5 border border-dashed border-gray-200">
+        <Plus className="w-3.5 h-3.5" /> Add option
+      </button>
+      {allowMultiple && (
+        <Toggle label="Allow multiple selections" checked={config.allowMultiple ?? false} onChange={v => onConfig({ allowMultiple: v })} />
+      )}
+      <Toggle label="Allow 'Other' option" checked={config.allowOther ?? false} onChange={v => onConfig({ allowOther: v })} />
+    </div>
+  );
+}
+
+function PictureChoicesConfig({ config, onConfig }) {
+  const { form } = useBuilderStore();
+  const [pickerChoiceId, setPickerChoiceId] = useState(null);
+
+  const choices = config.choices ?? [];
+  const addChoice    = () => onConfig({ choices: [...choices, { id: nanoid(), label: '', imageUrl: '' }] });
+  const removeChoice = (id) => onConfig({ choices: choices.filter(c => c.id !== id) });
+  const updateField  = (id, field, val) => onConfig({ choices: choices.map(c => c.id === id ? { ...c, [field]: val } : c) });
+
+  const pickerChoice = pickerChoiceId ? choices.find(c => c.id === pickerChoiceId) : null;
+  const fakeQuestion = pickerChoice ? { config: { blockImage: pickerChoice.imageUrl || null } } : null;
+
+  return (
+    <div className="space-y-3">
+      <label className="block text-xs font-medium text-gray-600">Picture choices</label>
+      <div className="space-y-3">
+        {choices.map(c => (
+          <div key={c.id} className="border border-gray-200 rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setPickerChoiceId(c.id)}
+              className="w-full h-24 relative block group focus:outline-none"
+            >
+              {c.imageUrl ? (
+                <img src={c.imageUrl} alt={c.label} className="w-full h-full object-cover" onError={e => { e.target.style.display = 'none'; }} />
+              ) : (
+                <div className="w-full h-full bg-gray-50 flex flex-col items-center justify-center gap-1 text-gray-400 group-hover:bg-gray-100 transition-colors">
+                  <Image className="w-4 h-4" />
+                  <span className="text-[10px]">Add image</span>
+                </div>
+              )}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                <span className="opacity-0 group-hover:opacity-100 text-white text-[10px] font-semibold bg-black/60 px-2 py-0.5 rounded">
+                  {c.imageUrl ? 'Change' : 'Pick image'}
+                </span>
+              </div>
+            </button>
+            <div className="flex items-center gap-1.5 p-2">
+              <input
+                className="input text-sm py-1 flex-1"
+                value={c.label}
+                onChange={e => updateField(c.id, 'label', e.target.value)}
+                placeholder="Option label"
+              />
+              <button onClick={() => removeChoice(c.id)} className="p-1 text-gray-300 hover:text-red-400 shrink-0">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+      <button onClick={addChoice} className="btn-ghost text-xs w-full justify-center py-1.5 border border-dashed border-gray-200">
+        <Plus className="w-3.5 h-3.5" /> Add option
+      </button>
+      <Toggle label="Allow multiple selections" checked={config.allowMultiple ?? false} onChange={v => onConfig({ allowMultiple: v })} />
+
+      {pickerChoiceId && fakeQuestion && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={e => { if (e.target === e.currentTarget) setPickerChoiceId(null); }}
+        >
+          <div className="bg-white rounded-2xl border-2 border-[#111] w-80 max-h-[80vh] overflow-y-auto" style={{ boxShadow: '6px 6px 0 #111' }}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 sticky top-0 bg-white z-10">
+              <p className="text-sm font-bold text-[#111]">Choose an image</p>
+              <button onClick={() => setPickerChoiceId(null)} className="text-gray-400 hover:text-gray-700">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <ImagePickerPanel
+              selectedQuestion={fakeQuestion}
+              plan={form?.workspaces?.plan ?? 'free'}
+              workspaceId={form?.workspace_id}
+              onUpdateConfig={(updates) => {
+                if ('blockImage' in updates) {
+                  updateField(pickerChoiceId, 'imageUrl', updates.blockImage ?? '');
+                  if (updates.blockImage) setPickerChoiceId(null);
+                }
+              }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MatrixConfig({ config, onConfig }) {
+  return (
+    <div className="space-y-3">
+      <EditableList label="Rows"    items={config.rows ?? []}    onChange={v => onConfig({ rows: v })}    placeholder="Row label" />
+      <EditableList label="Columns" items={config.columns ?? []} onChange={v => onConfig({ columns: v })} placeholder="Column label" />
+    </div>
+  );
+}
+
+function RankingConfig({ config, onConfig }) {
+  const items = config.items ?? [];
+  const addItem    = () => onConfig({ items: [...items, { id: nanoid(), label: '' }] });
+  const removeItem = (id) => onConfig({ items: items.filter(i => i.id !== id) });
+  const updateItem = (id, label) => onConfig({ items: items.map(i => i.id === id ? { ...i, label } : i) });
+  return (
+    <div className="space-y-2">
+      <label className="block text-xs font-medium text-gray-600">Items to rank</label>
+      {items.map(item => (
+        <div key={item.id} className="flex gap-1.5">
+          <input className="input text-sm py-1.5 flex-1" value={item.label} onChange={e => updateItem(item.id, e.target.value)} />
+          <button onClick={() => removeItem(item.id)} className="p-1 text-gray-300 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
+        </div>
+      ))}
+      <button onClick={addItem} className="btn-ghost text-xs w-full justify-center py-1.5 border border-dashed border-gray-200">
+        <Plus className="w-3.5 h-3.5" /> Add item
+      </button>
+    </div>
+  );
+}
+
+function EditableList({ label, items, onChange, placeholder }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-xs font-medium text-gray-600">{label}</label>
+      {items.map((item, i) => (
+        <div key={i} className="flex gap-1.5">
+          <input className="input text-sm py-1.5 flex-1" value={item}
+            onChange={e => { const copy = [...items]; copy[i] = e.target.value; onChange(copy); }} placeholder={placeholder} />
+          <button onClick={() => onChange(items.filter((_, j) => j !== i))} className="p-1 text-gray-300 hover:text-red-400">
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ))}
+      <button onClick={() => onChange([...items, ''])} className="btn-ghost text-xs w-full justify-center py-1.5 border border-dashed border-gray-200">
+        <Plus className="w-3.5 h-3.5" /> Add
+      </button>
+    </div>
+  );
+}
+
+// ── Primitives ────────────────────────────────────────────────────────────────
+function Toggle({ label, hint, checked, onChange }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div>
+        <p className="text-xs font-medium text-gray-700">{label}</p>
+        {hint && <p className="text-xs text-gray-400">{hint}</p>}
+      </div>
+      <button
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={clsx('relative w-10 h-6 rounded-full transition-colors duration-200 shrink-0 focus:outline-none', checked ? 'bg-brand-500' : 'bg-gray-200')}
+      >
+        <span
+          className="absolute top-[3px] w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-transform duration-200"
+          style={{ transform: checked ? 'translateX(19px)' : 'translateX(3px)' }}
+        />
+      </button>
+    </div>
+  );
+}
+
+function InputField({ label, value, onChange, placeholder, type = 'text' }) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+      <input type={type} className="input text-sm py-1.5" value={value ?? ''}
+        onChange={e => onChange(e.target.value)} placeholder={placeholder} />
+    </div>
+  );
+}
+
+function TextareaField({ label, value, onChange, placeholder }) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+      <textarea rows={3} className="input resize-none text-sm" value={value ?? ''}
+        onChange={e => onChange(e.target.value)} placeholder={placeholder} />
+    </div>
+  );
+}
+
+function SelectField({ label, value, onChange, options }) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+      <select className="input text-sm py-1.5" value={value} onChange={e => onChange(e.target.value)}>
+        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </div>
+  );
+}
