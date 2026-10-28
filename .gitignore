@@ -5,5 +5,5 @@ frontend/node_modules/
 api/.env
 .DS_Store
 .vercel/
-dist/
 .next/
+!frontend/dist/
