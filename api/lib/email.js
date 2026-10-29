@@ -1,4 +1,4 @@
-const { Resend } = require('resend');
+import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -49,4 +49,4 @@ async function sendSubmissionEmail({ to, formName, submissionData, submissionId 
   });
 }
 
-module.exports = { sendSubmissionEmail };
+export { sendSubmissionEmail };

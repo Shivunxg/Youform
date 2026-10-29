@@ -1,6 +1,7 @@
-const express = require('express');
+import express from 'express';
+import { supabaseAdmin, supabaseAnon } from '../lib/supabase.js';
+
 const router = express.Router();
-const { supabaseAdmin, supabaseAnon } = require('../lib/supabase');
 
 async function requireAuth(req, res, next) {
   const token = req.headers.authorization?.replace('Bearer ', '').trim();
@@ -50,4 +51,4 @@ router.delete('/:id', requireAuth, async (req, res) => {
   res.json({ success: true });
 });
 
-module.exports = router;
+export default router;

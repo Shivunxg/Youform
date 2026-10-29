@@ -1,7 +1,8 @@
-const express = require('express');
+import express from 'express';
+import { supabaseAdmin } from '../lib/supabase.js';
+import { sendSubmissionEmail } from '../lib/email.js';
+
 const router = express.Router();
-const { supabaseAdmin } = require('../lib/supabase');
-const { sendSubmissionEmail } = require('../lib/email');
 
 router.options('/', (_req, res) => res.sendStatus(204));
 
@@ -79,4 +80,4 @@ router.post('/', async (req, res) => {
   return res.json({ success: true, id: submission.id, message: 'Submission received.' });
 });
 
-module.exports = router;
+export default router;

@@ -1,7 +1,8 @@
-const express = require('express');
+import express from 'express';
+import crypto from 'crypto';
+import { supabaseAdmin, supabaseAnon } from '../lib/supabase.js';
+
 const router = express.Router();
-const crypto = require('crypto');
-const { supabaseAdmin, supabaseAnon } = require('../lib/supabase');
 
 async function requireAuth(req, res, next) {
   const token = req.headers.authorization?.replace('Bearer ', '').trim();
@@ -106,4 +107,4 @@ router.get('/:id/submissions', requireAuth, async (req, res) => {
   res.json({ submissions: data, total: count, page, limit });
 });
 
-module.exports = router;
+export default router;

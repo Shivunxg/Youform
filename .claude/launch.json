@@ -4,9 +4,9 @@
     {
       "name": "FormFlowX Frontend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 5173,
-      "url": "http://localhost:5173"
+      "runtimeArgs": ["run", "dev", "--prefix", "frontend"],
+      "port": 3000,
+      "autoPort": true
     }
   ]
 }
