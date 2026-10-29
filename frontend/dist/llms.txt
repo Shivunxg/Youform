@@ -1,0 +1,66 @@
+# FormFlowX
+
+> FormFlowX is a free online form builder — a lightweight alternative to Typeform, Jotform, and Google Forms for individuals, startups, and small teams who want conversational forms with built-in logic and analytics, without paying per response.
+
+FormFlowX lets anyone build beautiful multi-step forms in minutes with no code. Unlike Google Forms, it supports conditional logic, drop-off analytics, partial submission capture, and custom themes. Unlike Typeform, the free plan includes 100 responses per month with no branding restrictions, and paid plans start at $15/month — not $25+.
+
+Every form is self-hosted on FormFlowX's infrastructure. Responses are stored securely in a managed database, viewable in a real-time dashboard, and exportable to CSV. No Google account required. No data leaves the platform without the form owner's control.
+
+## Product
+
+- [Homepage](https://formflowx.com/): Free online form builder — create, share, and analyze forms in minutes
+- [Features](https://formflowx.com/features): Full feature overview including conditional logic, analytics, and integrations
+- [Pricing](https://formflowx.com/pricing): Free (100 responses/month), Pro ($15/month), Business ($39/month)
+- [Templates](https://formflowx.com/templates): Pre-built form templates for contact forms, lead capture, surveys, job applications, and more
+- [Integrations](https://formflowx.com/integrations): Slack, webhooks, Zapier, email notifications, and more
+
+## Key Features
+
+- **Conversational forms**: One question at a time — higher completion rates than traditional forms
+- **Conditional logic**: Show or hide fields based on answers, with no code required
+- **Partial submission capture**: Recover leads and data from respondents who start but don't finish
+- **Drop-off analytics**: See exactly which question loses respondents and fix it with data
+- **Multi-step forms**: Break long forms into sections to reduce overwhelm
+- **Custom themes**: Brand colours, fonts, and backgrounds
+- **Free forever plan**: 100 responses/month, no credit card required
+- **Embed anywhere**: Drop a single script tag into any website — Next.js, Webflow, plain HTML
+
+## Comparisons
+
+- [FormFlowX vs Typeform](https://formflowx.com/vs/typeform): Free alternative to Typeform with no per-response pricing
+- [FormFlowX vs Jotform](https://formflowx.com/vs/jotform): Simpler, faster form builder with a cleaner free plan
+- [FormFlowX vs Google Forms](https://formflowx.com/vs/google-forms): Advanced logic and analytics that Google Forms doesn't offer
+- [FormFlowX vs Tally](https://formflowx.com/vs/tally): Feature comparison for teams evaluating free form builders
+- [FormFlowX vs web3forms](https://formflowx.com/vs/web3forms): Full form builder vs a bare form endpoint, for developers
+
+## Templates
+
+- [Contact Form Templates](https://formflowx.com/templates/contact-form): Ready-to-use contact and inquiry forms
+- [Lead Capture Templates](https://formflowx.com/templates/lead-capture): High-converting lead generation forms
+- [Client Intake Templates](https://formflowx.com/templates/client-intake): Onboarding forms for agencies and freelancers
+- [Job Application Templates](https://formflowx.com/templates/job-application): Hiring forms for startups and small businesses
+- [NPS Survey Templates](https://formflowx.com/templates/nps-survey): Net Promoter Score surveys with follow-up logic
+- [Feedback Templates](https://formflowx.com/templates/feedback): Product and session feedback forms
+- [Market Research Templates](https://formflowx.com/templates/market-research): Survey forms for audience and competitor research
+
+## Blog
+
+- [How to Build a Contact Form Without Code](https://formflowx.com/blog/how-to-build-a-contact-form): Step-by-step guide to creating a converting contact form
+- [Why Your Form Completion Rate Is Low (And How to Fix It)](https://formflowx.com/blog/form-completion-rate): 7 common reasons forms lose respondents and how to fix them
+- [What Are Partial Form Submissions?](https://formflowx.com/blog/what-are-partial-form-submissions): How to recover leads from people who started but didn't finish
+- [Free NPS Survey Template — Net Promoter Score Guide](https://formflowx.com/blog/nps-survey-template): NPS questions, scoring formula, benchmarks, and conditional follow-up logic
+- [Market Research Survey Templates — Free Complete Guide](https://formflowx.com/blog/market-research-survey-templates): Four survey templates for audience research, product validation, competitor analysis, and brand awareness
+- [How to Create a Free Online Form — Complete Beginner's Guide](https://formflowx.com/blog/free-online-form-builder-guide): Step-by-step guide to building a free online form with no code, covering fields, logic, design, and common mistakes
+- [Free Typeform Alternative: 5 Reasons Startups Switch to FormFlowX](https://formflowx.com/blog/typeform-alternative-free-guide): Pricing and feature comparison of Typeform vs FormFlowX, plus reasons startups switch to the free plan
+- [Client Intake Form Template — Free Guide for Agencies and Freelancers](https://formflowx.com/blog/client-intake-form-template-guide): The exact questions to include in a client intake form, plus best practices for faster onboarding and lead qualification
+- [How to Embed a Form on Any Website (No Code Required)](https://formflowx.com/blog/how-to-embed-form-on-website): Step-by-step guide to embedding a form on WordPress, Squarespace, Wix, Webflow, Shopify, and plain HTML sites
+- [Lead Capture Form Best Practices: 8 Ways to Get More Sign-Ups](https://formflowx.com/blog/lead-capture-form-best-practices): Eight proven tactics — field count, copy, placement, conditional logic, and instant follow-up — to boost lead capture form conversions
+- [How to Add Conditional Logic to Forms — No Code Guide](https://formflowx.com/blog/conditional-logic-forms-guide): If-then rules and branching patterns to show respondents only the questions that apply to them, no code required
+- [Free Feedback Form Template — Get Actionable Customer Feedback](https://formflowx.com/blog/feedback-form-template-guide): The exact questions to include in a customer feedback form, plus best practices for turning responses into decisions
+- [How to Increase Survey Response Rate: 10 Proven Tactics](https://formflowx.com/blog/how-to-increase-survey-response-rate): Ten proven tactics — timing, incentives, length, and design — to boost survey completion, with benchmarks by survey type
+- [Job Application Form Template — Free Guide for Startups and Recruiters](https://formflowx.com/blog/job-application-form-template-guide): The exact fields to include in a job application form, plus conditional logic by role and screening best practices
+- [Google Forms Alternative: When to Switch (And What to Use Instead)](https://formflowx.com/blog/google-forms-alternative-guide): The 5 signs you've outgrown Google Forms, a feature-by-feature comparison, and what to look for in a free replacement
+
+## About
+
+FormFlowX is an independent SaaS product. It is not affiliated with Google, Typeform, Jotform, or any other form builder. The free plan is genuinely free — no credit card, no trial expiry, 100 responses per month indefinitely.
