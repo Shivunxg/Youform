@@ -1,3 +1,2 @@
-# Exclude the Vite marketing-site source; only the built dist/ is needed.
-frontend/src/
+# Exclude the Vite marketing-site's node_modules; Vercel installs them fresh.
 frontend/node_modules/
